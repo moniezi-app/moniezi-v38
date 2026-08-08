@@ -1,0 +1,39 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "moniezi-license",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-22",
+
+  // Public, non-secret configuration only.
+  // Everything sensitive goes in Cloudflare Secrets (see README).
+  "vars": {
+    // Comma-separated list of exact app origins allowed to call /validate.
+    // Include every origin the PWA is served from.
+    "ALLOWED_ORIGIN": "https://moniezi-app.github.io",
+
+    "MAX_DEVICES": "3",
+
+    // Used only in the purchase email body.
+    "APP_URL": "https://moniezi-app.github.io/moniezi-v38/",
+    "INSTALL_URL": "https://moniezi.com/install",
+    "REFUND_URL": "https://moniezi.com/refund-policy",
+    "SUPPORT_EMAIL": "support@moniezi.com",
+    "EMAIL_FROM": "MONIEZI <noreply@moniezi.com>"
+  },
+
+  "kv_namespaces": [
+    {
+      "binding": "LICENSE_BINDINGS",
+      // Namespace title in Cloudflare: moniezi-license-bindings
+      // Paste its ID below (Workers & Pages > KV > the namespace's ID column).
+      "id": "424a3cb2ae464021980da121639f44a0"
+    }
+  ]
+
+  // Secrets, set with `npx wrangler secret put NAME` — never in this file:
+  //   LICENSE_HASH_SALT      required   random 32+ chars; changing it invalidates every existing license
+  //   STRIPE_WEBHOOK_SECRET  required   from Stripe > Developers > Webhooks (whsec_...)
+  //   ADMIN_KEY              required   random 32+ chars; bearer token for /admin/*
+  //   OWNER_KEY              optional   your private activation key for your own devices
+  //   RESEND_API_KEY         optional   omit to fulfil the first sales manually
+}

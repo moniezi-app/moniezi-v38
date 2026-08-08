@@ -1,0 +1,14 @@
+{
+  "name": "moniezi-license-worker",
+  "private": true,
+  "version": "38.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
