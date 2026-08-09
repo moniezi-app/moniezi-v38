@@ -9,6 +9,8 @@ type UseKeyboardSafeScrollOptions = {
   topPadding?: number;
 };
 
+const PINCH_ZOOM_EPSILON = 0.01;
+
 export function useKeyboardSafeScroll({ containerRef, enabled, focusDelay = 220, resizeDelay = 60, topPadding = 20 }: UseKeyboardSafeScrollOptions) {
   useEffect(() => {
     if (!enabled) return;
@@ -17,8 +19,14 @@ export function useKeyboardSafeScroll({ containerRef, enabled, focusDelay = 220,
 
     let activeTimer: number | null = null;
 
+    const isPinchZoomed = () => {
+      const scale = window.visualViewport?.scale || 1;
+      return Math.abs(scale - 1) > PINCH_ZOOM_EPSILON;
+    };
+
     const syncFocusedFieldIntoView = (target: HTMLElement) => {
-      if (!scrollArea.contains(target)) return;
+      if (!scrollArea.contains(target) || isPinchZoomed()) return;
+
       const scrollAreaRect = scrollArea.getBoundingClientRect();
       const targetRect = target.getBoundingClientRect();
       const viewportHeight = window.visualViewport?.height || window.innerHeight;
@@ -41,11 +49,14 @@ export function useKeyboardSafeScroll({ containerRef, enabled, focusDelay = 220,
 
     const handleFocusIn = (e: FocusEvent) => {
       const target = e.target as HTMLElement | null;
-      if (!target || !isTextEditingElement(target)) return;
+      if (!target || !isTextEditingElement(target) || isPinchZoomed()) return;
       scheduleSync(target, focusDelay);
     };
 
     const handleViewportResize = () => {
+      // VisualViewport also fires resize while pinch-zooming. That is not a keyboard
+      // resize and must not trigger the keyboard scrolling logic.
+      if (isPinchZoomed()) return;
       const active = document.activeElement as HTMLElement | null;
       if (!active || !scrollArea.contains(active) || !isTextEditingElement(active)) return;
       scheduleSync(active, resizeDelay);

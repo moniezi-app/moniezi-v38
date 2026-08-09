@@ -54,7 +54,7 @@ body.modal-open {
   width: 100%;
   max-width: 100%;
   overflow-x: clip;
-  touch-action: pan-y;
+  touch-action: pan-y pinch-zoom;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
