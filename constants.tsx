@@ -47,7 +47,7 @@ export const DEFAULT_PAY_PREFS = [
   "Card", "Bank Transfer", "Cash", "PayPal", "Stripe", "Zelle", "Venmo", "Wise"
 ];
 
-export const DB_KEY = "moniezi_core_data_v1";
+export const DB_KEY = "moniezi_core_data_v1_v38";
 
 // --- Tax Constants (2025 Estimates) ---
 export const TAX_CONSTANTS = {

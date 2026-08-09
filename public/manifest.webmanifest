@@ -1,7 +1,7 @@
 {
-  "name": "MONIEZI Pro Finance",
-  "short_name": "MONIEZI",
-  "id": "/moniezi-pro-finance/",
+  "name": "MONIEZI v38.0.0",
+  "short_name": "MONIEZI 38",
+  "id": "/moniezi-v38/",
   "description": "MONIEZI Pro Finance — private business finance, tax reporting, invoicing, mileage, receipts, and internal fundraising tracking",
   "start_url": "./",
   "scope": "./",

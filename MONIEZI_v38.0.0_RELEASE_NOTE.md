@@ -26,6 +26,16 @@ This package promotes the reviewed MONIEZI v37.11.0 UX revision to the v38 repos
 - License Worker package/source marker updated to **38.0.0** while retaining the stable Worker service name.
 - GitHub Pages app URL in the Worker configuration updated to `/moniezi-v38/`.
 
+## Android version-identification update
+
+- Full PWA manifest name: **MONIEZI v38.0.0**.
+- Android launcher short name: **MONIEZI 38**.
+- Browser title: **MONIEZI v38.0.0**.
+- Manifest ID: `/moniezi-v38/` so Android/Chrome can distinguish v38 from earlier repository versions.
+- Service-worker cache identifier bumped so updated install metadata is not masked by the prior v38 cache.
+
+The underlying MONIEZI data-storage and license/device-binding keys remain unchanged.
+
 ## Data and activation continuity
 
 The following are intentionally unchanged so existing installations and activations continue cleanly:
@@ -36,7 +46,6 @@ The following are intentionally unchanged so existing installations and activati
 - Device identity key
 - License activation storage key
 - Offline license-binding salt/version
-- PWA customer-facing identity
 - Backup data model
 
 There is **no v37-to-v38 customer-data migration step**.
@@ -50,3 +59,19 @@ There is **no v37-to-v38 customer-data migration step**.
 Recommended repository name: `moniezi-v38`.
 
 Upload the contents of the source folder directly to the repository root.
+
+## v38 storage isolation
+
+MONIEZI v38 uses version-specific browser storage so v37 and v38 can be installed and tested side-by-side on the same `github.io` origin without sharing or clearing each other's bookkeeping data.
+
+- App-state IndexedDB: `moniezi-app-v38`
+- Receipt IndexedDB: `moniezi-receipts-v38`
+- Legacy data fallback key: `moniezi_core_data_v1_v38`
+- License key: `moniezi_license_v1_v38`
+- Device ID key: `moniezi_device_id_v1_v38`
+- Home KPI period: `moniezi_home_kpi_period_v38`
+- Theme: `moniezi_theme_v38`
+- Demo/sample flag: `moniezi_sample_tried_v1_v38`
+- Dismissed insights: `moniezi_insights_dismissed_v1_v38`
+
+For license continuity only, v38 performs a one-time copy of the existing v37 license/device identity into the new v38 keys. It does not migrate v37 bookkeeping data or receipt blobs.

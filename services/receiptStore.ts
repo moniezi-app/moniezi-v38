@@ -1,4 +1,4 @@
-const DB_NAME = "moniezi-receipts";
+const DB_NAME = "moniezi-receipts-v38";
 const DB_VERSION = 1;
 const STORE_NAME = "receipts";
 

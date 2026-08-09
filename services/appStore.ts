@@ -1,4 +1,4 @@
-const DB_NAME = "moniezi-app";
+const DB_NAME = "moniezi-app-v38";
 const DB_VERSION = 1;
 const STORE_NAME = "kv";
 
@@ -66,7 +66,7 @@ async function kvDelete(id: string): Promise<void> {
 }
 
 // Public API
-const APP_STATE_KEY = "appState";
+const APP_STATE_KEY = "appState_v38";
 
 export async function loadAppState<T = any>(): Promise<T | null> {
   return await kvGet<T>(APP_STATE_KEY);

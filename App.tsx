@@ -815,8 +815,10 @@ class PageErrorBoundary extends React.Component<
 
 const CUSTOMER_VERSION = "38.0.0"; // v38.0.0: usability-focused release with simplified everyday workflows
 setReportAppVersion("38.0.0");
-const LICENSE_STORAGE_KEY = "moniezi_license_v1";
-const DEVICE_ID_STORAGE_KEY = "moniezi_device_id_v1";
+const LICENSE_STORAGE_KEY = "moniezi_license_v1_v38";
+const LEGACY_LICENSE_STORAGE_KEY = "moniezi_license_v1";
+const DEVICE_ID_STORAGE_KEY = "moniezi_device_id_v1_v38";
+const LEGACY_DEVICE_ID_STORAGE_KEY = "moniezi_device_id_v1";
 const LICENSE_TOKEN_SALT = "moniezi_v35_offline_binding";
 // Deliberately unchanged. This is the LOCAL device-binding token version only.
 // Bumping it would force every activated device to re-enter its key for no gain.
@@ -849,11 +851,42 @@ function getOrCreateDeviceId(): string {
   try {
     const existing = localStorage.getItem(DEVICE_ID_STORAGE_KEY);
     if (existing) return existing;
+
+    // v38 owns its own storage key, but reuses the existing device identity once
+    // when upgrading from v37 so the license server does not consume a new
+    // device slot merely because the app storage namespace changed.
+    const legacy = localStorage.getItem(LEGACY_DEVICE_ID_STORAGE_KEY);
+    if (legacy) {
+      localStorage.setItem(DEVICE_ID_STORAGE_KEY, legacy);
+      return legacy;
+    }
+
     const created = `mzd_${generateId('dev')}_${Math.random().toString(36).slice(2, 8)}`;
     localStorage.setItem(DEVICE_ID_STORAGE_KEY, created);
     return created;
   } catch {
     return `mzd_fallback_${Math.random().toString(36).slice(2, 12)}`;
+  }
+}
+
+function migrateLegacyLicenseToV38(): void {
+  try {
+    if (localStorage.getItem(LICENSE_STORAGE_KEY)) return;
+    const legacy = localStorage.getItem(LEGACY_LICENSE_STORAGE_KEY);
+    if (!legacy) return;
+
+    const parsed = parseStoredLicense(legacy);
+    if (!parsed?.key) return;
+
+    const deviceId = getOrCreateDeviceId();
+    const migrated: StoredLicense = {
+      ...parsed,
+      deviceId,
+      token: createLicenseToken(parsed.key, deviceId),
+    };
+    localStorage.setItem(LICENSE_STORAGE_KEY, JSON.stringify(migrated));
+  } catch {
+    // A failed migration simply falls back to the normal activation screen.
   }
 }
 
@@ -1018,7 +1051,7 @@ export default function App() {
   const [invoiceQuickFilter, setInvoiceQuickFilter] = useState<'all' | 'unpaid' | 'overdue'>('all');
   const [estimateQuickFilter, setEstimateQuickFilter] = useState<'all' | 'draft' | 'sent' | 'accepted' | 'declined'>('all');
 
-  const HOME_KPI_PERIOD_KEY = 'moniezi_home_kpi_period';
+  const HOME_KPI_PERIOD_KEY = 'moniezi_home_kpi_period_v38';
   type HomeKpiPeriod = 'ytd' | 'mtd' | '30d' | 'all';
   const [homeKpiPeriod, setHomeKpiPeriod] = useState<HomeKpiPeriod>(() => {
     try {
@@ -1062,11 +1095,11 @@ export default function App() {
    * flag at precisely the moment it becomes relevant.
    */
   const [hasTriedSampleData, setHasTriedSampleData] = useState<boolean>(() => {
-    try { return localStorage.getItem('moniezi_sample_tried_v1') === '1'; } catch { return false; }
+    try { return localStorage.getItem('moniezi_sample_tried_v1_v38') === '1'; } catch { return false; }
   });
 
   const markSampleDataTried = useCallback(() => {
-    try { localStorage.setItem('moniezi_sample_tried_v1', '1'); } catch { /* ignore */ }
+    try { localStorage.setItem('moniezi_sample_tried_v1_v38', '1'); } catch { /* ignore */ }
     setHasTriedSampleData(true);
   }, []);
   const [showIosInstallCta, setShowIosInstallCta] = useState(false);
@@ -1658,7 +1691,7 @@ export default function App() {
   }, [plannerData, plannerTab]);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('moniezi_theme') as 'light' | 'dark' | null;
+    const savedTheme = localStorage.getItem('moniezi_theme_v38') as 'light' | 'dark' | null;
     if (savedTheme) {
         setTheme(savedTheme);
         document.documentElement.classList.toggle('dark', savedTheme === 'dark');
@@ -1694,6 +1727,7 @@ export default function App() {
       return;
     }
     const checkStoredLicense = async () => {
+      migrateLegacyLicenseToV38();
       const stored = localStorage.getItem(LICENSE_STORAGE_KEY);
       if (stored) {
         try {
@@ -1885,7 +1919,7 @@ export default function App() {
       setTheme(newTheme);
       document.documentElement.classList.toggle('dark', newTheme === 'dark');
       document.documentElement.classList.toggle('theme-light', newTheme === 'light');
-      localStorage.setItem('moniezi_theme', newTheme);
+      localStorage.setItem('moniezi_theme_v38', newTheme);
   };
 
   const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {

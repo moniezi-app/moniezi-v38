@@ -36,7 +36,7 @@ export type Insight = {
   data?: any;
 };
 
-const DISMISSED_KEY = "moniezi_insights_dismissed_v1";
+const DISMISSED_KEY = "moniezi_insights_dismissed_v1_v38";
 
 export function getDismissedInsightIds(): string[] {
   try {
