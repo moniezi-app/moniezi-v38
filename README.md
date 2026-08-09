@@ -1,4 +1,4 @@
-# MONIEZI Pro Finance v38.0.2
+# MONIEZI Pro Finance v38.0.3
 
 Clean v38 branch based directly on Claude's MONIEZI v37.12.1 source.
 

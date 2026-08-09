@@ -799,8 +799,8 @@ class PageErrorBoundary extends React.Component<
   }
 }
 
-const CUSTOMER_VERSION = "38.0.2"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
-setReportAppVersion("38.0.2");
+const CUSTOMER_VERSION = "38.0.3"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
+setReportAppVersion("38.0.3");
 const LICENSE_STORAGE_KEY = `moniezi_license_v1_${STORAGE_NAMESPACE}`;
 const DEVICE_ID_STORAGE_KEY = `moniezi_device_id_v1_${STORAGE_NAMESPACE}`;
 const LICENSE_TOKEN_SALT = "moniezi_v35_offline_binding";
@@ -7947,7 +7947,7 @@ html, body, #root {
         {(currentPage === Page.AllTransactions || currentPage === Page.Ledger) && (
                <div className="flex bg-slate-200 dark:bg-slate-900 p-1 rounded-lg mb-4">
                   {(['all', 'income', 'expense', 'invoice'] as const).map(f => (
-                    <button key={f} onClick={() => setLedgerFilter(f)} className={`flex-1 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${ledgerFilter === f ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-200'}`}>{f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}</button>
+                    <button key={f} onClick={() => setLedgerFilter(f)} className={`flex-1 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${ledgerFilter === f ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-200'}`}>{f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}</button>
                   ))}
                </div>
              )}
@@ -8104,7 +8104,7 @@ html, body, #root {
                       onClick={() => { setBillingDocType('invoice'); setInvoiceQuickFilter('all'); }} 
                       className={`w-full px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-bold uppercase tracking-wide transition-all ${
                         billingDocType === 'invoice' 
-                          ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-md ring-1 ring-black/5 dark:ring-white/10' 
+                          ? 'bg-blue-600 text-white shadow-md ring-1 ring-blue-500/30 dark:ring-blue-400/30' 
                           : 'hover:text-slate-900 dark:hover:text-slate-200'
                       }`}
                       style={{ color: billingDocType === 'invoice' ? undefined : 'var(--tab-inactive)' }}
@@ -8115,7 +8115,7 @@ html, body, #root {
                       onClick={() => { setBillingDocType('estimate'); setEstimateQuickFilter('all'); }} 
                       className={`w-full px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-bold uppercase tracking-wide transition-all ${
                         billingDocType === 'estimate' 
-                          ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-md ring-1 ring-black/5 dark:ring-white/10' 
+                          ? 'bg-blue-600 text-white shadow-md ring-1 ring-blue-500/30 dark:ring-blue-400/30' 
                           : 'hover:text-slate-900 dark:hover:text-slate-200'
                       }`}
                       style={{ color: billingDocType === 'estimate' ? undefined : 'var(--tab-inactive)' }}
@@ -8911,8 +8911,8 @@ html, body, #root {
                             
                             {/* Tab Switcher */}
                             <div className="flex bg-slate-100 dark:bg-slate-900/50 p-1 rounded-lg mb-4">
-                                <button onClick={() => setPlannerTab('basic')} className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${plannerTab === 'basic' ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Basic</button>
-                                <button onClick={() => setPlannerTab('advanced')} className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${plannerTab === 'advanced' ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Advanced</button>
+                                <button onClick={() => setPlannerTab('basic')} className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${plannerTab === 'basic' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Basic</button>
+                                <button onClick={() => setPlannerTab('advanced')} className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${plannerTab === 'advanced' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Advanced</button>
                             </div>
 
                             {plannerTab === 'basic' ? (
@@ -9169,8 +9169,8 @@ html, body, #root {
                                             {advSection === 'deductions' && (
                                                 <div className="p-4 bg-white dark:bg-slate-950 animate-in slide-in-from-top-2">
                                                     <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg mb-4">
-                                                        <button onClick={() => setPlannerData(p => ({...p, deductionMode: 'standard'}))} className={`flex-1 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${plannerData.deductionMode === 'standard' ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500'}`}>Standard</button>
-                                                        <button onClick={() => setPlannerData(p => ({...p, deductionMode: 'itemized'}))} className={`flex-1 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${plannerData.deductionMode === 'itemized' ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500'}`}>Itemized</button>
+                                                        <button onClick={() => setPlannerData(p => ({...p, deductionMode: 'standard'}))} className={`flex-1 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${plannerData.deductionMode === 'standard' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 dark:text-slate-300'}`}>Standard</button>
+                                                        <button onClick={() => setPlannerData(p => ({...p, deductionMode: 'itemized'}))} className={`flex-1 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${plannerData.deductionMode === 'itemized' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 dark:text-slate-300'}`}>Itemized</button>
                                                     </div>
                                                     {plannerData.deductionMode === 'itemized' ? (
                                                         <div><label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1">Total Itemized Deductions</label><input type="number" value={plannerData.itemizedDeduction || ''} onChange={e => setPlannerData(p => ({...p, itemizedDeduction: Number(e.target.value)}))} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-3 py-2 text-sm outline-none" placeholder="0"/></div>
@@ -10053,7 +10053,7 @@ html, body, #root {
                   onClick={() => setClientFilter(f)}
                   className={`flex-1 min-w-[80px] py-2.5 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${
                     clientFilter === f 
-                      ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-white shadow-sm' 
+                      ? 'bg-blue-600 text-white shadow-sm' 
                       : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
@@ -10477,7 +10477,7 @@ html, body, #root {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                         <div className="space-y-4">
                             <div className="flex items-center justify-between"><span className="text-sm font-bold text-slate-700 dark:text-slate-300">Show Logo on Invoice</span><button onClick={() => setSettings(s => ({ ...s, showLogoOnInvoice: !s.showLogoOnInvoice }))} className={`w-12 h-6 rounded-full p-1 transition-colors ${settings.showLogoOnInvoice ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-700'}`}><div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${settings.showLogoOnInvoice ? 'translate-x-6' : 'translate-x-0'}`} /></button></div>
-                            <div><label className="text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300 mb-2 block">Logo Alignment</label><div className="flex bg-slate-200 dark:bg-slate-900 p-1 rounded-lg"><button onClick={() => setSettings(s => ({ ...s, logoAlignment: 'left' }))} className={`flex-1 py-1.5 flex items-center justify-center gap-2 rounded-md transition-all ${settings.logoAlignment === 'left' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500'}`}><AlignLeft size={16} /> <span className="text-[10px] font-bold uppercase">Left</span></button><button onClick={() => setSettings(s => ({ ...s, logoAlignment: 'center' }))} className={`flex-1 py-1.5 flex items-center justify-center gap-2 rounded-md transition-all ${settings.logoAlignment === 'center' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500'}`}><AlignCenter size={16} /> <span className="text-[10px] font-bold uppercase">Center</span></button></div></div>
+                            <div><label className="text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300 mb-2 block">Logo Alignment</label><div className="flex bg-slate-200 dark:bg-slate-900 p-1 rounded-lg"><button onClick={() => setSettings(s => ({ ...s, logoAlignment: 'left' }))} className={`flex-1 py-1.5 flex items-center justify-center gap-2 rounded-md transition-all ${settings.logoAlignment === 'left' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 dark:text-slate-300'}`}><AlignLeft size={16} /> <span className="text-[10px] font-bold uppercase">Left</span></button><button onClick={() => setSettings(s => ({ ...s, logoAlignment: 'center' }))} className={`flex-1 py-1.5 flex items-center justify-center gap-2 rounded-md transition-all ${settings.logoAlignment === 'center' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 dark:text-slate-300'}`}><AlignCenter size={16} /> <span className="text-[10px] font-bold uppercase">Center</span></button></div></div>
                         </div>
                         <div><label className="text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300 mb-3 block">Brand Accent Color</label><div className="flex flex-wrap gap-3">{['#2563eb', '#4f46e5', '#9333ea', '#059669', '#dc2626', '#0f172a'].map(color => (<button key={color} onClick={() => setSettings(s => ({ ...s, brandColor: color }))} className={`w-10 h-10 rounded-lg shadow-sm transition-transform hover:scale-110 flex items-center justify-center ${settings.brandColor === color ? 'ring-2 ring-offset-2 ring-offset-slate-50 dark:ring-offset-slate-900 ring-slate-400' : ''}`} style={{ backgroundColor: color }}>{settings.brandColor === color && <CheckCircle size={16} className="text-white" strokeWidth={3} />}</button>))}</div><p className="text-xs text-slate-600 dark:text-slate-300 mt-2">Used for invoice headings and highlights.</p></div>
                     </div>
@@ -10518,7 +10518,7 @@ html, body, #root {
                  <label className="text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300 mb-3 block">How do you want to estimate your income tax?</label>
                  <div className="flex bg-slate-200 dark:bg-slate-900 p-1 rounded-lg mb-6">
                     {(['preset', 'lastYear', 'custom'] as TaxEstimationMethod[]).map(method => (
-                      <button key={method} onClick={() => setSettings(s => ({ ...s, taxEstimationMethod: method }))} className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${settings.taxEstimationMethod === method ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-200'}`}>{method === 'preset' ? 'Quick Preset' : method === 'lastYear' ? 'Use Last Year' : 'Custom %'}</button>
+                      <button key={method} onClick={() => setSettings(s => ({ ...s, taxEstimationMethod: method }))} className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${settings.taxEstimationMethod === method ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-200'}`}>{method === 'preset' ? 'Quick Preset' : method === 'lastYear' ? 'Use Last Year' : 'Custom %'}</button>
                     ))}
                  </div>
                  
@@ -10925,50 +10925,50 @@ html, body, #root {
             {/* Home */}
             <button 
               onClick={() => setCurrentPage(Page.Dashboard)} 
-              className={`dark-chrome-nav-item ${currentPage === Page.Dashboard ? 'active' : ''} flex-1 flex flex-col items-center justify-center py-1 transition-all active:scale-95 ${currentPage === Page.Dashboard ? (useDarkChrome ? 'text-white' : 'text-blue-600 dark:text-white') : ''}`}
+              className={`dark-chrome-nav-item ${currentPage === Page.Dashboard ? 'active' : ''} flex-1 flex flex-col items-center justify-center py-1 transition-all active:scale-95 ${currentPage === Page.Dashboard ? 'bg-blue-600 text-white rounded-xl shadow-sm mx-0.5' : ''}`}
               style={currentPage === Page.Dashboard ? darkChromeNavActiveStyle : darkChromeNavInactiveStyle}
             >
-              <div className={`p-1.5 rounded-lg ${currentPage === Page.Dashboard ? (useDarkChrome ? 'bg-slate-800' : 'bg-blue-100 dark:bg-slate-800') : ''}`}>
+              <div className={`p-1.5 rounded-lg ${currentPage === Page.Dashboard ? 'text-white' : ''}`}>
                 <LayoutGrid size={20} strokeWidth={currentPage === Page.Dashboard ? 2 : 1.5} />
               </div>
-              <span className={`text-[11px] mt-0.5 ${currentPage === Page.Dashboard ? (useDarkChrome ? 'font-bold text-white' : 'font-bold text-blue-600 dark:text-white') : 'font-semibold'}`} style={currentPage === Page.Dashboard ? darkChromeNavActiveStyle : darkChromeNavInactiveStyle}>Home</span>
+              <span className={`text-[11px] mt-0.5 ${currentPage === Page.Dashboard ? 'font-bold text-white' : 'font-semibold'}`} style={currentPage === Page.Dashboard ? darkChromeNavActiveStyle : darkChromeNavInactiveStyle}>Home</span>
             </button>
 
             {/* Invoice */}
             <button 
               onClick={() => { setBillingDocType('invoice'); setCurrentPage(Page.Invoices); }} 
-              className={`dark-chrome-nav-item ${currentPage === Page.Invoices && billingDocType === 'invoice' ? 'active' : ''} flex-1 flex flex-col items-center justify-center py-1 transition-all active:scale-95 ${currentPage === Page.Invoices && billingDocType === 'invoice' ? (useDarkChrome ? 'text-white' : 'text-blue-600 dark:text-white') : ''}`}
+              className={`dark-chrome-nav-item ${currentPage === Page.Invoices && billingDocType === 'invoice' ? 'active' : ''} flex-1 flex flex-col items-center justify-center py-1 transition-all active:scale-95 ${currentPage === Page.Invoices && billingDocType === 'invoice' ? 'bg-blue-600 text-white rounded-xl shadow-sm mx-0.5' : ''}`}
               style={currentPage === Page.Invoices && billingDocType === 'invoice' ? darkChromeNavActiveStyle : darkChromeNavInactiveStyle}
             >
-              <div className={`p-1.5 rounded-lg ${currentPage === Page.Invoices && billingDocType === 'invoice' ? (useDarkChrome ? 'bg-slate-800' : 'bg-blue-100 dark:bg-slate-800') : ''}`}>
+              <div className={`p-1.5 rounded-lg ${currentPage === Page.Invoices && billingDocType === 'invoice' ? 'text-white' : ''}`}>
                 <FileText size={20} strokeWidth={currentPage === Page.Invoices && billingDocType === 'invoice' ? 2 : 1.5} />
               </div>
-              <span className={`text-[11px] mt-0.5 ${currentPage === Page.Invoices && billingDocType === 'invoice' ? (useDarkChrome ? 'font-bold text-white' : 'font-bold text-blue-600 dark:text-white') : 'font-semibold'}`} style={currentPage === Page.Invoices && billingDocType === 'invoice' ? darkChromeNavActiveStyle : darkChromeNavInactiveStyle}>Invoice</span>
+              <span className={`text-[11px] mt-0.5 ${currentPage === Page.Invoices && billingDocType === 'invoice' ? 'font-bold text-white' : 'font-semibold'}`} style={currentPage === Page.Invoices && billingDocType === 'invoice' ? darkChromeNavActiveStyle : darkChromeNavInactiveStyle}>Invoice</span>
             </button>
 
 
             {/* Center Nav - Activity */}
             <button 
               onClick={() => setCurrentPage(Page.AllTransactions)} 
-              className={`dark-chrome-nav-item ${(currentPage === Page.AllTransactions || currentPage === Page.Ledger) ? 'active' : ''} flex-1 flex flex-col items-center justify-center py-1 transition-all active:scale-95 ${(currentPage === Page.AllTransactions || currentPage === Page.Ledger) ? (useDarkChrome ? 'text-white' : 'text-blue-600 dark:text-white') : ''}`}
+              className={`dark-chrome-nav-item ${(currentPage === Page.AllTransactions || currentPage === Page.Ledger) ? 'active' : ''} flex-1 flex flex-col items-center justify-center py-1 transition-all active:scale-95 ${(currentPage === Page.AllTransactions || currentPage === Page.Ledger) ? 'bg-blue-600 text-white rounded-xl shadow-sm mx-0.5' : ''}`}
               style={(currentPage === Page.AllTransactions || currentPage === Page.Ledger) ? darkChromeNavActiveStyle : darkChromeNavInactiveStyle}
             >
-              <div className={`p-1.5 rounded-lg ${(currentPage === Page.AllTransactions || currentPage === Page.Ledger) ? (useDarkChrome ? 'bg-slate-800' : 'bg-blue-100 dark:bg-slate-800') : ''}`}>
+              <div className={`p-1.5 rounded-lg ${(currentPage === Page.AllTransactions || currentPage === Page.Ledger) ? 'text-white' : ''}`}>
                 <History size={20} strokeWidth={(currentPage === Page.AllTransactions || currentPage === Page.Ledger) ? 2 : 1.5} />
               </div>
-              <span className={`text-[11px] mt-0.5 ${(currentPage === Page.AllTransactions || currentPage === Page.Ledger) ? (useDarkChrome ? 'font-bold text-white' : 'font-bold text-blue-600 dark:text-white') : 'font-semibold'}`} style={(currentPage === Page.AllTransactions || currentPage === Page.Ledger) ? darkChromeNavActiveStyle : darkChromeNavInactiveStyle}>Activity</span>
+              <span className={`text-[11px] mt-0.5 ${(currentPage === Page.AllTransactions || currentPage === Page.Ledger) ? 'font-bold text-white' : 'font-semibold'}`} style={(currentPage === Page.AllTransactions || currentPage === Page.Ledger) ? darkChromeNavActiveStyle : darkChromeNavInactiveStyle}>Activity</span>
             </button>
 
             {/* Mileage */}
             <button 
               onClick={() => setCurrentPage(Page.Mileage)} 
-              className={`dark-chrome-nav-item ${currentPage === Page.Mileage ? 'active' : ''} flex-1 flex flex-col items-center justify-center py-1 transition-all active:scale-95 ${currentPage === Page.Mileage ? (useDarkChrome ? 'text-white' : 'text-blue-600 dark:text-white') : ''}`}
+              className={`dark-chrome-nav-item ${currentPage === Page.Mileage ? 'active' : ''} flex-1 flex flex-col items-center justify-center py-1 transition-all active:scale-95 ${currentPage === Page.Mileage ? 'bg-blue-600 text-white rounded-xl shadow-sm mx-0.5' : ''}`}
               style={currentPage === Page.Mileage ? darkChromeNavActiveStyle : darkChromeNavInactiveStyle}
             >
-              <div className={`p-1.5 rounded-lg ${currentPage === Page.Mileage ? (useDarkChrome ? 'bg-slate-800' : 'bg-blue-100 dark:bg-slate-800') : ''}`}>
+              <div className={`p-1.5 rounded-lg ${currentPage === Page.Mileage ? 'text-white' : ''}`}>
                 <Car size={20} strokeWidth={currentPage === Page.Mileage ? 2 : 1.5} />
               </div>
-              <span className={`text-[11px] mt-0.5 ${currentPage === Page.Mileage ? (useDarkChrome ? 'font-bold text-white' : 'font-bold text-blue-600 dark:text-white') : 'font-semibold'}`} style={currentPage === Page.Mileage ? darkChromeNavActiveStyle : darkChromeNavInactiveStyle}>Mileage</span>
+              <span className={`text-[11px] mt-0.5 ${currentPage === Page.Mileage ? 'font-bold text-white' : 'font-semibold'}`} style={currentPage === Page.Mileage ? darkChromeNavActiveStyle : darkChromeNavInactiveStyle}>Mileage</span>
             </button>
 
 
@@ -10976,13 +10976,13 @@ html, body, #root {
             {/* Reports */}
             <button 
               onClick={() => setCurrentPage(Page.Reports)} 
-              className={`dark-chrome-nav-item ${currentPage === Page.Reports ? 'active' : ''} flex-1 flex flex-col items-center justify-center py-1 transition-all active:scale-95 ${currentPage === Page.Reports ? (useDarkChrome ? 'text-white' : 'text-blue-600 dark:text-white') : ''}`}
+              className={`dark-chrome-nav-item ${currentPage === Page.Reports ? 'active' : ''} flex-1 flex flex-col items-center justify-center py-1 transition-all active:scale-95 ${currentPage === Page.Reports ? 'bg-blue-600 text-white rounded-xl shadow-sm mx-0.5' : ''}`}
               style={currentPage === Page.Reports ? darkChromeNavActiveStyle : darkChromeNavInactiveStyle}
             >
-              <div className={`p-1.5 rounded-lg ${currentPage === Page.Reports ? (useDarkChrome ? 'bg-slate-800' : 'bg-blue-100 dark:bg-slate-800') : ''}`}>
+              <div className={`p-1.5 rounded-lg ${currentPage === Page.Reports ? 'text-white' : ''}`}>
                 <BarChart3 size={20} strokeWidth={currentPage === Page.Reports ? 2 : 1.5} />
               </div>
-              <span className={`text-[11px] mt-0.5 ${currentPage === Page.Reports ? (useDarkChrome ? 'font-bold text-white' : 'font-bold text-blue-600 dark:text-white') : 'font-semibold'}`} style={currentPage === Page.Reports ? darkChromeNavActiveStyle : darkChromeNavInactiveStyle}>Reports</span>
+              <span className={`text-[11px] mt-0.5 ${currentPage === Page.Reports ? 'font-bold text-white' : 'font-semibold'}`} style={currentPage === Page.Reports ? darkChromeNavActiveStyle : darkChromeNavInactiveStyle}>Reports</span>
             </button>
           </div>
         </div>
@@ -11145,7 +11145,7 @@ html, body, #root {
                         <DateInput label="Date" value={activeTaxPayment.date || ''} onChange={v => setActiveTaxPayment(p => ({...p, date: v}))} />
                         <div><label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-2 block pl-1 uppercase tracking-wider">Amount</label><div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 font-bold">{settings.currencySymbol}</span><input type="number" value={activeTaxPayment.amount || ''} onChange={e => setActiveTaxPayment(p => ({...p, amount: Number(e.target.value)}))} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-0 rounded-lg pl-10 pr-4 py-4 font-bold text-lg outline-none focus:ring-2 focus:ring-blue-500/20" placeholder="0.00" /></div></div>
                     </div>
-                    <div className="mb-4"><label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-2 block pl-1 uppercase tracking-wider">Payment Type</label><div className="flex bg-slate-200 dark:bg-slate-900 p-1 rounded-lg">{['Estimated', 'Annual', 'Other'].map(type => (<button key={type} onClick={() => setActiveTaxPayment(p => ({...p, type: type as any}))} className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${activeTaxPayment.type === type ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>{type}</button>))}</div></div>
+                    <div className="mb-4"><label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-2 block pl-1 uppercase tracking-wider">Payment Type</label><div className="flex bg-slate-200 dark:bg-slate-900 p-1 rounded-lg">{['Estimated', 'Annual', 'Other'].map(type => (<button key={type} onClick={() => setActiveTaxPayment(p => ({...p, type: type as any}))} className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${activeTaxPayment.type === type ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>{type}</button>))}</div></div>
                     <button onClick={saveTaxPayment} className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-lg shadow-blue-500/20 uppercase tracking-widest transition-all active:scale-95">Record Payment</button>
                 </div>
                 <div><h4 className="text-sm font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-3 pl-1">Payment History</h4>{taxPayments.length === 0 ? (<div className="text-center py-8 text-slate-400 italic text-sm">No payments recorded yet.</div>) : (<div className="space-y-3">{taxPayments.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(p => (<div key={p.id} className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center"><CheckCircle size={18} /></div><div><div className="font-bold text-slate-900 dark:text-white">{p.type} Tax</div><div className="text-xs text-slate-500">{p.date}</div></div></div><div className="text-right"><div className="font-bold text-slate-900 dark:text-white">{formatCurrency.format(p.amount)}</div><button onClick={() => deleteTaxPayment(p.id)} className="text-xs text-red-500 hover:text-red-600 mt-1 font-bold">DELETE</button></div></div>))}</div>)}</div>
@@ -11192,9 +11192,9 @@ html, body, #root {
               billingDocType={billingDocType}
               tabSelector={drawerMode === 'add' ? (
                     <div className="flex bg-slate-200 dark:bg-slate-900 p-1 rounded-lg mb-4">
-                        <button onClick={() => { setActiveTab('income'); resetActiveItem('income'); setCategorySearch(''); }} className={`flex-1 py-3 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'income' ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Income</button>
-                        <button onClick={() => { setActiveTab('expense'); resetActiveItem('expense'); setCategorySearch(''); }} className={`flex-1 py-3 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'expense' ? 'bg-white dark:bg-slate-800 text-red-600 dark:text-red-400 shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Expense</button>
-                        <button onClick={() => { setActiveTab('billing'); resetActiveItem('billing'); setCategorySearch(''); }} className={`flex-1 py-3 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'billing' ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>{billingDocType === 'estimate' ? 'Estimate' : 'Invoice'}</button>
+                        <button onClick={() => { setActiveTab('income'); resetActiveItem('income'); setCategorySearch(''); }} className={`flex-1 py-3 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'income' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Income</button>
+                        <button onClick={() => { setActiveTab('expense'); resetActiveItem('expense'); setCategorySearch(''); }} className={`flex-1 py-3 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'expense' ? 'bg-red-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Expense</button>
+                        <button onClick={() => { setActiveTab('billing'); resetActiveItem('billing'); setCategorySearch(''); }} className={`flex-1 py-3 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'billing' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>{billingDocType === 'estimate' ? 'Estimate' : 'Invoice'}</button>
                     </div>
               ) : undefined}
               utilityPanel={drawerMode === 'edit_inv' && activeItem.id ? (
