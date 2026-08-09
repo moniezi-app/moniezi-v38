@@ -799,8 +799,8 @@ class PageErrorBoundary extends React.Component<
   }
 }
 
-const CUSTOMER_VERSION = "38.0.1"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
-setReportAppVersion("38.0.1");
+const CUSTOMER_VERSION = "38.0.2"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
+setReportAppVersion("38.0.2");
 const LICENSE_STORAGE_KEY = `moniezi_license_v1_${STORAGE_NAMESPACE}`;
 const DEVICE_ID_STORAGE_KEY = `moniezi_device_id_v1_${STORAGE_NAMESPACE}`;
 const LICENSE_TOKEN_SALT = "moniezi_v35_offline_binding";

@@ -1,5 +1,5 @@
 import { RefObject, useEffect } from 'react';
-import { isTextEditingElement } from '../mobile/inputDetection';
+import { isAppleMobileDevice, isTextEditingElement } from '../mobile/inputDetection';
 
 type UseKeyboardSafeScrollOptions = {
   containerRef: RefObject<HTMLElement | null>;
@@ -18,6 +18,7 @@ export function useKeyboardSafeScroll({ containerRef, enabled, focusDelay = 220,
     if (!scrollArea) return;
 
     let activeTimer: number | null = null;
+    const isAppleMobile = isAppleMobileDevice();
 
     const isPinchZoomed = () => {
       const scale = window.visualViewport?.scale || 1;
@@ -30,7 +31,14 @@ export function useKeyboardSafeScroll({ containerRef, enabled, focusDelay = 220,
       const scrollAreaRect = scrollArea.getBoundingClientRect();
       const targetRect = target.getBoundingClientRect();
       const viewportHeight = window.visualViewport?.height || window.innerHeight;
-      const keyboardInset = Math.max(0, window.innerHeight - viewportHeight - (window.visualViewport?.offsetTop || 0));
+      const cssLayoutVh = Number.parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue('--moniezi-layout-vh'),
+      );
+      const stableAppleLayoutHeight = Number.isFinite(cssLayoutVh) && cssLayoutVh > 0
+        ? cssLayoutVh * 100
+        : Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+      const layoutHeight = isAppleMobile ? stableAppleLayoutHeight : window.innerHeight;
+      const keyboardInset = Math.max(0, layoutHeight - viewportHeight - (window.visualViewport?.offsetTop || 0));
       const visibleTop = scrollAreaRect.top + 12;
       const visibleBottom = Math.min(scrollAreaRect.bottom, viewportHeight) - Math.max(16, keyboardInset > 0 ? 14 : 12);
 
