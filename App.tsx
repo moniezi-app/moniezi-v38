@@ -97,6 +97,8 @@ import { DEMO_RECEIPT_ASSETS } from './services/demoReceipts';
 import { loadAppState, saveAppState, clearAppState } from './services/appStore';
 import { MobileFormShell } from './src/components/mobile/MobileFormShell';
 import { AppDrawer } from './src/components/mobile/AppDrawer';
+import { GlobalSearchPanel } from './src/components/GlobalSearchPanel';
+import { buildGlobalSearchGroups, type GlobalSearchResult } from './src/features/search/globalSearch';
 import { TransactionEditorShell } from './src/features/transactions/TransactionEditorShell';
 import { useKeyboardEditingState } from './src/hooks/useKeyboardEditingState';
 import { useKeyboardSafeScroll } from './src/hooks/useKeyboardSafeScroll';
@@ -799,8 +801,8 @@ class PageErrorBoundary extends React.Component<
   }
 }
 
-const CUSTOMER_VERSION = "38.0.4"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
-setReportAppVersion("38.0.4");
+const CUSTOMER_VERSION = "38.0.5"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
+setReportAppVersion("38.0.5");
 const LICENSE_STORAGE_KEY = `moniezi_license_v1_${STORAGE_NAMESPACE}`;
 const DEVICE_ID_STORAGE_KEY = `moniezi_device_id_v1_${STORAGE_NAMESPACE}`;
 const LICENSE_TOKEN_SALT = "moniezi_v35_offline_binding";
@@ -1260,6 +1262,8 @@ export default function App() {
   const [showQuickAddMenu, setShowQuickAddMenu] = useState(false);
   const [billingDocType, setBillingDocType] = useState<'invoice' | 'estimate'>('invoice');
   const [showMainMenu, setShowMainMenu] = useState(false);
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false);
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [activeItem, setActiveItem] = useState<Record<string, any>>({});
   const [activeTaxPayment, setActiveTaxPayment] = useState<Partial<TaxPayment>>({ type: 'Estimated', date: new Date().toISOString().split('T')[0] });
   
@@ -1477,6 +1481,17 @@ export default function App() {
       maximumFractionDigits: 2
     });
   }, [settings.currencySymbol]);
+
+  const globalSearchGroups = useMemo(() => buildGlobalSearchGroups({
+    query: globalSearchQuery,
+    transactions,
+    invoices,
+    estimates,
+    clients,
+    mileageTrips,
+    receipts,
+    formatCurrency: (value) => formatCurrency.format(value),
+  }), [globalSearchQuery, transactions, invoices, estimates, clients, mileageTrips, receipts, formatCurrency]);
 
   // --- Money helpers (cents-safe math to avoid 0.01 rounding issues) ---
   const toCents = (v: any) => {
@@ -3240,6 +3255,52 @@ export default function App() {
           setDrawerMode('edit_tx');
       }
       setIsDrawerOpen(true);
+  };
+
+  const closeGlobalSearch = () => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    setShowGlobalSearch(false);
+    setGlobalSearchQuery('');
+  };
+
+  const handleGlobalSearchSelect = (result: GlobalSearchResult) => {
+    closeGlobalSearch();
+
+    if (result.kind === 'transaction') {
+      const transaction = transactions.find((item) => item.id === result.id);
+      if (transaction) handleEditItem({ dataType: 'transaction', original: transaction });
+      return;
+    }
+
+    if (result.kind === 'invoice') {
+      const invoice = invoices.find((item) => item.id === result.id);
+      if (invoice) handleEditItem({ dataType: 'invoice', original: invoice });
+      return;
+    }
+
+    if (result.kind === 'estimate') {
+      const estimate = estimates.find((item) => item.id === result.id);
+      if (estimate) handleEditItem({ dataType: 'estimate', original: estimate });
+      return;
+    }
+
+    if (result.kind === 'client') {
+      const client = clients.find((item) => item.id === result.id);
+      if (client) {
+        setEditingClient(client);
+        setIsClientModalOpen(true);
+      }
+      return;
+    }
+
+    if (result.kind === 'mileage') {
+      const trip = mileageTrips.find((item) => item.id === result.id);
+      if (trip) openMileageEditDrawer(trip);
+      return;
+    }
+
+    const receipt = receipts.find((item) => item.id === result.id);
+    if (receipt) openReceipt(receipt);
   };
 
   const handleOpenTaxDrawer = () => {
@@ -7326,6 +7387,15 @@ html, body, #root {
         <div className="flex gap-1.5 sm:gap-2 flex-shrink-0">
            <button onClick={toggleTheme} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={theme === 'dark' ? 'Light mode' : 'Dark mode'} className="chrome-btn w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full transition-all border text-slate-200 hover:text-white" style={headerActionButtonStyle}>{theme === 'dark' ? <Sun size={18} className="sm:w-5 sm:h-5" strokeWidth={1.2} /> : <Moon size={18} className="sm:w-5 sm:h-5" strokeWidth={1.2} />}</button>
            <button
+             onClick={() => { setGlobalSearchQuery(''); setShowGlobalSearch(true); }}
+             className="chrome-btn w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full transition-all border text-slate-200 hover:text-white"
+             style={headerActionButtonStyle}
+             title="Search"
+             aria-label="Search MONIEZI"
+           >
+             <Search size={18} className="sm:w-5 sm:h-5" strokeWidth={1.5} />
+           </button>
+           <button
              onClick={() => setShowInsights(true)}
              className="chrome-btn relative w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full transition-all border text-slate-200 hover:text-white"
              style={headerActionButtonStyle}
@@ -7350,6 +7420,16 @@ html, body, #root {
            </button>
         </div>
       </header>
+
+      {showGlobalSearch && (
+        <GlobalSearchPanel
+          query={globalSearchQuery}
+          onQueryChange={setGlobalSearchQuery}
+          groups={globalSearchGroups}
+          onClose={closeGlobalSearch}
+          onSelect={handleGlobalSearchSelect}
+        />
+      )}
 
       <div key={`main-scroll-${currentPage}`} ref={mainScrollRef} className="main-scroll-lock flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 md:px-8 pt-5 sm:pt-6 md:pt-7 no-print custom-scrollbar" style={{ paddingBottom: isKeyboardEditing ? 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' : 'calc(11rem + env(safe-area-inset-bottom, 0px))' }} role="main">
 
