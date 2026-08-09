@@ -813,8 +813,8 @@ class PageErrorBoundary extends React.Component<
   }
 }
 
-const CUSTOMER_VERSION = "38.0.0"; // v38.0.0: usability-focused release with simplified everyday workflows
-setReportAppVersion("38.0.0");
+const CUSTOMER_VERSION = "38.0.1"; // v38.0.1: usability-focused release with simplified everyday workflows
+setReportAppVersion("38.0.1");
 const LICENSE_STORAGE_KEY = "moniezi_license_v1_v38";
 const LEGACY_LICENSE_STORAGE_KEY = "moniezi_license_v1";
 const DEVICE_ID_STORAGE_KEY = "moniezi_device_id_v1_v38";
@@ -1753,7 +1753,11 @@ export default function App() {
   }, []);
 
   // Production licensing configuration. The app never accepts an unverified customer key.
-  const LICENSE_API_BASE = String((import.meta as any).env?.VITE_LICENSE_API_BASE || "").trim();
+  // Public Cloudflare Worker endpoint used by the production app. This is not a secret.
+  // A VITE_LICENSE_API_BASE repository/build variable can override it when needed,
+  // but a missing GitHub variable must not make a paid build unable to activate.
+  const DEFAULT_LICENSE_API_BASE = "https://moniezi-license-v37.moniezi-vg.workers.dev";
+  const LICENSE_API_BASE = String((import.meta as any).env?.VITE_LICENSE_API_BASE || DEFAULT_LICENSE_API_BASE).trim();
   const PURCHASE_URL = String((import.meta as any).env?.VITE_PURCHASE_URL || "").trim();
   const TERMS_URL = String((import.meta as any).env?.VITE_TERMS_URL || "").trim();
   const PRIVACY_URL = String((import.meta as any).env?.VITE_PRIVACY_URL || "").trim();

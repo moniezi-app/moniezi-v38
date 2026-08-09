@@ -1,5 +1,5 @@
 /**
- * MONIEZI License Worker — v38.0.0
+ * MONIEZI License Worker — v38.0.1
  *
  * Replaces Gumroad verification with a MONIEZI-controlled license registry
  * held in Cloudflare Workers KV, fulfilled by Stripe Checkout webhooks.
@@ -19,7 +19,7 @@
  *   email:<emailHash>     -> [hash, ...] (support lookup)
  */
 
-const VERSION = "38.0.0";
+const VERSION = "38.0.1";
 
 /* ------------------------------------------------------------------ utils */
 
