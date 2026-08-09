@@ -41,13 +41,11 @@ function getCategoryIcon(category: InsightCategory) {
     case "cashflow": return <Activity className="w-5 h-5" />;
     case "spending": return <ShoppingCart className="w-5 h-5" />;
     case "income": return <TrendingUp className="w-5 h-5" />;
+    case "budget": return <Target className="w-5 h-5" />;
     case "patterns": return <Calendar className="w-5 h-5" />;
     case "subscriptions": return <Bell className="w-5 h-5" />;
     case "forecast": return <Sparkles className="w-5 h-5" />;
-    case "invoices": return <DollarSign className="w-5 h-5" />;
-    case "tax": return <DollarSign className="w-5 h-5" />;
-    case "receipts": return <ShoppingCart className="w-5 h-5" />;
-    case "review": return <CheckCircle2 className="w-5 h-5" />;
+    case "savings": return <DollarSign className="w-5 h-5" />;
     default: return <Info className="w-5 h-5" />;
   }
 }

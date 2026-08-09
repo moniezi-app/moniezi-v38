@@ -88,9 +88,10 @@ import {
   Menu as MenuIcon
 } from 'lucide-react';
 import { Page, Transaction, Invoice, Estimate, Client, ClientStatus, UserSettings, Notification, FilterPeriod, RecurrenceFrequency, FilingStatus, TaxPayment, TaxEstimationMethod, InvoiceItem, EstimateItem, CustomCategories, Receipt as ReceiptType, MileageTrip, CompanyEquityState } from './types';
-import { CATS_IN, CATS_OUT, CATS_BILLING, DEFAULT_PAY_PREFS, DB_KEY, TAX_CONSTANTS, TAX_PLANNER_2026, getFreshDemoData } from './constants';
+import { CATS_IN, CATS_OUT, CATS_BILLING, DEFAULT_PAY_PREFS, DB_KEY, STORAGE_NAMESPACE, TAX_CONSTANTS, TAX_PLANNER_2026, getFreshDemoData } from './constants';
 import InsightsDashboard from './InsightsDashboard';
 import { getInsightCount } from './services/insightsEngine';
+import { migrateLegacyStorage } from './services/storageMigration';
 import { putReceiptBlob, getReceiptBlob, deleteReceiptBlob, dataUrlToBlob, blobToDataUrl, clearAllReceipts } from './services/receiptStore';
 import { DEMO_RECEIPT_ASSETS } from './services/demoReceipts';
 import { loadAppState, saveAppState, clearAppState } from './services/appStore';
@@ -109,12 +110,6 @@ const generateId = (prefix: string) => {
     return `${prefix}_${crypto.randomUUID()}`;
   }
   return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-};
-
-const addDaysIso = (isoDate: string, days: number) => {
-  const base = isoDate ? new Date(`${isoDate}T12:00:00`) : new Date();
-  base.setDate(base.getDate() + days);
-  return base.toISOString().split('T')[0];
 };
 
 // --- Utility: Invoice/Estimate Number Generator ---
@@ -542,15 +537,6 @@ const getCategoryIcon = (category: string) => {
     case "Equipment": return <Hammer size={16} />;
     case "Shipping / Delivery": return <Truck size={16} />;
     case "Bank Fees": return <CreditCard size={16} />;
-    case "Services / Labor": return <Wrench size={16} />;
-    case "Project Work": return <ClipboardList size={16} />;
-    case "Repair / Maintenance": return <Hammer size={16} />;
-    case "Materials / Parts": return <Package size={16} />;
-    case "Consulting": return <Briefcase size={16} />;
-    case "Delivery / Service Call": return <Truck size={16} />;
-    case "Retainer / Ongoing Service": return <Repeat size={16} />;
-    case "Training": return <GraduationCap size={16} />;
-    case "Product / Equipment": return <ShoppingBag size={16} />;
     case "Web Development": return <Code size={16} />;
     case "Graphic Design": return <PenTool size={16} />;
     case "Strategy Consulting": return <Briefcase size={16} />;
@@ -813,12 +799,10 @@ class PageErrorBoundary extends React.Component<
   }
 }
 
-const CUSTOMER_VERSION = "38.0.1"; // v38.0.1: usability-focused release with simplified everyday workflows
-setReportAppVersion("38.0.1");
-const LICENSE_STORAGE_KEY = "moniezi_license_v1_v38";
-const LEGACY_LICENSE_STORAGE_KEY = "moniezi_license_v1";
-const DEVICE_ID_STORAGE_KEY = "moniezi_device_id_v1_v38";
-const LEGACY_DEVICE_ID_STORAGE_KEY = "moniezi_device_id_v1";
+const CUSTOMER_VERSION = "38.0.0"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
+setReportAppVersion("38.0.0");
+const LICENSE_STORAGE_KEY = `moniezi_license_v1_${STORAGE_NAMESPACE}`;
+const DEVICE_ID_STORAGE_KEY = `moniezi_device_id_v1_${STORAGE_NAMESPACE}`;
 const LICENSE_TOKEN_SALT = "moniezi_v35_offline_binding";
 // Deliberately unchanged. This is the LOCAL device-binding token version only.
 // Bumping it would force every activated device to re-enter its key for no gain.
@@ -851,42 +835,11 @@ function getOrCreateDeviceId(): string {
   try {
     const existing = localStorage.getItem(DEVICE_ID_STORAGE_KEY);
     if (existing) return existing;
-
-    // v38 owns its own storage key, but reuses the existing device identity once
-    // when upgrading from v37 so the license server does not consume a new
-    // device slot merely because the app storage namespace changed.
-    const legacy = localStorage.getItem(LEGACY_DEVICE_ID_STORAGE_KEY);
-    if (legacy) {
-      localStorage.setItem(DEVICE_ID_STORAGE_KEY, legacy);
-      return legacy;
-    }
-
     const created = `mzd_${generateId('dev')}_${Math.random().toString(36).slice(2, 8)}`;
     localStorage.setItem(DEVICE_ID_STORAGE_KEY, created);
     return created;
   } catch {
     return `mzd_fallback_${Math.random().toString(36).slice(2, 12)}`;
-  }
-}
-
-function migrateLegacyLicenseToV38(): void {
-  try {
-    if (localStorage.getItem(LICENSE_STORAGE_KEY)) return;
-    const legacy = localStorage.getItem(LEGACY_LICENSE_STORAGE_KEY);
-    if (!legacy) return;
-
-    const parsed = parseStoredLicense(legacy);
-    if (!parsed?.key) return;
-
-    const deviceId = getOrCreateDeviceId();
-    const migrated: StoredLicense = {
-      ...parsed,
-      deviceId,
-      token: createLicenseToken(parsed.key, deviceId),
-    };
-    localStorage.setItem(LICENSE_STORAGE_KEY, JSON.stringify(migrated));
-  } catch {
-    // A failed migration simply falls back to the normal activation screen.
   }
 }
 
@@ -1051,7 +1004,7 @@ export default function App() {
   const [invoiceQuickFilter, setInvoiceQuickFilter] = useState<'all' | 'unpaid' | 'overdue'>('all');
   const [estimateQuickFilter, setEstimateQuickFilter] = useState<'all' | 'draft' | 'sent' | 'accepted' | 'declined'>('all');
 
-  const HOME_KPI_PERIOD_KEY = 'moniezi_home_kpi_period_v38';
+  const HOME_KPI_PERIOD_KEY = `moniezi_home_kpi_period_${STORAGE_NAMESPACE}`;
   type HomeKpiPeriod = 'ytd' | 'mtd' | '30d' | 'all';
   const [homeKpiPeriod, setHomeKpiPeriod] = useState<HomeKpiPeriod>(() => {
     try {
@@ -1095,11 +1048,11 @@ export default function App() {
    * flag at precisely the moment it becomes relevant.
    */
   const [hasTriedSampleData, setHasTriedSampleData] = useState<boolean>(() => {
-    try { return localStorage.getItem('moniezi_sample_tried_v1_v38') === '1'; } catch { return false; }
+    try { return localStorage.getItem(`moniezi_sample_tried_v1_${STORAGE_NAMESPACE}`) === '1'; } catch { return false; }
   });
 
   const markSampleDataTried = useCallback(() => {
-    try { localStorage.setItem('moniezi_sample_tried_v1_v38', '1'); } catch { /* ignore */ }
+    try { localStorage.setItem(`moniezi_sample_tried_v1_${STORAGE_NAMESPACE}`, '1'); } catch { /* ignore */ }
     setHasTriedSampleData(true);
   }, []);
   const [showIosInstallCta, setShowIosInstallCta] = useState(false);
@@ -1316,6 +1269,7 @@ export default function App() {
 
   const [ledgerFilter, setLedgerFilter] = useState<'all' | 'income' | 'expense' | 'invoice'>('all');
   const [showTxnFilters, setShowTxnFilters] = useState(false);
+  const [ledgerSearch, setLedgerSearch] = useState('');
   const [lastYearCalc, setLastYearCalc] = useState({ profit: '', tax: '' });
   const [selectedInvoiceForDoc, setSelectedInvoiceForDoc] = useState<Invoice | null>(null);
   const [selectedEstimateForDoc, setSelectedEstimateForDoc] = useState<Estimate | null>(null);
@@ -1344,25 +1298,10 @@ export default function App() {
   const [showInsights, setShowInsights] = useState(false);
   const [duplicationCount, setDuplicationCount] = useState<Record<string, number>>({});
   const [showTemplateSuggestion, setShowTemplateSuggestion] = useState(false);
-  const [templateSuggestionData, setTemplateSuggestionData] = useState<{name: string, category: string, type: string, data: Partial<Transaction>} | null>(null);
-  const [showEditorActions, setShowEditorActions] = useState(false);
-  const [showBillingMoreOptions, setShowBillingMoreOptions] = useState(false);
-  const [showSavedReceiptPicker, setShowSavedReceiptPicker] = useState(false);
-
-  useEffect(() => {
-    if (!isDrawerOpen) return;
-    setShowEditorActions(false);
-    setShowSavedReceiptPicker(false);
-    const hasAdvancedBillingData = Boolean(
-      activeItem.clientCompany || activeItem.clientEmail || activeItem.clientAddress ||
-      activeItem.discount || activeItem.taxRate || activeItem.shipping || activeItem.notes || activeItem.terms ||
-      activeItem.projectTitle || activeItem.scopeOfWork || activeItem.timeline || activeItem.poNumber ||
-      activeItem.exclusions || activeItem.acceptanceTerms
-    );
-    setShowBillingMoreOptions(drawerMode === 'edit_inv' && hasAdvancedBillingData);
-  }, [isDrawerOpen, drawerMode, activeItem.id, billingDocType]);
+  const [templateSuggestionData, setTemplateSuggestionData] = useState<{name: string, category: string, type: string} | null>(null);
   
   // Phase 3: Advanced Duplicate Features
+  const [showBatchDuplicateModal, setShowBatchDuplicateModal] = useState(false);
   const [batchDuplicateData, setBatchDuplicateData] = useState<Transaction | Invoice | null>(null);
   const [showRecurringModal, setShowRecurringModal] = useState(false);
   const [recurringData, setRecurringData] = useState<Transaction | Invoice | null>(null);
@@ -1371,7 +1310,7 @@ export default function App() {
   const [duplicationHistory, setDuplicationHistory] = useState<Record<string, {originalId: string, originalDate: string}>>({});
   
   // Settings Tab State
-  const [settingsTab, setSettingsTab] = useState<'backup' | 'update' | 'branding' | 'tax' | 'data' | 'license' | 'offline'>('branding');
+  const [settingsTab, setSettingsTab] = useState<'backup' | 'update' | 'branding' | 'tax' | 'data' | 'license' | 'offline'>('backup');
   const [expenseReceiptFilter, setExpenseReceiptFilter] = useState<'all' | 'with_receipts' | 'without_receipts'>('all');
   const [expenseReviewFilter, setExpenseReviewFilter] = useState<'all' | 'new' | 'reviewed'>('all');
 
@@ -1691,7 +1630,7 @@ export default function App() {
   }, [plannerData, plannerTab]);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('moniezi_theme_v38') as 'light' | 'dark' | null;
+    const savedTheme = localStorage.getItem(`moniezi_theme_${STORAGE_NAMESPACE}`) as 'light' | 'dark' | null;
     if (savedTheme) {
         setTheme(savedTheme);
         document.documentElement.classList.toggle('dark', savedTheme === 'dark');
@@ -1703,22 +1642,22 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (deferredInstallPrompt && !isRunningStandalone) {
+    if (isLicenseValid === true && deferredInstallPrompt && !isRunningStandalone) {
       const timer = window.setTimeout(() => setShowDeferredInstallCta(true), 600);
       return () => window.clearTimeout(timer);
     }
     setShowDeferredInstallCta(false);
-  }, [deferredInstallPrompt, isRunningStandalone]);
+  }, [isLicenseValid, deferredInstallPrompt, isRunningStandalone]);
 
   useEffect(() => {
     const { isIosDevice } = getIosInstallContext();
-    if (isIosDevice && !isRunningStandalone) {
+    if (isLicenseValid === true && isIosDevice && !isRunningStandalone) {
       const timer = window.setTimeout(() => setShowIosInstallCta(true), 700);
       return () => window.clearTimeout(timer);
     }
     setShowIosInstallCta(false);
     setShowIosInstallHelp(false);
-  }, [getIosInstallContext, isRunningStandalone]);
+  }, [getIosInstallContext, isLicenseValid, isRunningStandalone]);
 
   // License validation on app load
   useEffect(() => {
@@ -1727,7 +1666,6 @@ export default function App() {
       return;
     }
     const checkStoredLicense = async () => {
-      migrateLegacyLicenseToV38();
       const stored = localStorage.getItem(LICENSE_STORAGE_KEY);
       if (stored) {
         try {
@@ -1753,11 +1691,7 @@ export default function App() {
   }, []);
 
   // Production licensing configuration. The app never accepts an unverified customer key.
-  // Public Cloudflare Worker endpoint used by the production app. This is not a secret.
-  // A VITE_LICENSE_API_BASE repository/build variable can override it when needed,
-  // but a missing GitHub variable must not make a paid build unable to activate.
-  const DEFAULT_LICENSE_API_BASE = "https://moniezi-license-v37.moniezi-vg.workers.dev";
-  const LICENSE_API_BASE = String((import.meta as any).env?.VITE_LICENSE_API_BASE || DEFAULT_LICENSE_API_BASE).trim();
+  const LICENSE_API_BASE = String((import.meta as any).env?.VITE_LICENSE_API_BASE || "").trim();
   const PURCHASE_URL = String((import.meta as any).env?.VITE_PURCHASE_URL || "").trim();
   const TERMS_URL = String((import.meta as any).env?.VITE_TERMS_URL || "").trim();
   const PRIVACY_URL = String((import.meta as any).env?.VITE_PRIVACY_URL || "").trim();
@@ -1923,7 +1857,7 @@ export default function App() {
       setTheme(newTheme);
       document.documentElement.classList.toggle('dark', newTheme === 'dark');
       document.documentElement.classList.toggle('theme-light', newTheme === 'light');
-      localStorage.setItem('moniezi_theme_v38', newTheme);
+      localStorage.setItem(`moniezi_theme_${STORAGE_NAMESPACE}`, newTheme);
   };
 
   const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -2134,6 +2068,10 @@ export default function App() {
           ...parsedSettings,
         });
       };
+
+      // Carry pre-v37.12 records into the namespaced keys. No-op after the
+      // first run, and it never deletes the originals.
+      try { await migrateLegacyStorage(STORAGE_NAMESPACE); } catch { /* non-fatal */ }
 
       let parsed: any = null;
       let source: 'idb' | 'localStorage' | null = null;
@@ -3001,6 +2939,13 @@ export default function App() {
     filteredTransactions.filter(t => t.type === 'expense').sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()) as any
   ), [filteredTransactions, applyExpenseMetaFilters]);
   
+  /** All items, no period filter — the corpus that search runs against. */
+  const unfilteredLedgerItems = useMemo(() => {
+    const txItems = transactions.map(t => ({ ...t, dataType: 'transaction', listId: t.id, original: t, sortDate: new Date(t.date).getTime() }));
+    const invItems = invoices.map(i => ({ ...i, name: i.client, dataType: 'invoice', type: 'invoice', listId: i.id, original: i, sortDate: new Date(i.date).getTime() }));
+    return [...txItems, ...invItems].sort((a, b) => b.sortDate - a.sortDate);
+  }, [transactions, invoices]);
+
   const ledgerItems = useMemo(() => {
     const txItems = transactions.map(t => ({ ...t, dataType: 'transaction', listId: t.id, original: t, sortDate: new Date(t.date).getTime() }));
     const invItems = invoices.map(i => ({ ...i, name: i.client, dataType: 'invoice', type: 'invoice', listId: i.id, original: i, sortDate: new Date(i.date).getTime() }));
@@ -3020,7 +2965,32 @@ export default function App() {
     return merged.sort((a, b) => b.sortDate - a.sortDate);
   }, [transactions, invoices, filterPeriod, referenceDate, ledgerFilter]);
 
-  const filteredLedgerItems = useMemo(() => applyExpenseMetaFilters(ledgerItems as any), [ledgerItems, applyExpenseMetaFilters]);
+  /**
+   * Text search across description, category, client and amount.
+   *
+   * When a search is active the period filter is bypassed: someone hunting for
+   * "Home Depot" does not know which month it is in, and making them find the
+   * month first defeats the purpose of searching.
+   */
+  const searchedLedgerItems = useMemo(() => {
+    const q = ledgerSearch.trim().toLowerCase();
+    if (!q) return ledgerItems;
+    const source = unfilteredLedgerItems;
+    return source.filter((item: any) => {
+      const haystack = [
+        item.name,
+        item.category,
+        item.client,
+        item.notes,
+        item.invoiceNumber,
+        typeof item.amount === 'number' ? item.amount.toFixed(2) : '',
+        item.date,
+      ].filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [ledgerSearch, ledgerItems, unfilteredLedgerItems]);
+
+  const filteredLedgerItems = useMemo(() => applyExpenseMetaFilters(searchedLedgerItems as any), [searchedLedgerItems, applyExpenseMetaFilters]);
 
   const periodTotals = useMemo(() => {
     const inc = filteredTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
@@ -3107,14 +3077,14 @@ export default function App() {
     if (type === 'billing') {
       if (billingDocType === 'estimate') {
         setActiveItem({
-          client: '', amount: 0, category: CATS_BILLING[0], description: '', date: today, validUntil: addDaysIso(today, 30), status: 'draft',
+          client: '', amount: 0, category: CATS_BILLING[0], description: '', date: today, validUntil: today, status: 'draft',
           items: [{ id: generateId('est_item'), description: '', quantity: 1, rate: 0 }],
           subtotal: 0, discount: 0, taxRate: 0, shipping: 0,
           notes: settings.defaultInvoiceNotes || '', terms: settings.defaultInvoiceTerms || ''
         });
       } else {
         setActiveItem({ 
-          client: '', amount: 0, category: CATS_BILLING[0], description: '', date: today, due: addDaysIso(today, 30), status: 'unpaid',
+          client: '', amount: 0, category: CATS_BILLING[0], description: '', date: today, due: today, status: 'unpaid',
           items: [{ id: generateId('item'), description: '', quantity: 1, rate: 0 }],
           subtotal: 0, discount: 0, taxRate: 0, shipping: 0,
           notes: settings.defaultInvoiceNotes || '', terms: settings.defaultInvoiceTerms || ''
@@ -3937,6 +3907,7 @@ const demoMileageTrips: MileageTrip[] = [
   const installGateActive =
     !isRunningStandalone &&
     !installGateDismissed &&
+    isLicenseValid === true &&
     ((showDeferredInstallCta && !!deferredInstallPrompt) || showIosInstallCta);
 
   const isAppEmpty =
@@ -4081,14 +4052,7 @@ const demoMileageTrips: MileageTrip[] = [
         setTemplateSuggestionData({
           name: original.name,
           category: original.category,
-          type: original.type,
-          data: {
-            ...original,
-            id: undefined,
-            date: new Date().toISOString().split('T')[0],
-            receiptId: undefined,
-            reviewedAt: undefined
-          }
+          type: original.type
         });
         setShowTemplateSuggestion(true);
       }, 1000);
@@ -4127,7 +4091,7 @@ const demoMileageTrips: MileageTrip[] = [
       const newInv: Invoice = {
         id: generateId('inv'), number: invNumber, clientId: data.clientId, client: data.client, clientAddress: data.clientAddress, clientEmail: data.clientEmail, clientCompany: data.clientCompany,
         amount: totalAmount, category: data.category || "Service", description, date: data.date || new Date().toISOString().split('T')[0],
-        due: data.due || addDaysIso(data.date || new Date().toISOString().split('T')[0], 30), status: 'unpaid', notes: data.notes || settings.defaultInvoiceNotes,
+        due: data.due || new Date().toISOString().split('T')[0], status: 'unpaid', notes: data.notes || settings.defaultInvoiceNotes,
         terms: data.terms || settings.defaultInvoiceTerms, payMethod: data.payMethod, recurrence: data.recurrence, items: data.items,
         subtotal, discount: data.discount, shipping: data.shipping, taxRate: data.taxRate, poNumber: data.poNumber
       };
@@ -4172,7 +4136,7 @@ const demoMileageTrips: MileageTrip[] = [
         category: data.category || 'Service',
         description,
         date: data.date || new Date().toISOString().split('T')[0],
-        validUntil: data.validUntil || addDaysIso(data.date || new Date().toISOString().split('T')[0], 30),
+        validUntil: data.validUntil || data.date || new Date().toISOString().split('T')[0],
         status: (data.status as any) || 'draft',
         notes: data.notes || settings.defaultInvoiceNotes,
         terms: data.terms || settings.defaultInvoiceTerms,
@@ -4317,9 +4281,9 @@ const demoMileageTrips: MileageTrip[] = [
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
 
-    // Default due date: today + 30 days
+    // Default due date: today + 14 days (if user didn't set something else later)
     const due = new Date(today);
-    due.setDate(due.getDate() + 30);
+    due.setDate(due.getDate() + 14);
     const dueStr = due.toISOString().split('T')[0];
 
     // Generate invoice number
@@ -4434,7 +4398,12 @@ const demoMileageTrips: MileageTrip[] = [
     showToast("Invoice duplicated - review and save", "success");
   };
   
-  // Shared copy generator for Future Copies.
+  // Phase 3: Batch Duplicate Function
+  const openBatchDuplicate = (original: Transaction | Invoice) => {
+    setBatchDuplicateData(original);
+    setShowBatchDuplicateModal(true);
+  };
+  
   const executeBatchDuplicate = (dates: string[]) => {
     if (!batchDuplicateData) return;
     
@@ -4477,13 +4446,13 @@ const demoMileageTrips: MileageTrip[] = [
     });
     
     showToast(`Created ${dates.length} entries`, "success");
+    setShowBatchDuplicateModal(false);
     setBatchDuplicateData(null);
   };
   
-  // Future Copies: create dated copies now, without implying an automatic subscription.
+  // Phase 3: Recurring Transaction Setup
   const openRecurringSetup = (original: Transaction | Invoice) => {
     setRecurringData(original);
-    setBatchDuplicateData(original);
     setShowRecurringModal(true);
   };
   
@@ -4493,8 +4462,7 @@ const demoMileageTrips: MileageTrip[] = [
     const dates: string[] = [];
     const startDate = new Date();
     
-    // Start with the next occurrence. The original record already represents the current one.
-    for (let i = 1; i <= occurrences; i++) {
+    for (let i = 0; i < occurrences; i++) {
       const date = new Date(startDate);
       
       switch (frequency) {
@@ -4518,7 +4486,6 @@ const demoMileageTrips: MileageTrip[] = [
     executeBatchDuplicate(dates);
     setShowRecurringModal(false);
     setRecurringData(null);
-    setBatchDuplicateData(null);
   };
   
   // Phase 3: Template Management
@@ -6319,78 +6286,6 @@ const demoMileageTrips: MileageTrip[] = [
       return { subtotal, total, tax: taxAmount };
   }, [activeItem]);
 
-  // First-use order: install the PWA before asking for a license key.
-  // This keeps activation and all future records in the same installed app storage.
-  if (installGateActive && isLicenseValid !== true) {
-    const iosInstallContext = getIosInstallContext();
-    const isIos = showIosInstallCta && iosInstallContext.isIosDevice && !deferredInstallPrompt;
-    return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
-        <div className="w-full max-w-md rounded-3xl border border-sky-400/25 bg-slate-900 p-7 shadow-2xl">
-          <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-sky-500/15 text-sky-300 flex items-center justify-center">
-            {isIos ? <Share2 size={28} /> : <Download size={28} />}
-          </div>
-          <h1 className="text-2xl font-extrabold text-center">Install MONIEZI first</h1>
-          <p className="mt-3 text-sm leading-6 text-slate-300 text-center">
-            Install the app before activation so your license and business records stay in the same MONIEZI app.
-          </p>
-
-          {isIos ? (
-            <div className="mt-5 rounded-2xl border border-slate-700 bg-slate-950/60 p-4 space-y-3 text-sm leading-6 text-slate-200">
-              {iosInstallContext.isSafariLike ? (
-                <>
-                  <p><strong>1.</strong> Tap the Safari <strong>Share</strong> button.</p>
-                  <p><strong>2.</strong> Choose <strong>Add to Home Screen</strong>.</p>
-                  <p><strong>3.</strong> Tap <strong>Add</strong>, close Safari, then open MONIEZI from its Home Screen icon.</p>
-                </>
-              ) : (
-                <p>Open this MONIEZI page in Safari, then use Share → Add to Home Screen. Open the new MONIEZI icon to continue.</p>
-              )}
-            </div>
-          ) : (
-            <button
-              onClick={triggerDeferredInstallPrompt}
-              className="mt-6 w-full rounded-xl bg-amber-500 px-5 py-4 text-[16px] font-bold text-white hover:bg-amber-400"
-            >
-              Install MONIEZI
-            </button>
-          )}
-
-          {isIos && (
-            <button
-              onClick={() => { setJustInstalled(true); setInstallGateDismissed(true); }}
-              className="mt-5 w-full rounded-xl bg-amber-500 px-5 py-4 text-[15px] font-bold text-white hover:bg-amber-400"
-            >
-              I added it — open MONIEZI from Home Screen
-            </button>
-          )}
-
-          <button
-            onClick={() => setInstallGateDismissed(true)}
-            className="mt-3 w-full py-2 text-center text-xs font-semibold text-slate-400 underline underline-offset-4"
-          >
-            Continue in this browser instead
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (justInstalled && !isRunningStandalone && isLicenseValid !== true) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
-        <div className="w-full max-w-sm rounded-2xl border border-emerald-500/30 bg-slate-900 p-6 shadow-2xl">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="rounded-full bg-emerald-500/10 p-3 text-emerald-400"><CheckCircle size={24} /></div>
-            <h2 className="text-xl font-bold">MONIEZI is installed</h2>
-          </div>
-          <p className="text-sm leading-6 text-slate-300">Close this browser tab and open MONIEZI from its Home Screen icon. The license activation screen will be there next.</p>
-          <p className="mt-4 text-xs leading-5 text-slate-500">Do not enter business records in this browser copy; browser and installed-app storage can be separate.</p>
-        </div>
-      </div>
-    );
-  }
-
   // Show loading state while checking license
   if (LICENSING_ENABLED && isLicenseValid === null) {
     return (
@@ -7339,7 +7234,7 @@ html, body, #root {
               <li>Open MONIEZI from your home screen instead. That&apos;s where you&apos;ll use it from now on.</li>
             </ol>
             <p className="mb-5 text-xs text-slate-500 dark:text-slate-400">
-              Use the installed MONIEZI app for your records. Browser and installed-app storage can be separate on some devices.
+              Your records are the same in both. The installed app just opens faster and works without the browser.
             </p>
             <button
               onClick={() => {
@@ -7429,12 +7324,13 @@ html, body, #root {
       >
         <Logo onClick={() => setCurrentPage(Page.Dashboard)} onDarkSurface={useDarkChrome} />
         <div className="flex gap-1.5 sm:gap-2 flex-shrink-0">
-           <button onClick={toggleTheme} className="chrome-btn w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full transition-all border text-slate-200 hover:text-white" style={headerActionButtonStyle}>{theme === 'dark' ? <Sun size={18} className="sm:w-5 sm:h-5" strokeWidth={1.2} /> : <Moon size={18} className="sm:w-5 sm:h-5" strokeWidth={1.2} />}</button>
+           <button onClick={toggleTheme} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={theme === 'dark' ? 'Light mode' : 'Dark mode'} className="chrome-btn w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full transition-all border text-slate-200 hover:text-white" style={headerActionButtonStyle}>{theme === 'dark' ? <Sun size={18} className="sm:w-5 sm:h-5" strokeWidth={1.2} /> : <Moon size={18} className="sm:w-5 sm:h-5" strokeWidth={1.2} />}</button>
            <button
              onClick={() => setShowInsights(true)}
              className="chrome-btn relative w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full transition-all border text-slate-200 hover:text-white"
              style={headerActionButtonStyle}
              title="Insights"
+             aria-label="Insights"
            >
              <BrainCircuit size={18} className="sm:w-5 sm:h-5" strokeWidth={1.2} />
              {insightsBadgeCount > 0 && (
@@ -7618,13 +7514,35 @@ html, body, #root {
               <div className="text-4xl font-extrabold tracking-tighter mb-6 text-slate-950 dark:text-white font-brand">{formatCurrency.format(homeTotals.profit)}</div>
 
               <div className="grid grid-cols-1 gap-2">
-                <button type="button" onClick={() => setCurrentPage(Page.Income)} className="w-full bg-slate-50 dark:bg-white/10 backdrop-blur-md px-4 py-3 rounded-lg border border-slate-200 dark:border-white/5 flex items-center justify-between text-left hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors active:scale-[0.99]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLedgerSearch('');
+                    setExpenseReceiptFilter('all');
+                    setExpenseReviewFilter('all');
+                    setLedgerFilter('income');
+                    setCurrentPage(Page.AllTransactions);
+                  }}
+                  aria-label="View income in Activity"
+                  className="w-full bg-slate-50 dark:bg-white/10 backdrop-blur-md px-4 py-3 rounded-lg border border-slate-200 dark:border-white/5 flex items-center justify-between text-left cursor-pointer active:scale-[0.99] transition-transform"
+                >
                   <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-300"><TrendingUp size={18} strokeWidth={2.5} /><span className="text-sm font-bold uppercase tracking-wide">In</span></div>
-                  <div className="flex items-center gap-2"><span className="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency.format(homeTotals.income)}</span><ChevronRight size={18} className="text-slate-400" /></div>
+                  <div className="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency.format(homeTotals.income)}</div>
                 </button>
-                <button type="button" onClick={() => setCurrentPage(Page.Expenses)} className="w-full bg-slate-50 dark:bg-white/10 backdrop-blur-md px-4 py-3 rounded-lg border border-slate-200 dark:border-white/5 flex items-center justify-between text-left hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors active:scale-[0.99]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLedgerSearch('');
+                    setExpenseReceiptFilter('all');
+                    setExpenseReviewFilter('all');
+                    setLedgerFilter('expense');
+                    setCurrentPage(Page.AllTransactions);
+                  }}
+                  aria-label="View expenses in Activity"
+                  className="w-full bg-slate-50 dark:bg-white/10 backdrop-blur-md px-4 py-3 rounded-lg border border-slate-200 dark:border-white/5 flex items-center justify-between text-left cursor-pointer active:scale-[0.99] transition-transform"
+                >
                   <div className="flex items-center gap-2 text-red-600 dark:text-red-300"><TrendingDown size={18} strokeWidth={2.5} /><span className="text-sm font-bold uppercase tracking-wide">Out</span></div>
-                  <div className="flex items-center gap-2"><span className="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency.format(homeTotals.expense)}</span><ChevronRight size={18} className="text-slate-400" /></div>
+                  <div className="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency.format(homeTotals.expense)}</div>
                 </button>
               </div>
             </div>
@@ -7927,7 +7845,46 @@ html, body, #root {
                  )}
              </div>
 
-             <PeriodSelector period={filterPeriod} setPeriod={setFilterPeriod} refDate={referenceDate} setRefDate={setReferenceDate} />
+             {/* Search sits above the period stepper because it overrides it —
+                 a search looks across every year, not the selected month. */}
+             <div className="relative mb-3">
+               <Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+               <input
+                 type="text"
+                 inputMode="search"
+                 value={ledgerSearch}
+                 onChange={e => setLedgerSearch(e.target.value)}
+                 placeholder="Search description, category, client or amount"
+                 className="w-full rounded-lg border border-slate-200 bg-white py-3 pl-10 pr-10 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
+               />
+               {ledgerSearch && (
+                 <button
+                   type="button"
+                   onClick={() => setLedgerSearch('')}
+                   aria-label="Clear search"
+                   className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                 >
+                   <X size={16} />
+                 </button>
+               )}
+             </div>
+
+             {ledgerSearch.trim() ? (
+               <div className="mb-4 flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 dark:border-blue-900/50 dark:bg-blue-900/20">
+                 <span className="text-xs font-bold text-blue-800 dark:text-blue-200">
+                   {filteredLedgerItems.length} {filteredLedgerItems.length === 1 ? 'match' : 'matches'} across all dates
+                 </span>
+                 <button
+                   type="button"
+                   onClick={() => setLedgerSearch('')}
+                   className="text-xs font-bold uppercase tracking-wider text-blue-700 hover:text-blue-900 dark:text-blue-300 dark:hover:text-blue-100"
+                 >
+                   Clear
+                 </button>
+               </div>
+             ) : (
+               <PeriodSelector period={filterPeriod} setPeriod={setFilterPeriod} refDate={referenceDate} setRefDate={setReferenceDate} />
+             )}
 
              {(currentPage === Page.Expenses || currentPage === Page.AllTransactions || currentPage === Page.Ledger) && (() => {
                // Receipts + review status are occasional refinements, not the main
@@ -10269,53 +10226,89 @@ html, body, #root {
 
             {/* Tab Navigation */}
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-2 shadow-sm">
-              <div className="grid grid-cols-4 gap-2">
-                <button
-                  onClick={() => setSettingsTab('branding')}
-                  className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-3 rounded-lg font-bold text-xs sm:text-sm uppercase tracking-wide transition-all ${
-                    settingsTab === 'branding'
-                      ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-                      : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-                  }`}
-                >
-                  <Palette size={18} />
-                  <span className="text-[10px] sm:text-sm mt-0.5 sm:mt-0">Business</span>
-                </button>
-
-                <button
-                  onClick={() => setSettingsTab('tax')}
-                  className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-3 rounded-lg font-bold text-xs sm:text-sm uppercase tracking-wide transition-all ${
-                    settingsTab === 'tax'
-                      ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
-                      : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-                  }`}
-                >
-                  <Calculator size={18} />
-                  <span className="text-[10px] sm:text-sm mt-0.5 sm:mt-0">Tax</span>
-                </button>
-
+              <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
                 <button
                   onClick={() => setSettingsTab('backup')}
-                  className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-3 rounded-lg font-bold text-xs sm:text-sm uppercase tracking-wide transition-all ${
+                  className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-3 md:px-4 py-3 rounded-lg font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
                     settingsTab === 'backup'
                       ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
                       : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
                   }`}
                 >
                   <Shield size={18} />
-                  <span className="text-[10px] sm:text-sm mt-0.5 sm:mt-0">Backup</span>
+                  <span className="text-[10px] md:text-sm mt-0.5 md:mt-0">Backup</span>
                 </button>
 
                 <button
-                  onClick={() => setSettingsTab('data')}
-                  className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-3 rounded-lg font-bold text-xs sm:text-sm uppercase tracking-wide transition-all ${
-                    ['data', 'license', 'offline', 'update'].includes(settingsTab)
-                      ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-950 shadow-lg'
+                  onClick={() => setSettingsTab('update')}
+                  className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-3 md:px-4 py-3 rounded-lg font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
+                    settingsTab === 'update'
+                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
                       : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
                   }`}
                 >
-                  <Settings size={18} />
-                  <span className="text-[10px] sm:text-sm mt-0.5 sm:mt-0">App</span>
+                  <RotateCcw size={18} />
+                  <span className="text-[10px] md:text-sm mt-0.5 md:mt-0">Updates</span>
+                </button>
+                
+                <button
+                  onClick={() => setSettingsTab('branding')}
+                  className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-3 md:px-4 py-3 rounded-lg font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
+                    settingsTab === 'branding'
+                      ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
+                      : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  <Palette size={18} />
+                  <span className="text-[10px] md:text-sm mt-0.5 md:mt-0">My Business</span>
+                </button>
+                
+                <button
+                  onClick={() => setSettingsTab('tax')}
+                  className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-3 md:px-4 py-3 rounded-lg font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
+                    settingsTab === 'tax'
+                      ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
+                      : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  <Calculator size={18} />
+                  <span className="text-[10px] md:text-sm mt-0.5 md:mt-0">Tax Setup</span>
+                </button>
+                
+                <button
+                  onClick={() => setSettingsTab('data')}
+                  className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-3 md:px-4 py-3 rounded-lg font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
+                    settingsTab === 'data'
+                      ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
+                      : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  <Trash2 size={18} />
+                  <span className="text-[10px] md:text-sm mt-0.5 md:mt-0">Demo &amp; Reset</span>
+                </button>
+                {LICENSING_ENABLED && (
+                <button
+                  onClick={() => setSettingsTab('license')}
+                  className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-3 md:px-4 py-3 rounded-lg font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
+                    settingsTab === 'license'
+                      ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30'
+                      : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  <Key size={18} />
+                  <span className="text-[10px] md:text-sm mt-0.5 md:mt-0">License</span>
+                </button>
+                )}
+                <button
+                  onClick={() => setSettingsTab('offline')}
+                  className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-3 md:px-4 py-3 rounded-lg font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
+                    settingsTab === 'offline'
+                      ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/30'
+                      : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  <HelpCircle size={18} />
+                  <span className="text-[10px] md:text-sm mt-0.5 md:mt-0">Offline</span>
                 </button>
               </div>
             </div>
@@ -10323,7 +10316,7 @@ html, body, #root {
             {/* Tab Content */}
             <div className="space-y-6">
               
-              {/* App Troubleshooting Tab */}
+              {/* App Update / Refresh Build Tab */}
               {settingsTab === 'update' && (
                 <div className="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg animate-in fade-in slide-in-from-bottom-4">
                   <div className="flex items-center gap-3 mb-6">
@@ -10331,8 +10324,8 @@ html, body, #root {
                       <RotateCcw size={20} strokeWidth={2} />
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold text-slate-900 dark:text-white">App Troubleshooting</h3>
-                      <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">These controls are only for troubleshooting if MONIEZI seems stuck or you need to refresh the installed app. Normal use should not require them.</p>
+                      <h3 className="text-xl font-bold text-slate-900 dark:text-white">App Update / Refresh Build</h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">Use this before clearing Chrome site data. It checks the installed build, reloads the app, and protects your local records with backup controls.</p>
                     </div>
                   </div>
 
@@ -10341,13 +10334,13 @@ html, body, #root {
                       onClick={handleCheckForAppUpdate}
                       className="flex items-center justify-center gap-3 py-5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-800 text-indigo-900 dark:text-indigo-100 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all font-bold text-sm uppercase tracking-wider active:scale-95"
                     >
-                      <RotateCcw size={20} /> Check App Version
+                      <RotateCcw size={20} /> Check for Update
                     </button>
                     <button
                       onClick={handleReloadApp}
                       className="flex items-center justify-center gap-3 py-5 rounded-lg bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-900 hover:text-white hover:border-slate-900 dark:hover:bg-white dark:hover:text-slate-950 dark:hover:border-white transition-all font-bold text-sm uppercase tracking-wider active:scale-95"
                     >
-                      <Repeat size={20} /> Reload MONIEZI
+                      <Repeat size={20} /> Reload App
                     </button>
                     {isDemoData && (
                     <button
@@ -10392,24 +10385,24 @@ html, body, #root {
                 </div>
               )}
 
-              {/* Installation Help Tab */}
+              {/* Offline Setup Tab */}
               {settingsTab === 'offline' && (
                 <div className="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg animate-in fade-in slide-in-from-bottom-4">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 rounded-lg bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 flex items-center justify-center">
                       <HelpCircle size={20} strokeWidth={2} />
                     </div>
-                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">Installation Help</h3>
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">Offline Setup</h3>
                   </div>
 
                   <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl p-5 space-y-4">
-                    <p className="text-sm leading-7 text-slate-700 dark:text-slate-200">Review the install steps for iPhone or Android if you need to reinstall MONIEZI or confirm that you are using the installed app.</p>
+                    <p className="text-sm leading-7 text-slate-700 dark:text-slate-200">Use this section anytime you want to review how MONIEZI is installed for offline use on iPhone or Android.</p>
                     <button
                       onClick={openHelp}
                       className="inline-flex items-center justify-center gap-2 rounded-xl bg-sky-600 hover:bg-sky-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-sky-900/20 transition-colors"
                     >
                       <HelpCircle size={18} />
-                      Open Installation Help
+                      Open Offline Setup
                     </button>
                   </div>
                 </div>
@@ -10631,61 +10624,36 @@ html, body, #root {
                 </div>
               )}
 
-              {/* App Settings Tab */}
+              {/* Data Management Tab */}
               {settingsTab === 'data' && (
-                <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg animate-in fade-in slide-in-from-bottom-4">
+                <div className="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg animate-in fade-in slide-in-from-bottom-4">
                   <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 flex items-center justify-center">
-                      <Settings size={20} strokeWidth={2} />
+                    <div className="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center">
+                      <Trash2 size={20} strokeWidth={2} />
                     </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-slate-900 dark:text-white">App</h3>
-                      <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">Installation, license, troubleshooting, and local data controls.</p>
-                    </div>
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">Data Management</h3>
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
-                    {LICENSING_ENABLED && (
-                      <button onClick={() => setSettingsTab('license')} className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-amber-900/20 text-left transition-colors">
-                        <Key size={20} className="text-amber-600 dark:text-amber-400 mb-3" />
-                        <div className="font-bold text-slate-900 dark:text-white">License</div>
-                        <div className="text-xs text-slate-600 dark:text-slate-300 mt-1">View activation details.</div>
-                      </button>
-                    )}
-                    <button onClick={() => setSettingsTab('offline')} className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-sky-50 dark:hover:bg-sky-900/20 text-left transition-colors">
-                      <HelpCircle size={20} className="text-sky-600 dark:text-sky-400 mb-3" />
-                      <div className="font-bold text-slate-900 dark:text-white">Installation Help</div>
-                      <div className="text-xs text-slate-600 dark:text-slate-300 mt-1">iPhone and Android install steps.</div>
-                    </button>
-                    <button onClick={() => setSettingsTab('update')} className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-left transition-colors">
-                      <RotateCcw size={20} className="text-indigo-600 dark:text-indigo-400 mb-3" />
-                      <div className="font-bold text-slate-900 dark:text-white">Troubleshooting</div>
-                      <div className="text-xs text-slate-600 dark:text-slate-300 mt-1">Refresh the app only when needed.</div>
-                    </button>
-                  </div>
-
-                  <div className="border-t border-slate-200 dark:border-slate-800 pt-6">
-                    <h4 className="font-bold text-slate-900 dark:text-white mb-1">Local data</h4>
-                    <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">Demo and reset controls for the records stored on this device.</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                       {(isAppEmpty || isDemoData) && (
-                        <button onClick={handleLoadSampleData} className="py-5 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-100 rounded-xl text-sm font-bold flex items-center justify-center gap-3 active:scale-95 transition-all">
-                          {seedSuccess ? <CheckCircle size={21} /> : <PlayCircle size={21} />}
-                          <span>{seedSuccess ? 'Demo Data Loaded' : 'Load Demo Data'}</span>
-                        </button>
+                      <button onClick={handleLoadSampleData} className="py-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30 border-2 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-100 rounded-lg text-sm font-bold uppercase tracking-widest shadow-lg transition-all flex flex-col items-center justify-center gap-3 active:scale-95">
+                        {seedSuccess ? <CheckCircle size={24} /> : <PlayCircle size={24} />}
+                        <span>{seedSuccess ? 'Demo Data Loaded' : 'Load Demo Data'}</span>
+                      </button>
                       )}
-                      <button onClick={handleClearData} className="py-5 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-900 dark:text-red-100 rounded-xl text-sm font-bold flex items-center justify-center gap-3 active:scale-95 transition-all">
-                        <AlertTriangle size={21} />
+                      <button onClick={handleClearData} className="py-6 bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 hover:from-red-100 hover:to-orange-100 dark:hover:from-red-900/30 dark:hover:to-orange-900/30 border-2 border-red-200 dark:border-red-800 text-red-900 dark:text-red-100 rounded-lg text-sm font-bold uppercase tracking-widest shadow-lg transition-all flex flex-col items-center justify-center gap-3 active:scale-95">
+                        <AlertTriangle size={24} />
                         <span>Reset & Clear All</span>
                       </button>
-                    </div>
-
-                    <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-xl p-4">
-                      <div className="flex items-start gap-3">
-                        <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                        <div className="text-sm text-red-900 dark:text-red-100 leading-6">
-                          <p><strong>Reset & Clear All</strong> permanently deletes the MONIEZI records stored on this device. Export a backup first if you may need them later.</p>
-                        </div>
+                  </div>
+                  
+                  <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                      <div className="text-sm text-red-900 dark:text-red-100">
+                        <p className="font-semibold mb-1">⚠️ Warning: Destructive Actions</p>
+                        <p className="mb-2"><strong>Load Demo Data:</strong> Replaces everything with demo records so you can explore. Only offered while the app is empty, so your own records can never be overwritten.</p>
+                        <p><strong>Reset & Clear All:</strong> Permanently deletes ALL your data including transactions, invoices, tax payments, and custom categories. This action cannot be undone!</p>
                       </div>
                     </div>
                   </div>
@@ -11230,36 +11198,23 @@ html, body, #root {
                     </div>
               ) : undefined}
               utilityPanel={drawerMode === 'edit_inv' && activeItem.id ? (
-                <div className="mb-4 space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <button type="button" onClick={billingDocType === 'estimate' ? handleDirectExportEstimatePDF : handleDirectExportPDF} disabled={billingDocType === 'estimate' ? isGeneratingEstimatePdf : isGeneratingPdf} className={`py-3 flex items-center justify-center gap-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 shadow-sm ${(billingDocType === 'estimate' ? isGeneratingEstimatePdf : isGeneratingPdf) ? 'opacity-70 cursor-wait' : ''}`}>
-                      {(billingDocType === 'estimate' ? isGeneratingEstimatePdf : isGeneratingPdf) ? <Loader2 size={18} className="animate-spin text-blue-600" /> : <Download size={18} />}
-                      <span className="text-xs font-bold">{(billingDocType === 'estimate' ? isGeneratingEstimatePdf : isGeneratingPdf) ? 'Generating...' : 'Export PDF'}</span>
-                    </button>
-                    {billingDocType !== 'estimate' ? (
-                      <button type="button" onClick={() => toggleInvoicePaidStatus(activeItem)} disabled={activeItem.status === 'void'} className={`py-3 flex items-center justify-center gap-2 rounded-lg border shadow-sm ${activeItem.status === 'void' ? 'opacity-50 cursor-not-allowed bg-slate-200 dark:bg-slate-800 text-slate-500' : activeItem.status === 'paid' ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400' : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'}`}>
-                        {activeItem.status === 'paid' ? <X size={18} /> : <CheckCircle size={18} />}
-                        <span className="text-xs font-bold">{activeItem.status === 'paid' ? 'Mark Unpaid' : 'Mark Paid'}</span>
-                      </button>
-                    ) : (
-                      <button type="button" onClick={() => setShowEditorActions(v => !v)} className="py-3 flex items-center justify-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs">
-                        More <ChevronDown size={16} className={showEditorActions ? 'rotate-180' : ''} />
-                      </button>
-                    )}
-                  </div>
-                  {billingDocType !== 'estimate' && (
-                    <button type="button" onClick={() => setShowEditorActions(v => !v)} className="w-full py-2.5 flex items-center justify-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs">
-                      More actions <ChevronDown size={16} className={showEditorActions ? 'rotate-180' : ''} />
-                    </button>
-                  )}
-                  {showEditorActions && (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-2">
-                      <button type="button" onClick={() => (billingDocType === 'estimate' ? duplicateEstimate(activeItem as any) : duplicateInvoice(activeItem as Invoice))} className="py-3 flex items-center justify-center gap-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-bold text-xs"><Copy size={17} /> Duplicate</button>
-                      {billingDocType !== 'estimate' && <button type="button" onClick={() => openRecurringSetup(activeItem as Invoice)} className="py-3 flex items-center justify-center gap-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-purple-600 dark:text-purple-400 font-bold text-xs"><Calendar size={17} /> Future Copies</button>}
-                      <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); billingDocType === 'estimate' ? deleteEstimate(activeItem as any) : setInvoiceToDelete(activeItem.id!); }} className="py-3 flex items-center justify-center gap-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-red-600 dark:text-red-400 font-bold text-xs"><Trash2 size={17} /> Delete</button>
+                    <div className="bg-slate-100 dark:bg-slate-800/50 p-2 rounded-lg mb-4 border border-slate-200 dark:border-slate-700">
+                        <div className="grid grid-cols-3 gap-2 mb-2">
+                            <button type="button" onClick={billingDocType === 'estimate' ? handleDirectExportEstimatePDF : handleDirectExportPDF} disabled={billingDocType === 'estimate' ? isGeneratingEstimatePdf : isGeneratingPdf} className={`py-2.5 flex flex-col items-center justify-center gap-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm transition-all ${(billingDocType === 'estimate' ? isGeneratingEstimatePdf : isGeneratingPdf) ? 'opacity-70 cursor-wait' : ''}`}>{(billingDocType === 'estimate' ? isGeneratingEstimatePdf : isGeneratingPdf) ? <Loader2 size={18} className="animate-spin text-blue-600" /> : <Download size={18} />}<span className="text-[10px] font-bold uppercase tracking-wider">{(billingDocType === 'estimate' ? isGeneratingEstimatePdf : isGeneratingPdf) ? 'Generating...' : 'Export PDF'}</span></button>
+                            <button type="button" onClick={() => (billingDocType === 'estimate' ? duplicateEstimate(activeItem as any) : duplicateInvoice(activeItem as Invoice))} className="py-2.5 flex flex-col items-center justify-center gap-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 shadow-sm transition-all"><Copy size={18} /><span className="text-[10px] font-bold uppercase tracking-wider">Duplicate</span></button>
+                            <button type="button" onClick={() => (billingDocType === 'estimate' ? null : openBatchDuplicate(activeItem as Invoice))} disabled={billingDocType === 'estimate'} className={`py-2.5 flex flex-col items-center justify-center gap-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 shadow-sm transition-all ${billingDocType === 'estimate' ? 'opacity-50 cursor-not-allowed' : ''}`}><Repeat size={18} /><span className="text-[10px] font-bold uppercase tracking-wider">Batch</span></button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            {billingDocType !== 'estimate' ? (
+                              <button type="button" onClick={() => toggleInvoicePaidStatus(activeItem)} disabled={activeItem.status === 'void'} className={`py-2.5 flex flex-col items-center justify-center gap-1 rounded-md border shadow-sm transition-all ${activeItem.status === 'void' ? 'opacity-50 cursor-not-allowed bg-slate-200 dark:bg-slate-800 text-slate-500' : activeItem.status === 'paid' ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400 hover:bg-orange-100' : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100'}`}>{activeItem.status === 'paid' ? <X size={18} /> : <CheckCircle size={18} />}<span className="text-[10px] font-bold uppercase tracking-wider">{activeItem.status === 'paid' ? 'Mark Unpaid' : 'Mark Paid'}</span></button>
+                            ) : (
+                              <div className="py-2.5 flex flex-col items-center justify-center gap-1 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-500">
+                                <span className="text-[10px] font-bold uppercase tracking-wider">No payment status</span>
+                              </div>
+                            )}
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); billingDocType === 'estimate' ? deleteEstimate(activeItem as any) : setInvoiceToDelete(activeItem.id!); }} className="py-2.5 flex flex-col items-center justify-center gap-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 shadow-sm transition-all"><Trash2 size={18} /><span className="text-[10px] font-bold uppercase tracking-wider">Delete</span></button>
+                        </div>
                     </div>
-                  )}
-                </div>
               ) : undefined}
               formContent={activeTab === 'billing' ? (
                    <div className="space-y-4">
@@ -11274,20 +11229,14 @@ html, body, #root {
                                 </select>
                               </div>
                               <input type="text" value={activeItem.client || ''} onChange={e => setActiveItem(prev => ({ ...prev, client: e.target.value }))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-3 py-3 font-bold text-base outline-none focus:ring-1 focus:ring-blue-500" placeholder="Client Name (Required)" />
-                              <button type="button" onClick={() => setShowBillingMoreOptions(v => !v)} className="w-full py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-2">
-                                {showBillingMoreOptions ? 'Hide extra options' : `More ${billingDocType === 'estimate' ? 'estimate' : 'invoice'} options`}
-                                <ChevronDown size={15} className={showBillingMoreOptions ? 'rotate-180' : ''} />
-                              </button>
-                              {showBillingMoreOptions && (<>
-                                <input type="text" value={activeItem.clientCompany || ''} onChange={e => setActiveItem(prev => ({ ...prev, clientCompany: e.target.value }))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500" placeholder="Company Name (Optional)" />
-                                <input type="email" value={activeItem.clientEmail || ''} onChange={e => setActiveItem(prev => ({ ...prev, clientEmail: e.target.value }))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500" placeholder="Client Email (Optional)" />
-                                <input type="text" value={activeItem.clientAddress || ''} onChange={e => setActiveItem(prev => ({ ...prev, clientAddress: e.target.value }))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500" placeholder="Client Address (Optional)" />
-                              </>)}
+                              <input type="text" value={activeItem.clientCompany || ''} onChange={e => setActiveItem(prev => ({ ...prev, clientCompany: e.target.value }))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500" placeholder="Company Name (Optional)" />
+                              <input type="email" value={activeItem.clientEmail || ''} onChange={e => setActiveItem(prev => ({ ...prev, clientEmail: e.target.value }))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500" placeholder="Client Email (Optional)" />
+                              <input type="text" value={activeItem.clientAddress || ''} onChange={e => setActiveItem(prev => ({ ...prev, clientAddress: e.target.value }))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500" placeholder="Client Address (Optional)" />
                           </div>
                       </div>
 
                       {/* ESTIMATE-SPECIFIC FIELDS */}
-                      {billingDocType === 'estimate' && showBillingMoreOptions && (
+                      {billingDocType === 'estimate' && (
                         <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg border border-purple-100 dark:border-purple-800/30">
                           <h4 className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                             <FileText size={14} /> Proposal Details
@@ -11344,16 +11293,13 @@ html, body, #root {
                           <div className="p-2 space-y-2">{(activeItem.items || []).map((item, idx) => (<div key={item.id} className="mobile-billing-line-item flex gap-2 items-start animate-in fade-in slide-in-from-left-2"><div className="mobile-billing-line-item-fields min-w-0 flex-1 space-y-2"><input type="text" value={item.description} onChange={(e) => updateInvoiceItem(item.id, 'description', e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500" placeholder="Description" /><div className="mobile-billing-line-item-meta flex gap-2"><div className="mobile-billing-line-item-qty relative w-20"><span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 text-xs">Qty</span><input type="number" value={item.quantity || ''} onChange={(e) => updateInvoiceItem(item.id, 'quantity', Number(e.target.value))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded pl-8 pr-2 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500 text-center" placeholder="0"/></div><div className="mobile-billing-line-item-rate relative flex-1"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 text-xs">$</span><input type="number" value={item.rate || ''} onChange={(e) => updateInvoiceItem(item.id, 'rate', Number(e.target.value))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded pl-6 pr-2 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500" placeholder="0.00" /></div></div></div><div className="mobile-billing-line-item-remove pt-2"><button onClick={() => removeInvoiceItem(item.id)} className="text-slate-400 hover:text-red-500 p-1"><MinusCircle size={18} /></button></div></div>))}{(activeItem.items || []).length === 0 && <div className="text-center py-4 text-xs text-slate-400 italic">No items added. Add at least one item.</div>}</div>
                           <div className="p-3 bg-slate-100 dark:bg-slate-900/50 rounded-b-lg space-y-2">
                               <div className="flex justify-between text-xs text-slate-600 dark:text-slate-300"><span>Subtotal</span><span>{formatCurrency.format(activeInvoiceTotals.subtotal)}</span></div>
-                              {showBillingMoreOptions && (<>
-                                <div className="mobile-billing-summary-row flex items-center justify-between gap-4"><label className="text-xs text-slate-600 dark:text-slate-300">Discount</label><div className="mobile-billing-summary-input relative w-24 shrink-0"><span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 text-xs">$</span><input type="number" value={activeItem.discount || ''} onChange={e => setActiveItem(p => ({...p, discount: Number(e.target.value)}))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded py-1 pl-5 pr-1 text-xs text-right outline-none" placeholder="0" /></div></div>
-                                <div className="mobile-billing-summary-row flex items-center justify-between gap-4"><label className="text-xs text-slate-600 dark:text-slate-300">Tax Rate</label><div className="mobile-billing-summary-input relative w-24 shrink-0"><input type="number" value={activeItem.taxRate || ''} onChange={e => setActiveItem(p => ({...p, taxRate: Number(e.target.value)}))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded py-1 pl-1 pr-5 text-xs text-right outline-none" placeholder="0" /><span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 text-xs">%</span></div></div>
-                                {billingDocType !== 'estimate' && <div className="mobile-billing-summary-row flex items-center justify-between gap-4"><label className="text-xs text-slate-600 dark:text-slate-300">Shipping</label><div className="mobile-billing-summary-input relative w-24 shrink-0"><span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 text-xs">$</span><input type="number" value={activeItem.shipping || ''} onChange={e => setActiveItem(p => ({...p, shipping: Number(e.target.value)}))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded py-1 pl-5 pr-1 text-xs text-right outline-none" placeholder="0" /></div></div>}
-                              </>)}
+                              <div className="mobile-billing-summary-row flex items-center justify-between gap-4"><label className="text-xs text-slate-600 dark:text-slate-300">Discount</label><div className="mobile-billing-summary-input relative w-24 shrink-0"><span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 text-xs">$</span><input type="number" value={activeItem.discount || ''} onChange={e => setActiveItem(p => ({...p, discount: Number(e.target.value)}))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded py-1 pl-5 pr-1 text-xs text-right outline-none" placeholder="0" /></div></div>
+                              <div className="mobile-billing-summary-row flex items-center justify-between gap-4"><label className="text-xs text-slate-600 dark:text-slate-300">Tax Rate</label><div className="mobile-billing-summary-input relative w-24 shrink-0"><input type="number" value={activeItem.taxRate || ''} onChange={e => setActiveItem(p => ({...p, taxRate: Number(e.target.value)}))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded py-1 pl-1 pr-5 text-xs text-right outline-none" placeholder="0" /><span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 text-xs">%</span></div></div>
+                              {billingDocType !== 'estimate' && <div className="mobile-billing-summary-row flex items-center justify-between gap-4"><label className="text-xs text-slate-600 dark:text-slate-300">Shipping</label><div className="mobile-billing-summary-input relative w-24 shrink-0"><span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 text-xs">$</span><input type="number" value={activeItem.shipping || ''} onChange={e => setActiveItem(p => ({...p, shipping: Number(e.target.value)}))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded py-1 pl-5 pr-1 text-xs text-right outline-none" placeholder="0" /></div></div>}
                               <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"><span>{billingDocType === 'estimate' ? 'Estimated Total' : 'Total Due'}</span><span>{formatCurrency.format(activeInvoiceTotals.total)}</span></div>
                           </div>
                       </div>
 
-                      {showBillingMoreOptions && (<>
                       {/* ESTIMATE-SPECIFIC: Exclusions */}
                       {billingDocType === 'estimate' && (
                         <div>
@@ -11386,7 +11332,6 @@ html, body, #root {
                             </div>
                           )}
                       </div>
-                      </>)}
 
                       {/* Preview & Save Buttons */}
                       <div className="flex gap-3">
@@ -11396,80 +11341,137 @@ html, body, #root {
                 ) : (
                    <div className="space-y-4">
                       {drawerMode === 'edit_tx' && activeItem.id && (
-                        <div className="mb-2 space-y-2">
-                          <button type="button" onClick={() => setShowEditorActions(v => !v)} className="w-full py-2.5 flex items-center justify-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs">
-                            More actions <ChevronDown size={16} className={showEditorActions ? 'rotate-180' : ''} />
-                          </button>
-                          {showEditorActions && (
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-2">
-                              <button type="button" onClick={() => duplicateTransaction(activeItem as Transaction)} className="py-3 flex items-center justify-center gap-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-bold text-xs"><Copy size={17} /> Duplicate</button>
-                              <button type="button" onClick={() => openRecurringSetup(activeItem as Transaction)} className="py-3 flex items-center justify-center gap-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-purple-600 dark:text-purple-400 font-bold text-xs"><Calendar size={17} /> Future Copies</button>
-                              <button type="button" onClick={() => deleteTransaction(activeItem.id)} className="py-3 flex items-center justify-center gap-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-red-600 dark:text-red-400 font-bold text-xs"><Trash2 size={17} /> Delete</button>
-                            </div>
-                          )}
+                        <div className="bg-slate-100 dark:bg-slate-800/50 p-2 rounded-lg mb-2 border border-slate-200 dark:border-slate-700">
+                          <div className="grid grid-cols-3 gap-2 mb-2">
+                            <button type="button" onClick={() => duplicateTransaction(activeItem as Transaction)} className="py-2.5 flex flex-col items-center justify-center gap-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 shadow-sm transition-all">
+                              <Copy size={18} />
+                              <span className="text-[10px] font-bold uppercase tracking-wider">Duplicate</span>
+                            </button>
+                            <button type="button" onClick={() => openBatchDuplicate(activeItem as Transaction)} className={`py-2.5 flex flex-col items-center justify-center gap-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 shadow-sm transition-all ${billingDocType === 'estimate' ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                              <Repeat size={18} />
+                              <span className="text-[10px] font-bold uppercase tracking-wider">Batch</span>
+                            </button>
+                            <button type="button" onClick={() => openRecurringSetup(activeItem as Transaction)} className="py-2.5 flex flex-col items-center justify-center gap-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 shadow-sm transition-all">
+                              <Calendar size={18} />
+                              <span className="text-[10px] font-bold uppercase tracking-wider">Recurring</span>
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-1 gap-2">
+                            <button type="button" onClick={() => deleteTransaction(activeItem.id)} className="py-2.5 flex flex-col items-center justify-center gap-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 shadow-sm transition-all">
+                              <Trash2 size={18} />
+                              <span className="text-[10px] font-bold uppercase tracking-wider">Delete</span>
+                            </button>
+                          </div>
                         </div>
                       )}
                       <div><label className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-2 block pl-1">Description</label><input type="text" value={activeItem.name || ''} onChange={e => setActiveItem(prev => ({ ...prev, name: e.target.value }))} className="w-full bg-transparent border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-4 font-bold text-lg outline-none focus:ring-2 focus:ring-blue-500/20" placeholder={activeTab === 'income' ? "Client or Source" : "Vendor or Purchase"} /></div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><DateInput label="Date" value={activeItem.date || ''} onChange={v => setActiveItem(prev => ({ ...prev, date: v }))} /><div><label className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-2 block pl-1">Amount</label><div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 font-bold">{settings.currencySymbol}</span><input type="number" inputMode="decimal" enterKeyHint="done" step="0.01" value={activeItem.amount || ''} onChange={e => setActiveItem(prev => ({ ...prev, amount: Number(e.target.value) }))} className="w-full bg-transparent border border-slate-300 dark:border-slate-700 rounded-lg pl-10 pr-4 py-4 font-bold text-lg outline-none focus:ring-2 focus:ring-blue-500/20" placeholder="0.00" /></div></div></div>
                       <div><label className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-2 block pl-1">Category</label>{renderCategoryChips(activeItem.category, (cat) => setActiveItem(prev => ({ ...prev, category: cat })))}</div>
                       {activeTab === 'expense' && (
-                        <div className="space-y-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4">
-                          <div className="flex items-center justify-between">
+                        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4">
+                          <div className="flex items-center justify-between gap-3">
                             <div>
-                              <div className="text-sm font-extrabold text-slate-900 dark:text-white">Receipt</div>
-                              <div className="text-xs text-slate-600 dark:text-slate-300 mt-1">Optional. Attach one now or add it later from Activity.</div>
+                              <div className="text-sm font-extrabold text-slate-900 dark:text-white">Review Status</div>
+                              <div className="text-xs text-slate-600 dark:text-slate-300 mt-1">Mark this expense as reviewed after checking category, amount, and receipt.</div>
                             </div>
+                            <button type="button" onClick={() => setActiveItem((prev: any) => ({ ...prev, reviewedAt: prev.reviewedAt ? undefined : new Date().toISOString() }))} className={`px-4 py-2 rounded-lg font-extrabold uppercase tracking-widest text-xs ${(activeItem as any).reviewedAt ? 'bg-emerald-600 text-white' : 'bg-amber-100 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300'}`}>
+                              {(activeItem as any).reviewedAt ? 'Reviewed' : 'New'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      {activeTab === 'expense' && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <label className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-2 block pl-1">Receipt</label>
                             <span className={`text-[10px] font-extrabold uppercase tracking-widest px-2 py-1 rounded-full ${(activeItem as any).receiptId ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}>
-                              {(activeItem as any).receiptId ? "Attached" : "Optional"}
+                              {(activeItem as any).receiptId ? "Linked" : "Optional"}
                             </span>
                           </div>
 
+                          {/* Linked receipt preview (thumbnail) */}
                           {(activeItem as any).receiptId ? (
-                            <div className="flex gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-3">
+                            <div className="flex gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
                               <button
                                 type="button"
-                                onClick={() => { const r = receipts.find(x => x.id === (activeItem as any).receiptId); if (r) openReceipt(r); }}
-                                className="w-16 h-20 shrink-0 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 flex items-center justify-center"
+                                onClick={() => {
+                                  const r = receipts.find(x => x.id === (activeItem as any).receiptId);
+                                  if (r) openReceipt(r);
+                                }}
+                                className="w-20 h-28 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex items-center justify-center"
+                                title="Tap to view"
                               >
                                 {receiptPreviewUrls[(activeItem as any).receiptId] ? (
-                                  <img src={receiptPreviewUrls[(activeItem as any).receiptId] || DEMO_ASSET_BY_ID.get((activeItem as any).receiptId)?.assetUrl || ''} alt="Receipt" className="w-full h-full object-cover" />
-                                ) : <Receipt size={22} className="text-slate-400" />}
+                                  <img src={receiptPreviewUrls[(activeItem as any).receiptId] || DEMO_ASSET_BY_ID.get((activeItem as any).receiptId)?.assetUrl || ''} alt="Receipt thumbnail" className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="text-[10px] font-bold text-slate-500">No preview</div>
+                                )}
                               </button>
-                              <div className="min-w-0 flex-1">
-                                <div className="text-sm font-bold text-slate-900 dark:text-white">Receipt attached</div>
-                                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400 truncate">{receipts.find(x => x.id === (activeItem as any).receiptId)?.note || receipts.find(x => x.id === (activeItem as any).receiptId)?.date || 'Tap the preview to view'}</div>
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                  <button type="button" onClick={() => scanInputRef.current?.click()} className="px-3 py-2 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold">Change</button>
-                                  <button type="button" onClick={() => setActiveItem(prev => ({ ...prev, receiptId: undefined }))} className="px-3 py-2 rounded-lg bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300 text-xs font-bold">Remove</button>
-                                </div>
+
+                              <div className="flex-1 min-w-0">
+                                {(() => {
+                                  const r = receipts.find(x => x.id === (activeItem as any).receiptId);
+                                  return (
+                                    <>
+                                      <div className="text-sm font-extrabold text-slate-900 dark:text-white truncate">{r?.note || "Linked receipt"}</div>
+                                      <div className="text-xs text-slate-600 dark:text-slate-300">{r?.date || ""}</div>
+                                      <div className="mt-2 flex flex-wrap gap-2">
+                                        <button type="button" onClick={() => { const rr = receipts.find(x => x.id === (activeItem as any).receiptId); if (rr) openReceipt(rr); }} className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-extrabold uppercase tracking-widest hover:bg-slate-800 active:scale-95 transition-all">View</button>
+                                        <button type="button" onClick={() => handleDownloadReceipt((activeItem as any).receiptId)} className="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-[11px] font-extrabold uppercase tracking-widest hover:bg-slate-300 dark:hover:bg-slate-700 active:scale-95 transition-all">Download</button>
+                                        <button type="button" onClick={() => setActiveItem(prev => ({ ...prev, receiptId: undefined }))} className="px-3 py-1.5 rounded-lg bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300 text-[11px] font-extrabold uppercase tracking-widest hover:opacity-90 active:scale-95 transition-all">Unlink</button>
+                                      </div>
+                                    </>
+                                  );
+                                })()}
                               </div>
                             </div>
-                          ) : (
-                            <>
-                              <button type="button" onClick={() => scanInputRef.current?.click()} className="w-full py-3 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold text-sm flex items-center justify-center gap-2">
-                                <Camera size={18} /> Add receipt
-                              </button>
-                              {receipts.length > 0 && (
-                                <button type="button" onClick={() => setShowSavedReceiptPicker(v => !v)} className="w-full py-2 text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center justify-center gap-1">
-                                  Choose a saved receipt <ChevronDown size={14} className={showSavedReceiptPicker ? 'rotate-180' : ''} />
-                                </button>
-                              )}
-                              {showSavedReceiptPicker && receipts.length > 0 && (
-                                <select
-                                  value=""
-                                  onChange={e => {
-                                    const rid = e.target.value || undefined;
-                                    if (!rid) return;
-                                    setActiveItem(prev => ({ ...prev, receiptId: rid }));
-                                    setShowSavedReceiptPicker(false);
-                                  }}
-                                  className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-3 font-bold text-sm outline-none"
-                                >
-                                  <option value="">Select saved receipt…</option>
-                                  {receipts.map(r => <option key={r.id} value={r.id}>{r.date}{r.note ? ` — ${r.note}` : ''}</option>)}
-                                </select>
-                              )}
-                            </>
+                          ) : null}
+
+                          {(activeItem as any).receiptId ? (
+                            <div className="space-y-1">
+                              <label className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-1 block pl-1">Receipt name</label>
+                              <input
+                                value={(receipts.find(x => x.id === (activeItem as any).receiptId)?.note) || ''}
+                                onChange={e => {
+                                  const rid = (activeItem as any).receiptId as string;
+                                  const val = e.target.value;
+                                  setReceipts(prev => prev.map(r => r.id === rid ? ({ ...r, note: val }) : r));
+                                }}
+                                placeholder="Example: Office supplies"
+                                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-0 rounded-lg px-4 py-3 font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
+                              />
+                              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest pl-1">Shown on receipts list and exports</div>
+                            </div>
+                          ) : null}
+
+                          {/* Attach / Scan controls */}
+                          <div className="flex gap-2">
+                            <select value={(activeItem as any).receiptId || ''} onChange={e => {
+                              const rid = e.target.value || undefined;
+                              setActiveItem(prev => ({ ...prev, receiptId: rid }));
+                              if (rid) {
+                                const r = receipts.find(x => x.id === rid);
+                                const expName = String((activeItem as any).name || '').trim();
+                                if (expName && (!r?.note || !String(r.note).trim())) {
+                                  setReceipts(prev => prev.map(rr => rr.id === rid ? ({ ...rr, note: expName }) : rr));
+                                }
+                              }
+                            }} className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-0 rounded-lg px-4 py-3 font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500/20">
+                              <option value="">No receipt linked</option>
+                              {receipts.map(r => (
+                                <option key={r.id} value={r.id}>{`${r.date}${r.note ? ' — ' + r.note : ''} (${r.id.slice(-6)})`}</option>
+                              ))}
+                            </select>
+                            <button type="button" onClick={() => scanInputRef.current?.click()} className="px-4 py-3 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-extrabold text-sm uppercase tracking-wider hover:bg-slate-300 dark:hover:bg-slate-700 active:scale-95 transition-all">Scan</button>
+                          </div>
+
+                          {!(activeItem as any).receiptId && (
+                            <div className="flex items-start gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/20 border border-slate-200 dark:border-slate-800 rounded-lg p-3">
+                              <Info size={16} className="mt-0.5" />
+                              <div>
+                                Attach a receipt if you have one. You can save now and link it later.
+                              </div>
+                            </div>
                           )}
                         </div>
                       )}
@@ -11659,51 +11661,128 @@ html, body, #root {
         </div>
       )}
 
-{/* Frequent-entry Suggestion Modal */}
+{/* Template Suggestion Modal */}
       {showTemplateSuggestion && templateSuggestionData && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-200 modal-overlay">
           <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-xl p-6 shadow-2xl border border-blue-500/20">
             <div className="flex items-center gap-4 mb-4 text-blue-600 dark:text-blue-400">
               <div className="bg-blue-100 dark:bg-blue-500/10 p-3 rounded-full">
-                <Calendar size={24} strokeWidth={2} />
+                <ClipboardList size={24} strokeWidth={2} />
               </div>
-              <h3 className="text-lg sm:text-xl font-bold">You enter this often</h3>
+              <h3 className="text-lg sm:text-xl font-bold">Save as Template?</h3>
             </div>
-
+            
             <p className="text-slate-600 dark:text-slate-300 mb-4 font-medium leading-relaxed">
-              You've duplicated <span className="font-bold text-slate-900 dark:text-white">"{templateSuggestionData.name}"</span> several times. MONIEZI can create future-dated copies for you now.
+              You've duplicated <span className="font-bold text-slate-900 dark:text-white">"{templateSuggestionData.name}"</span> multiple times.
             </p>
-
+            
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
               <div className="flex items-start gap-3">
                 <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-blue-900 dark:text-blue-100">Future Copies creates dated entries immediately. It does not run automatically in the background.</p>
+                <div className="text-sm text-blue-900 dark:text-blue-100">
+                  <p className="font-semibold mb-1">Pro tip for future:</p>
+                  <p>For truly recurring transactions, try using the <strong>"Batch"</strong> or <strong>"Recurring"</strong> buttons to create multiple entries at once!</p>
+                </div>
               </div>
             </div>
-
+            
             <div className="flex gap-3">
-              <button
-                onClick={() => setShowTemplateSuggestion(false)}
+              <button 
+                onClick={() => setShowTemplateSuggestion(false)} 
                 className="flex-1 py-3 font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
               >
-                Keep as One-Off
+                Not Now
               </button>
-              <button
+              <button 
                 onClick={() => {
-                  const source = templateSuggestionData.data as Transaction;
                   setShowTemplateSuggestion(false);
-                  openRecurringSetup(source);
-                }}
+                  showToast("Tip noted! Check out Batch & Recurring buttons", "success");
+                }} 
                 className="flex-1 py-3 font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-lg shadow-blue-500/20 transition-colors"
               >
-                Create Future Copies
+                Got It!
               </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* Future Copies Modal */}
+      
+      {/* Phase 3: Batch Duplicate Modal */}
+      {showBatchDuplicateModal && batchDuplicateData && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-200 overflow-y-auto modal-overlay">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl p-6 shadow-2xl border border-purple-500/20 my-auto">
+            <div className="flex items-center gap-4 mb-4 text-purple-600 dark:text-purple-400">
+              <div className="bg-purple-100 dark:bg-purple-500/10 p-3 rounded-full">
+                <Repeat size={24} strokeWidth={2} />
+              </div>
+              <h3 className="text-lg sm:text-xl font-bold">Batch Duplicate</h3>
+            </div>
+            
+            <p className="text-slate-600 dark:text-slate-300 mb-4 font-medium">
+              Creating multiple copies of: <span className="font-bold text-slate-900 dark:text-white">{('name' in batchDuplicateData ? batchDuplicateData.name : null) || (batchDuplicateData as Invoice).client}</span>
+            </p>
+            
+            <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 mb-6 space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-2 block uppercase">Quick Presets</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button onClick={() => {
+                    const dates: string[] = [];
+                    for (let i = 1; i <= 3; i++) {
+                      const d = new Date();
+                      d.setMonth(d.getMonth() + i);
+                      dates.push(d.toISOString().split('T')[0]);
+                    }
+                    executeBatchDuplicate(dates);
+                  }} className="py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors">
+                    3 Months
+                  </button>
+                  <button onClick={() => {
+                    const dates: string[] = [];
+                    for (let i = 1; i <= 6; i++) {
+                      const d = new Date();
+                      d.setMonth(d.getMonth() + i);
+                      dates.push(d.toISOString().split('T')[0]);
+                    }
+                    executeBatchDuplicate(dates);
+                  }} className="py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors">
+                    6 Months
+                  </button>
+                  <button onClick={() => {
+                    const dates: string[] = [];
+                    for (let i = 1; i <= 12; i++) {
+                      const d = new Date();
+                      d.setMonth(d.getMonth() + i);
+                      dates.push(d.toISOString().split('T')[0]);
+                    }
+                    executeBatchDuplicate(dates);
+                  }} className="py-2 px-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors">
+                    12 Months
+                  </button>
+                </div>
+              </div>
+              
+              <div className="text-xs text-slate-600 dark:text-slate-300 italic">
+                💡 Each copy will be created for the first day of each month starting next month
+              </div>
+            </div>
+            
+            <div className="flex gap-3">
+              <button 
+                onClick={() => {
+                  setShowBatchDuplicateModal(false);
+                  setBatchDuplicateData(null);
+                }} 
+                className="flex-1 py-3 font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Phase 3: Recurring Transaction Modal */}
       {showRecurringModal && recurringData && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-200 overflow-y-auto modal-overlay">
           <div className="bg-white dark:bg-slate-900 w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl p-6 shadow-2xl border border-emerald-500/20 my-auto">
@@ -11711,11 +11790,11 @@ html, body, #root {
               <div className="bg-emerald-100 dark:bg-emerald-500/10 p-3 rounded-full">
                 <Calendar size={24} strokeWidth={2} />
               </div>
-              <h3 className="text-lg sm:text-xl font-bold">Create Future Copies</h3>
+              <h3 className="text-lg sm:text-xl font-bold">Setup Recurring</h3>
             </div>
             
             <p className="text-slate-600 dark:text-slate-300 mb-4 font-medium">
-              Create upcoming copies of: <span className="font-bold text-slate-900 dark:text-white">{'name' in recurringData ? recurringData.name : (recurringData as Invoice).client}</span>
+              Schedule: <span className="font-bold text-slate-900 dark:text-white">{'name' in recurringData ? recurringData.name : (recurringData as Invoice).client}</span>
             </p>
             
             <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 mb-6 space-y-4">
@@ -11727,7 +11806,7 @@ html, body, #root {
                     <div className="text-xs text-slate-500 mt-1">Next 12 weeks</div>
                   </button>
                   <button onClick={() => setupRecurringTransaction('biweekly', 12)} className="py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-bold hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors">
-                    <div className="text-sm">Every 2 weeks</div>
+                    <div className="text-sm">Bi-weekly</div>
                     <div className="text-xs text-slate-500 mt-1">Next 24 weeks</div>
                   </button>
                   <button onClick={() => setupRecurringTransaction('monthly', 12)} className="py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-bold hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors">
@@ -11742,7 +11821,7 @@ html, body, #root {
               </div>
               
               <div className="text-xs text-slate-600 dark:text-slate-300 italic">
-                Copies are created now with future dates. Nothing runs automatically in the background.
+                💡 All entries will be created immediately. Review them in your transactions.
               </div>
             </div>
             
@@ -11751,7 +11830,6 @@ html, body, #root {
                 onClick={() => {
                   setShowRecurringModal(false);
                   setRecurringData(null);
-                  setBatchDuplicateData(null);
                 }} 
                 className="flex-1 py-3 font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
               >

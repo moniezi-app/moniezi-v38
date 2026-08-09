@@ -31,23 +31,30 @@ export const CATS_OUT = [
 ];
 
 export const CATS_BILLING = [
-  "Services / Labor",
-  "Project Work",
-  "Repair / Maintenance",
-  "Materials / Parts",
-  "Consulting",
-  "Delivery / Service Call",
-  "Retainer / Ongoing Service",
-  "Training",
-  "Product / Equipment",
-  "Other"
+  "Web Development",
+  "Graphic Design",
+  "Strategy Consulting",
+  "Content Writing",
+  "Digital Marketing",
+  "Maintenance Retainer",
+  "Software Licensing",
+  "Project Milestone",
+  "Training / Workshop",
+  "Other Service"
 ];
 
 export const DEFAULT_PAY_PREFS = [
   "Card", "Bank Transfer", "Cash", "PayPal", "Stripe", "Zelle", "Venmo", "Wise"
 ];
 
-export const DB_KEY = "moniezi_core_data_v1_v38";
+/**
+ * Storage is scoped to the ORIGIN, not the folder. Two builds served from the
+ * same github.io origin therefore share one database even with different PWA
+ * manifest ids — loading demo data in one would wipe the other. Suffixing the
+ * major version keeps parallel installs genuinely independent.
+ */
+export const STORAGE_NAMESPACE = "v38";
+export const DB_KEY = `moniezi_core_data_v1_${STORAGE_NAMESPACE}`;
 
 // --- Tax Constants (2025 Estimates) ---
 export const TAX_CONSTANTS = {

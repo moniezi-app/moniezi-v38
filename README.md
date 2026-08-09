@@ -1,18 +1,14 @@
-# MONIEZI Pro Finance v38.0.1
+# MONIEZI Pro Finance v38.0.0
 
-This is the v38 usability-focused continuation of MONIEZI Pro Finance v37.11.0.
+Clean v38 branch based directly on Claude's MONIEZI v37.12.1 source.
 
-- Same product identity; v38 uses a distinct install identity for side-by-side Android testing
-- Same application data and storage keys
-- Same existing license/device binding
-- No customer-data migration required
-- New v38 GitHub repository line
-- Simplified everyday workflows and progressive disclosure of advanced controls
+Changes from that base:
 
-The deployed license-worker hostname may still contain `v37`; that is an infrastructure URL and should remain unchanged unless the Worker itself is deliberately redeployed under a new hostname.
+- Pinch-to-zoom remains enabled.
+- Home Overview **In** opens Activity filtered to income.
+- Home Overview **Out** opens Activity filtered to expenses.
+- Version/PWA/storage identity updated to v38 so v37 and v38 can be installed and tested separately.
 
-See `GITHUB_CLOUDFLARE_OWNER_KEY_SETUP.md` for deployment steps and `MONIEZI_v38.0.1_RELEASE_NOTE.md` for this release summary.
+All other application workflows and UI remain based on the v37.12.1 source.
 
-## Android testing identity
-
-For v38 installs, the manifest uses **MONIEZI 38** as the short launcher name and **MONIEZI v38.0.1** as the full PWA name. The manifest ID is `/moniezi-v38/`, allowing Android/Chrome to distinguish the v38 install from earlier repository versions.
+See `GITHUB_CLOUDFLARE_OWNER_KEY_SETUP.md` for deployment steps.

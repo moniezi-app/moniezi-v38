@@ -1,4 +1,4 @@
-# MONIEZI License Worker v38.0.1
+# MONIEZI License Worker v37.0.0
 
 Stripe-fulfilled, MONIEZI-controlled license registry on Cloudflare Workers KV.
 Replaces the v36 Gumroad verification path. **No MONIEZI app changes are required**
