@@ -1177,7 +1177,7 @@ export default function App() {
     showLogoOnInvoice: true,
     logoAlignment: 'left',
     brandColor: '#2563eb',
-    companyEquityEnabled: false
+    companyEquityEnabled: true
   });
   const [customCategories, setCustomCategories] = useState<CustomCategories>({ income: [], expense: [], billing: [] });
   const [taxPayments, setTaxPayments] = useState<TaxPayment[]>([]);
@@ -2088,7 +2088,7 @@ export default function App() {
           receiptThreshold: 0,
           receiptReminderEnabled: true,
           mileageRateCents: 72.5,
-          companyEquityEnabled: false,
+          companyEquityEnabled: true,
           ...parsedSettings,
         });
       };
@@ -3861,7 +3861,7 @@ const demoMileageTrips: MileageTrip[] = [
       const t = calcDocTotals(e.items as any, e.discount || 0, e.taxRate || 0, e.shipping || 0);
       return { ...e, subtotal: t.subtotal, amount: t.total } as Estimate;
     }));
-    setSettings({ ...demo.settings, requireReceiptOverThreshold: false, receiptThreshold: 0, receiptReminderEnabled: true, mileageRateCents: 72.5, companyEquityEnabled: false });
+    setSettings({ ...demo.settings, requireReceiptOverThreshold: false, receiptThreshold: 0, receiptReminderEnabled: true, mileageRateCents: 72.5, companyEquityEnabled: true });
     setTaxPayments([...(demo.taxPayments || [])] as TaxPayment[]);
     setSeedSuccess(true); showToast("Demo data loaded successfully!", "success"); setCurrentPage(Page.Dashboard); setTimeout(() => setSeedSuccess(false), 2000);
   };
@@ -3906,7 +3906,7 @@ const demoMileageTrips: MileageTrip[] = [
       receiptThreshold: 0,
       receiptReminderEnabled: true,
       mileageRateCents: 72.5,
-      companyEquityEnabled: false,
+      companyEquityEnabled: true,
     });
 
     setSeedSuccess(false);
@@ -6195,7 +6195,7 @@ const demoMileageTrips: MileageTrip[] = [
       const cls = Array.isArray(newData.clients) ? newData.clients : [];
       const tax = Array.isArray(newData.taxPayments) ? newData.taxPayments : [];
       const rec = Array.isArray(newData.receipts) ? newData.receipts : [];
-      const set = { ...settings, companyEquityEnabled: false, ...(newData.settings || {}) };
+      const set = { ...settings, companyEquityEnabled: true, ...(newData.settings || {}) };
 
       const cats = {
         income: Array.isArray(newData.customCategories?.income) ? newData.customCategories.income : [],
@@ -10799,7 +10799,7 @@ html, body, #root {
                           <h4 className="text-lg font-extrabold text-slate-950 dark:text-white">Company Equity</h4>
                         </div>
                         <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Track ownership classes, people and entities, investor reservations, SAFEs, and issued equity records.</p>
-                        <p className="mt-2 text-xs leading-5 font-semibold text-slate-500 dark:text-slate-400">Off by default. Turning it off later only hides Company Equity from the Menu; your saved equity records remain on this device.</p>
+                        <p className="mt-2 text-xs leading-5 font-semibold text-slate-500 dark:text-slate-400">On by default so advanced users can discover it. Turning it off only hides Company Equity from the Menu; your saved equity records remain on this device.</p>
                       </div>
                       <button
                         type="button"

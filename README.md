@@ -27,8 +27,8 @@ Business logic, storage, licensing, PDFs, calculations, exports, and the broader
 
 ## Optional Company Equity access
 
-- Company Equity is now an optional feature and remains hidden by default.
+- Company Equity is an optional advanced feature and is enabled by default so users can discover it from the Menu.
 - Settings includes an Optional Features tab with a Company Equity enable/disable control.
 - When enabled, Company Equity appears in the Menu under an Advanced section.
 - Disabling the feature hides access but does not delete saved equity records.
-- Older installs and older backups default the feature to OFF unless the saved setting explicitly enables it.
+- Existing installs preserve an explicitly saved ON/OFF preference. Installs or backups without a saved Company Equity preference default to ON.
