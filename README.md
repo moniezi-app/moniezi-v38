@@ -32,3 +32,13 @@ Business logic, storage, licensing, PDFs, calculations, exports, and the broader
 - When enabled, Company Equity appears in the Menu under an Advanced section.
 - Disabling the feature hides access but does not delete saved equity records.
 - Existing installs preserve an explicitly saved ON/OFF preference. Installs or backups without a saved Company Equity preference default to ON.
+
+## Report Center and expanded business reports
+
+- Reports now opens to a dedicated Report Center instead of immediately opening one long report page.
+- Essential Reports: Profit & Loss, Tax Summary, Money Owed to You, Expenses & Receipts, Mileage, and Clients & Work.
+- More Reports: Money In & Out, Estimate Pipeline, Transaction Ledger, and Year-End Business Summary.
+- Existing Tax Snapshot and Tax Planner remain available under Tax Tools.
+- Report details open one at a time with a Report Center back control; tapping Reports in navigation returns to the Report Center.
+- Year-based reports share the app-controlled report-year selector.
+- Existing P&L and tax export functionality is preserved.

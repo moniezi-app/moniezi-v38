@@ -1344,7 +1344,7 @@ export default function App() {
   const taxSnapshotRef = useRef<HTMLDivElement>(null);
 
   // Reports screen menu (Settings-style tiles)
-  const [reportsMenuSection, setReportsMenuSection] = useState<'pl'|'taxsnapshot'|'taxprep'|'planner'>('pl');
+  const [reportsMenuSection, setReportsMenuSection] = useState<'menu'|'pl'|'taxsnapshot'|'taxprep'|'planner'|'receivables'|'expensesreceipts'|'mileage'|'clients'|'cashflow'|'pipeline'|'ledger'|'yearend'>('menu');
   const isMileageKeyboardEditing = isKeyboardEditing && currentPage === Page.Mileage;
   /**
    * These read as tabs, so they now behave as tabs: one report at a time.
@@ -4668,6 +4668,146 @@ const demoMileageTrips: MileageTrip[] = [
     const rateUsd = Number(settings.mileageRateCents ?? 72.5) / 100;
     return mileageTotalMilesForTaxYear * rateUsd;
   }, [mileageTotalMilesForTaxYear, settings.mileageRateCents]);
+
+  // --- Report Center summaries ---
+  const reportYearInvoices = useMemo(() => {
+    return invoices.filter(inv => inv.status !== 'void' && new Date(inv.date).getFullYear() === taxPrepYear);
+  }, [invoices, taxPrepYear]);
+
+  const reportYearEstimates = useMemo(() => {
+    return estimates.filter(est => est.status !== 'void' && new Date(est.date).getFullYear() === taxPrepYear);
+  }, [estimates, taxPrepYear]);
+
+  const reportReceivables = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const rows = invoices
+      .filter(inv => inv.status === 'unpaid')
+      .map(inv => {
+        const dueDate = inv.due ? new Date(`${inv.due}T00:00:00`) : null;
+        const daysOverdue = dueDate ? Math.max(0, Math.floor((today.getTime() - dueDate.getTime()) / 86400000)) : 0;
+        const daysUntilDue = dueDate ? Math.ceil((dueDate.getTime() - today.getTime()) / 86400000) : null;
+        return { inv, dueDate, daysOverdue, daysUntilDue };
+      })
+      .sort((a, b) => (a.dueDate?.getTime() || Number.MAX_SAFE_INTEGER) - (b.dueDate?.getTime() || Number.MAX_SAFE_INTEGER));
+
+    const overdueRows = rows.filter(row => row.daysOverdue > 0);
+    const dueSoonRows = rows.filter(row => row.daysOverdue === 0 && row.daysUntilDue !== null && row.daysUntilDue <= 30);
+    const total = rows.reduce((sum, row) => sum + Number(row.inv.amount || 0), 0);
+    const overdue = overdueRows.reduce((sum, row) => sum + Number(row.inv.amount || 0), 0);
+    const dueSoon = dueSoonRows.reduce((sum, row) => sum + Number(row.inv.amount || 0), 0);
+    return { rows, overdueRows, dueSoonRows, total, overdue, dueSoon };
+  }, [invoices]);
+
+  const reportExpenseSummary = useMemo(() => {
+    const expenses = txForTaxYear.filter(t => t.type === 'expense');
+    const withReceipts = expenses.filter(t => Boolean((t as any).receiptId));
+    const reviewed = expenses.filter(t => Boolean((t as any).reviewedAt));
+    const total = expenses.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    const supportedAmount = withReceipts.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    const categoryMap = expenses.reduce((acc, t) => {
+      const key = t.category || 'Uncategorized';
+      acc[key] = (acc[key] || 0) + Number(t.amount || 0);
+      return acc;
+    }, {} as Record<string, number>);
+    const categories = Object.entries(categoryMap)
+      .map(([category, amount]) => ({ category, amount }))
+      .sort((a, b) => b.amount - a.amount);
+    return {
+      expenses,
+      total,
+      withReceiptsCount: withReceipts.length,
+      missingReceiptsCount: expenses.length - withReceipts.length,
+      supportedAmount,
+      unsupportedAmount: Math.max(0, total - supportedAmount),
+      reviewedCount: reviewed.length,
+      newCount: expenses.length - reviewed.length,
+      categories,
+    };
+  }, [txForTaxYear]);
+
+  const reportMonthlyCashflow = useMemo(() => {
+    const months = Array.from({ length: 12 }).map((_, monthIndex) => ({
+      monthIndex,
+      label: new Date(taxPrepYear, monthIndex, 1).toLocaleDateString('en-US', { month: 'short' }),
+      income: 0,
+      expense: 0,
+      net: 0,
+    }));
+    txForTaxYear.forEach(t => {
+      const month = new Date(t.date).getMonth();
+      if (month < 0 || month > 11) return;
+      if (t.type === 'income') months[month].income += Number(t.amount || 0);
+      else months[month].expense += Number(t.amount || 0);
+    });
+    months.forEach(m => { m.net = m.income - m.expense; });
+    return months;
+  }, [txForTaxYear, taxPrepYear]);
+
+  const reportClientRows = useMemo(() => {
+    type ClientReportRow = { key: string; name: string; invoiced: number; paid: number; outstanding: number; invoices: number; estimates: number; acceptedEstimates: number; acceptedValue: number };
+    const rows = new Map<string, ClientReportRow>();
+    const ensure = (key: string, name: string) => {
+      if (!rows.has(key)) rows.set(key, { key, name, invoiced: 0, paid: 0, outstanding: 0, invoices: 0, estimates: 0, acceptedEstimates: 0, acceptedValue: 0 });
+      return rows.get(key)!;
+    };
+    reportYearInvoices.forEach(inv => {
+      const key = inv.clientId || `name:${(inv.client || 'Unknown client').trim().toLowerCase()}`;
+      const row = ensure(key, inv.client || 'Unknown client');
+      row.invoiced += Number(inv.amount || 0);
+      row.invoices += 1;
+      if (inv.status === 'paid') row.paid += Number(inv.amount || 0);
+      if (inv.status === 'unpaid') row.outstanding += Number(inv.amount || 0);
+    });
+    reportYearEstimates.forEach(est => {
+      const key = est.clientId || `name:${(est.client || 'Unknown client').trim().toLowerCase()}`;
+      const row = ensure(key, est.client || 'Unknown client');
+      row.estimates += 1;
+      if (est.status === 'accepted') {
+        row.acceptedEstimates += 1;
+        row.acceptedValue += Number(est.amount || 0);
+      }
+    });
+    return Array.from(rows.values()).sort((a, b) => b.paid - a.paid || b.invoiced - a.invoiced || a.name.localeCompare(b.name));
+  }, [reportYearInvoices, reportYearEstimates]);
+
+  const reportPipeline = useMemo(() => {
+    const active = reportYearEstimates.filter(est => est.status === 'draft' || est.status === 'sent');
+    const accepted = reportYearEstimates.filter(est => est.status === 'accepted');
+    const declined = reportYearEstimates.filter(est => est.status === 'declined');
+    const decided = accepted.length + declined.length;
+    return {
+      draftCount: reportYearEstimates.filter(est => est.status === 'draft').length,
+      sentCount: reportYearEstimates.filter(est => est.status === 'sent').length,
+      acceptedCount: accepted.length,
+      declinedCount: declined.length,
+      activeValue: active.reduce((sum, est) => sum + Number(est.amount || 0), 0),
+      acceptedValue: accepted.reduce((sum, est) => sum + Number(est.amount || 0), 0),
+      conversionRate: decided > 0 ? (accepted.length / decided) * 100 : 0,
+      rows: reportYearEstimates.slice().sort((a, b) => b.date.localeCompare(a.date)),
+    };
+  }, [reportYearEstimates]);
+
+  const reportYearSummary = useMemo(() => {
+    const income = txForTaxYear.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    const expenses = reportExpenseSummary.total;
+    const collected = reportYearInvoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + Number(inv.amount || 0), 0);
+    const outstanding = reportYearInvoices.filter(inv => inv.status === 'unpaid').reduce((sum, inv) => sum + Number(inv.amount || 0), 0);
+    const topClient = reportClientRows[0] || null;
+    const topExpenseCategory = reportExpenseSummary.categories[0] || null;
+    return {
+      income,
+      expenses,
+      net: income - expenses,
+      invoiceCount: reportYearInvoices.length,
+      collected,
+      outstanding,
+      estimateCount: reportYearEstimates.length,
+      acceptedEstimates: reportPipeline.acceptedCount,
+      topClient,
+      topExpenseCategory,
+    };
+  }, [txForTaxYear, reportExpenseSummary, reportYearInvoices, reportYearEstimates, reportClientRows, reportPipeline]);
 
   const getTaxLedgerExportRows = () => {
     return txForTaxYear
@@ -8617,85 +8757,84 @@ html, body, #root {
 
         {currentPage === Page.Reports && (
            <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-right-4">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 flex-shrink-0">
-                  <BarChart3 size={22} strokeWidth={1.7} />
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 flex-shrink-0">
+                    <BarChart3 size={22} strokeWidth={1.7} />
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950 dark:text-white font-brand">Reports</h2>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950 dark:text-white font-brand">Reports</h2>
+                {reportsMenuSection !== 'menu' && (
+                  <button
+                    type="button"
+                    onClick={() => { setReportsMenuSection('menu'); mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                  >
+                    <ArrowLeft size={15} /> Report Center
+                  </button>
+                )}
               </div>
-              
-              
+
               <p className="text-slate-600 dark:text-slate-300 font-semibold leading-6">
-                Documents to hand over, and tools to work out what you owe.
+                {reportsMenuSection === 'menu' ? 'Choose the business question you want answered.' : 'Review the report below, then return to the Report Center for another view.'}
               </p>
 
-              {/* Two groups, because these are two different jobs: documents you
-                  hand to an accountant, and tools you use to work out what you owe.
-                  Four identical tabs implied they were the same kind of thing. */}
-              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-3 sm:p-4 shadow-sm">
-                <div className="mb-2 px-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                  Share with your accountant
+              {reportsMenuSection === 'menu' && (
+                <div className="space-y-5">
+                  {([
+                    {
+                      label: 'Essential Reports',
+                      items: [
+                        { section: 'pl', title: 'Profit & Loss', description: 'Income, expenses and net profit for the period.', icon: <BarChart3 size={20} />, iconClass: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400' },
+                        { section: 'taxprep', title: 'Tax Summary', description: 'Tax-year income, deductions, mileage, receipts and export package.', icon: <ClipboardList size={20} />, iconClass: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300' },
+                        { section: 'receivables', title: 'Money Owed to You', description: 'Unpaid invoices, overdue balances and money due soon.', icon: <Wallet size={20} />, iconClass: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' },
+                        { section: 'expensesreceipts', title: 'Expenses & Receipts', description: 'Spending, receipt coverage, review status and top expense categories.', icon: <Receipt size={20} />, iconClass: 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-300' },
+                        { section: 'mileage', title: 'Mileage', description: 'Business trips, miles and estimated mileage deduction.', icon: <Car size={20} />, iconClass: 'bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300' },
+                        { section: 'clients', title: 'Clients & Work', description: 'Revenue, outstanding balances and estimate activity by client.', icon: <Users size={20} />, iconClass: 'bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-300' },
+                      ],
+                    },
+                    {
+                      label: 'More Reports',
+                      items: [
+                        { section: 'cashflow', title: 'Money In & Out', description: 'Month-by-month income, spending and the difference.', icon: <TrendingUp size={20} />, iconClass: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300' },
+                        { section: 'pipeline', title: 'Estimate Pipeline', description: 'Draft, sent, accepted and declined estimates with conversion rate.', icon: <FileText size={20} />, iconClass: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300' },
+                        { section: 'ledger', title: 'Transaction Ledger', description: 'Every income and expense entry for the selected year.', icon: <History size={20} />, iconClass: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200' },
+                        { section: 'yearend', title: 'Year-End Business Summary', description: 'A complete annual snapshot of money, mileage, invoices and clients.', icon: <Calendar size={20} />, iconClass: 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300' },
+                      ],
+                    },
+                    {
+                      label: 'Tax Tools',
+                      items: [
+                        { section: 'taxsnapshot', title: 'Tax Snapshot', description: 'A conservative estimate of what to set aside for taxes.', icon: <Calculator size={20} />, iconClass: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300' },
+                        { section: 'planner', title: 'Tax Planner', description: 'Work through a closer tax estimate using your filing details.', icon: <BookOpen size={20} />, iconClass: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300' },
+                      ],
+                    },
+                  ] as const).map(group => (
+                    <section key={group.label} className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                      <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                        <h3 className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">{group.label}</h3>
+                      </div>
+                      <div className="divide-y divide-slate-200 dark:divide-slate-800">
+                        {group.items.map(item => (
+                          <button
+                            key={item.section}
+                            type="button"
+                            onClick={() => scrollToReportSection(`report-${item.section}`, item.section)}
+                            className="group flex w-full items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-slate-50 active:bg-slate-100 dark:hover:bg-slate-800/60 dark:active:bg-slate-800"
+                          >
+                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${item.iconClass}`}>{item.icon}</div>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-[15px] font-extrabold text-slate-900 dark:text-white">{item.title}</div>
+                              <div className="mt-0.5 text-xs font-medium leading-5 text-slate-500 dark:text-slate-400">{item.description}</div>
+                            </div>
+                            <ChevronRight size={18} className="shrink-0 text-slate-400 transition-transform group-active:translate-x-0.5 dark:text-slate-500" />
+                          </button>
+                        ))}
+                      </div>
+                    </section>
+                  ))}
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => scrollToReportSection('report-pl', 'pl')}
-                    className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-3 md:px-4 py-3 rounded-lg font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
-                      reportsMenuSection === 'pl'
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-                    }`}
-                  >
-                    <BarChart3 size={18} />
-                    <span className="text-[10px] md:text-sm mt-0.5 md:mt-0 text-center leading-tight">Profit &amp; Loss</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => scrollToReportSection('report-taxprep', 'taxprep')}
-                    className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-3 md:px-4 py-3 rounded-lg font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
-                      reportsMenuSection === 'taxprep'
-                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-                    }`}
-                  >
-                    <Download size={18} />
-                    <span className="text-[10px] md:text-sm mt-0.5 md:mt-0 text-center leading-tight">Tax Prep</span>
-                  </button>
-
-</div>
-
-                  <div className="mt-4 mb-2 px-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                    Work out what you owe
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => scrollToReportSection('report-taxsnapshot', 'taxsnapshot')}
-                    className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-3 md:px-4 py-3 rounded-lg font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
-                      reportsMenuSection === 'taxsnapshot'
-                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
-                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-                    }`}
-                  >
-                    <Calculator size={18} />
-                    <span className="text-[10px] md:text-sm mt-0.5 md:mt-0 text-center leading-tight">Tax Snapshot</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => scrollToReportSection('report-planner', 'planner')}
-                    className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-3 md:px-4 py-3 rounded-lg font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
-                      reportsMenuSection === 'planner'
-                        ? 'bg-cyan-700 text-white shadow-lg shadow-cyan-700/30'
-                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-                    }`}
-                  >
-                    <ClipboardList size={18} />
-                    <span className="text-[10px] md:text-sm mt-0.5 md:mt-0 text-center leading-tight">Tax Planner</span>
-                  </button>
-                </div>
-              </div>
+              )}
 {/* Pro-Grade U.S. P&L Statement */}
               <div style={{ display: reportsMenuSection === 'pl' ? undefined : 'none' }} id="report-pl" className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl">
                 {/* Controls Header - NOT part of PDF */}
@@ -8900,8 +9039,8 @@ html, body, #root {
                         <Download size={20} strokeWidth={2} />
                       </div>
                       <div>
-                        <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">Tax Prep Package</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-300">Export tax transactions, mileage, receipts, and a summary for a single tax year.</p>
+                        <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white">Tax Summary & Export</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-300">Review your tax-year summary and export transactions, mileage, receipts, and accountant-ready files.</p>
                       </div>
                     </div>
 
@@ -8920,7 +9059,12 @@ html, body, #root {
                     </div>
                   </div>
 
-                  
+                  <div className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/40"><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Business income</div><div className="mt-1 text-xl font-extrabold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(reportYearSummary.income)}</div></div>
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/40"><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Business expenses</div><div className="mt-1 text-xl font-extrabold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(reportYearSummary.expenses)}</div></div>
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/40"><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Net business profit</div><div className={`mt-1 text-xl font-extrabold tabular-nums ${reportYearSummary.net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{formatCurrency.format(reportYearSummary.net)}</div></div>
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/40"><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Mileage deduction</div><div className="mt-1 text-xl font-extrabold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(mileageDeductionForTaxYear)}</div></div>
+                  </div>
 
                   {/* Grouped by WHAT is being sent, not by file format.
                       Seven flat buttons were really four things — the summary,
@@ -9528,6 +9672,124 @@ html, body, #root {
                     )}
                 </div>
 
+              {/* Money Owed to You */}
+              <div style={{ display: reportsMenuSection === 'receivables' ? undefined : 'none' }} id="report-receivables" className="space-y-5">
+                <div className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"><Wallet size={20} /></div>
+                    <div>
+                      <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Money Owed to You</h3>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Every currently unpaid invoice, regardless of year.</p>
+                    </div>
+                  </div>
+                  <div className="mt-5 grid grid-cols-1 divide-y divide-slate-200 overflow-hidden rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-700 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                    <div className="flex items-center justify-between gap-3 px-4 py-3.5 sm:block"><span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total unpaid</span><span className="text-xl font-extrabold tabular-nums text-slate-900 dark:text-white sm:mt-1 sm:block">{formatCurrency.format(reportReceivables.total)}</span></div>
+                    <div className="flex items-center justify-between gap-3 px-4 py-3.5 sm:block"><span className="text-xs font-semibold text-red-600 dark:text-red-400">Overdue</span><span className="text-xl font-extrabold tabular-nums text-red-600 dark:text-red-400 sm:mt-1 sm:block">{formatCurrency.format(reportReceivables.overdue)}</span></div>
+                    <div className="flex items-center justify-between gap-3 px-4 py-3.5 sm:block"><span className="text-xs font-semibold text-amber-700 dark:text-amber-300">Due within 30 days</span><span className="text-xl font-extrabold tabular-nums text-slate-900 dark:text-white sm:mt-1 sm:block">{formatCurrency.format(reportReceivables.dueSoon)}</span></div>
+                  </div>
+                </div>
+                <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800"><h4 className="text-sm font-extrabold text-slate-900 dark:text-white">Open invoices ({reportReceivables.rows.length})</h4></div>
+                  {reportReceivables.rows.length === 0 ? (
+                    <div className="px-5 py-10 text-center text-sm font-semibold text-slate-500 dark:text-slate-400">No unpaid invoices. Everything is collected.</div>
+                  ) : (
+                    <div className="divide-y divide-slate-200 dark:divide-slate-800">
+                      {reportReceivables.rows.map(({ inv, daysOverdue, daysUntilDue }) => (
+                        <div key={inv.id} className="px-4 py-4">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0 flex-1">
+                              <div className="font-extrabold text-slate-900 dark:text-white">{inv.client}</div>
+                              <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{inv.number || 'Invoice'} · Due {inv.due || 'not set'}</div>
+                              <div className={`mt-1 text-xs font-bold ${daysOverdue > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                                {daysOverdue > 0 ? `${daysOverdue} day${daysOverdue === 1 ? '' : 's'} overdue` : daysUntilDue === null ? 'No due date' : daysUntilDue === 0 ? 'Due today' : `Due in ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'}`}
+                              </div>
+                            </div>
+                            <div className="text-xl font-extrabold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(inv.amount)}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Expenses & Receipts */}
+              <div style={{ display: reportsMenuSection === 'expensesreceipts' ? undefined : 'none' }} id="report-expensesreceipts" className="space-y-5">
+                <div className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-300"><Receipt size={20} /></div><div><h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Expenses & Receipts</h3><p className="text-sm text-slate-500 dark:text-slate-400">Spending and documentation for {taxPrepYear}.</p></div></div>
+                    <MonieziSelect value={String(taxPrepYear)} onChange={next => setTaxPrepYear(Number(next))} ariaLabel="Report year" options={Array.from({ length: 6 }).map((_, i) => { const y = new Date().getFullYear() - i; return { value: String(y), label: String(y) }; })} className="w-full sm:w-32 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm font-extrabold" />
+                  </div>
+                  <div className="mt-5 grid grid-cols-1 divide-y divide-slate-200 overflow-hidden rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-700 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
+                    <div className="px-4 py-3.5"><div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Expenses</div><div className="mt-1 text-xl font-extrabold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(reportExpenseSummary.total)}</div></div>
+                    <div className="px-4 py-3.5"><div className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Supported by receipts</div><div className="mt-1 text-xl font-extrabold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(reportExpenseSummary.supportedAmount)}</div></div>
+                    <div className="px-4 py-3.5"><div className="text-xs font-semibold text-amber-700 dark:text-amber-300">Missing receipts</div><div className="mt-1 text-xl font-extrabold tabular-nums text-slate-900 dark:text-white">{reportExpenseSummary.missingReceiptsCount}</div><div className="text-xs text-slate-500 dark:text-slate-400">{formatCurrency.format(reportExpenseSummary.unsupportedAmount)}</div></div>
+                    <div className="px-4 py-3.5"><div className="text-xs font-semibold text-blue-700 dark:text-blue-300">Reviewed</div><div className="mt-1 text-xl font-extrabold tabular-nums text-slate-900 dark:text-white">{reportExpenseSummary.reviewedCount}/{reportExpenseSummary.expenses.length}</div></div>
+                  </div>
+                </div>
+                <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800"><h4 className="text-sm font-extrabold text-slate-900 dark:text-white">Expense categories</h4></div>
+                  {reportExpenseSummary.categories.length === 0 ? <div className="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">No expenses recorded for {taxPrepYear}.</div> : (
+                    <div className="divide-y divide-slate-200 dark:divide-slate-800">{reportExpenseSummary.categories.map(row => <div key={row.category} className="flex items-center justify-between gap-4 px-4 py-3.5"><div className="min-w-0"><div className="font-bold text-slate-900 dark:text-white">{row.category}</div><div className="text-xs text-slate-500 dark:text-slate-400">{reportExpenseSummary.total > 0 ? `${((row.amount / reportExpenseSummary.total) * 100).toFixed(1)}% of spending` : '0% of spending'}</div></div><div className="shrink-0 font-extrabold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(row.amount)}</div></div>)}</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Mileage report */}
+              <div style={{ display: reportsMenuSection === 'mileage' ? undefined : 'none' }} id="report-mileage" className="space-y-5">
+                <div className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300"><Car size={20} /></div><div><h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Mileage Report</h3><p className="text-sm text-slate-500 dark:text-slate-400">Business driving documented for {taxPrepYear}.</p></div></div>
+                    <MonieziSelect value={String(taxPrepYear)} onChange={next => setTaxPrepYear(Number(next))} ariaLabel="Report year" options={Array.from({ length: 6 }).map((_, i) => { const y = new Date().getFullYear() - i; return { value: String(y), label: String(y) }; })} className="w-full sm:w-32 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm font-extrabold" />
+                  </div>
+                  <div className="mt-5 grid grid-cols-1 divide-y divide-slate-200 overflow-hidden rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-700 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                    <div className="flex items-center justify-between gap-3 px-4 py-3.5 sm:block"><span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Trips</span><span className="text-xl font-extrabold text-slate-900 dark:text-white sm:mt-1 sm:block">{mileageForTaxYear.length}</span></div>
+                    <div className="flex items-center justify-between gap-3 px-4 py-3.5 sm:block"><span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Business miles</span><span className="text-xl font-extrabold tabular-nums text-slate-900 dark:text-white sm:mt-1 sm:block">{mileageTotalMilesForTaxYear.toLocaleString(undefined, { maximumFractionDigits: 1 })}</span></div>
+                    <div className="flex items-center justify-between gap-3 px-4 py-3.5 sm:block"><span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Estimated deduction</span><span className="text-xl font-extrabold tabular-nums text-slate-900 dark:text-white sm:mt-1 sm:block">{formatCurrency.format(mileageDeductionForTaxYear)}</span></div>
+                  </div>
+                </div>
+                <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">{renderMileageTripList(`No mileage trips for ${taxPrepYear}.`)}</div>
+              </div>
+
+              {/* Clients & Work */}
+              <div style={{ display: reportsMenuSection === 'clients' ? undefined : 'none' }} id="report-clients" className="space-y-5">
+                <div className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-300"><Users size={20} /></div><div><h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Clients & Work</h3><p className="text-sm text-slate-500 dark:text-slate-400">Invoice and estimate activity by client for {taxPrepYear}.</p></div></div><MonieziSelect value={String(taxPrepYear)} onChange={next => setTaxPrepYear(Number(next))} ariaLabel="Report year" options={Array.from({ length: 6 }).map((_, i) => { const y = new Date().getFullYear() - i; return { value: String(y), label: String(y) }; })} className="w-full sm:w-32 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm font-extrabold" /></div>
+                </div>
+                <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  {reportClientRows.length === 0 ? <div className="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">No client invoice or estimate activity for {taxPrepYear}.</div> : <div className="divide-y divide-slate-200 dark:divide-slate-800">{reportClientRows.map((row, index) => <div key={row.key} className="px-4 py-4"><div className="flex items-start gap-3"><div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs font-extrabold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{index + 1}</div><div className="min-w-0 flex-1"><div className="font-extrabold text-slate-900 dark:text-white">{row.name}</div><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4"><div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Paid</div><div className="font-bold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(row.paid)}</div></div><div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Outstanding</div><div className="font-bold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(row.outstanding)}</div></div><div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Invoices</div><div className="font-bold text-slate-900 dark:text-white">{row.invoices}</div></div><div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Estimates won</div><div className="font-bold text-slate-900 dark:text-white">{row.acceptedEstimates}/{row.estimates}</div></div></div></div></div></div>)}</div>}
+                </div>
+              </div>
+
+              {/* Money In & Out */}
+              <div style={{ display: reportsMenuSection === 'cashflow' ? undefined : 'none' }} id="report-cashflow" className="space-y-5">
+                <div className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300"><TrendingUp size={20} /></div><div><h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Money In & Out</h3><p className="text-sm text-slate-500 dark:text-slate-400">Month-by-month cash activity for {taxPrepYear}.</p></div></div><MonieziSelect value={String(taxPrepYear)} onChange={next => setTaxPrepYear(Number(next))} ariaLabel="Report year" options={Array.from({ length: 6 }).map((_, i) => { const y = new Date().getFullYear() - i; return { value: String(y), label: String(y) }; })} className="w-full sm:w-32 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm font-extrabold" /></div></div>
+                <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="divide-y divide-slate-200 dark:divide-slate-800">{reportMonthlyCashflow.map(month => <div key={month.monthIndex} className="px-4 py-3.5"><div className="font-extrabold text-slate-900 dark:text-white">{month.label}</div><div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3"><div className="flex items-center justify-between gap-3 sm:block"><div className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Money in</div><div className="text-sm font-bold tabular-nums text-slate-900 dark:text-white sm:mt-0.5">{formatCurrency.format(month.income)}</div></div><div className="flex items-center justify-between gap-3 sm:block"><div className="text-[10px] font-bold uppercase tracking-wider text-red-600">Money out</div><div className="text-sm font-bold tabular-nums text-slate-900 dark:text-white sm:mt-0.5">{formatCurrency.format(month.expense)}</div></div><div className="flex items-center justify-between gap-3 sm:block"><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Difference</div><div className={`text-sm font-extrabold tabular-nums sm:mt-0.5 ${month.net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{formatCurrency.format(month.net)}</div></div></div></div>)}</div></div>
+              </div>
+
+              {/* Estimate Pipeline */}
+              <div style={{ display: reportsMenuSection === 'pipeline' ? undefined : 'none' }} id="report-pipeline" className="space-y-5">
+                <div className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300"><FileText size={20} /></div><div><h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Estimate Pipeline</h3><p className="text-sm text-slate-500 dark:text-slate-400">Sales activity and estimate outcomes for {taxPrepYear}.</p></div></div><MonieziSelect value={String(taxPrepYear)} onChange={next => setTaxPrepYear(Number(next))} ariaLabel="Report year" options={Array.from({ length: 6 }).map((_, i) => { const y = new Date().getFullYear() - i; return { value: String(y), label: String(y) }; })} className="w-full sm:w-32 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm font-extrabold" /></div><div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5"><div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700"><div className="text-[10px] font-bold uppercase text-slate-500">Draft</div><div className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">{reportPipeline.draftCount}</div></div><div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700"><div className="text-[10px] font-bold uppercase text-blue-600">Sent</div><div className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">{reportPipeline.sentCount}</div></div><div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700"><div className="text-[10px] font-bold uppercase text-emerald-600">Accepted</div><div className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">{reportPipeline.acceptedCount}</div></div><div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700"><div className="text-[10px] font-bold uppercase text-red-600">Declined</div><div className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">{reportPipeline.declinedCount}</div></div><div className="col-span-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700 sm:col-span-1"><div className="text-[10px] font-bold uppercase text-slate-500">Win rate</div><div className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">{reportPipeline.conversionRate.toFixed(0)}%</div></div></div><div className="mt-3 flex flex-col gap-1 text-sm text-slate-600 dark:text-slate-300"><span>Open pipeline: <strong className="text-slate-900 dark:text-white">{formatCurrency.format(reportPipeline.activeValue)}</strong></span><span>Accepted value: <strong className="text-slate-900 dark:text-white">{formatCurrency.format(reportPipeline.acceptedValue)}</strong></span></div></div>
+                <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">{reportPipeline.rows.length === 0 ? <div className="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">No estimates for {taxPrepYear}.</div> : <div className="divide-y divide-slate-200 dark:divide-slate-800">{reportPipeline.rows.map(est => <div key={est.id} className="px-4 py-4"><div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><div className="font-extrabold text-slate-900 dark:text-white">{est.client}</div><div className="text-xs text-slate-500 dark:text-slate-400">{est.projectTitle || est.description || est.number || 'Estimate'} · {est.date}</div></div><div className="flex items-center justify-between gap-3 sm:block sm:text-right"><div className="font-extrabold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(est.amount)}</div><div className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{est.status}</div></div></div></div>)}</div>}</div>
+              </div>
+
+              {/* Transaction Ledger */}
+              <div style={{ display: reportsMenuSection === 'ledger' ? undefined : 'none' }} id="report-ledger" className="space-y-5">
+                <div className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"><History size={20} /></div><div><h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Transaction Ledger</h3><p className="text-sm text-slate-500 dark:text-slate-400">Every income and expense record for {taxPrepYear}.</p></div></div><MonieziSelect value={String(taxPrepYear)} onChange={next => setTaxPrepYear(Number(next))} ariaLabel="Report year" options={Array.from({ length: 6 }).map((_, i) => { const y = new Date().getFullYear() - i; return { value: String(y), label: String(y) }; })} className="w-full sm:w-32 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm font-extrabold" /></div><div className="mt-4 text-sm font-semibold text-slate-600 dark:text-slate-300">{txForTaxYear.length} record{txForTaxYear.length === 1 ? '' : 's'} · Income {formatCurrency.format(reportYearSummary.income)} · Expenses {formatCurrency.format(reportYearSummary.expenses)}</div></div>
+                <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">{txForTaxYear.length === 0 ? <div className="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">No transactions for {taxPrepYear}.</div> : <div className="divide-y divide-slate-200 dark:divide-slate-800">{txForTaxYear.slice().sort((a,b) => b.date.localeCompare(a.date)).map(t => <div key={t.id} className="px-4 py-3.5"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="font-bold text-slate-900 dark:text-white">{t.name || 'Transaction'}</div><div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{t.date} · {t.category || 'Uncategorized'}{(t as any).receiptId ? ' · Receipt linked' : ''}</div></div><div className={`shrink-0 font-extrabold tabular-nums ${t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{t.type === 'income' ? '+' : '-'}{formatCurrency.format(t.amount)}</div></div></div>)}</div>}</div>
+              </div>
+
+              {/* Year-End Summary */}
+              <div style={{ display: reportsMenuSection === 'yearend' ? undefined : 'none' }} id="report-yearend" className="space-y-5">
+                <div className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300"><Calendar size={20} /></div><div><h3 className="text-lg font-extrabold text-slate-900 dark:text-white">{taxPrepYear} Business Summary</h3><p className="text-sm text-slate-500 dark:text-slate-400">Your year in one report.</p></div></div><MonieziSelect value={String(taxPrepYear)} onChange={next => setTaxPrepYear(Number(next))} ariaLabel="Report year" options={Array.from({ length: 6 }).map((_, i) => { const y = new Date().getFullYear() - i; return { value: String(y), label: String(y) }; })} className="w-full sm:w-32 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm font-extrabold" /></div></div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <section className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900"><h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Money</h4><div className="mt-4 space-y-3"><div className="flex justify-between gap-4"><span className="text-sm text-slate-600 dark:text-slate-300">Income</span><strong className="tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(reportYearSummary.income)}</strong></div><div className="flex justify-between gap-4"><span className="text-sm text-slate-600 dark:text-slate-300">Expenses</span><strong className="tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(reportYearSummary.expenses)}</strong></div><div className="flex justify-between gap-4 border-t border-slate-200 pt-3 dark:border-slate-800"><span className="text-sm font-bold text-slate-900 dark:text-white">Net profit</span><strong className={`tabular-nums ${reportYearSummary.net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{formatCurrency.format(reportYearSummary.net)}</strong></div></div></section>
+                  <section className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900"><h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Invoices & Work</h4><div className="mt-4 space-y-3"><div className="flex justify-between gap-4"><span className="text-sm text-slate-600 dark:text-slate-300">Invoices created</span><strong>{reportYearSummary.invoiceCount}</strong></div><div className="flex justify-between gap-4"><span className="text-sm text-slate-600 dark:text-slate-300">Collected</span><strong className="tabular-nums">{formatCurrency.format(reportYearSummary.collected)}</strong></div><div className="flex justify-between gap-4"><span className="text-sm text-slate-600 dark:text-slate-300">Still outstanding</span><strong className="tabular-nums">{formatCurrency.format(reportYearSummary.outstanding)}</strong></div><div className="flex justify-between gap-4"><span className="text-sm text-slate-600 dark:text-slate-300">Estimates accepted</span><strong>{reportYearSummary.acceptedEstimates}/{reportYearSummary.estimateCount}</strong></div></div></section>
+                  <section className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900"><h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Mileage & Records</h4><div className="mt-4 space-y-3"><div className="flex justify-between gap-4"><span className="text-sm text-slate-600 dark:text-slate-300">Business miles</span><strong>{mileageTotalMilesForTaxYear.toLocaleString(undefined, { maximumFractionDigits: 1 })}</strong></div><div className="flex justify-between gap-4"><span className="text-sm text-slate-600 dark:text-slate-300">Mileage deduction</span><strong className="tabular-nums">{formatCurrency.format(mileageDeductionForTaxYear)}</strong></div><div className="flex justify-between gap-4"><span className="text-sm text-slate-600 dark:text-slate-300">Expenses with receipts</span><strong>{reportExpenseSummary.withReceiptsCount}/{reportExpenseSummary.expenses.length}</strong></div><div className="flex justify-between gap-4"><span className="text-sm text-slate-600 dark:text-slate-300">Reviewed expenses</span><strong>{reportExpenseSummary.reviewedCount}/{reportExpenseSummary.expenses.length}</strong></div></div></section>
+                  <section className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900"><h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Highlights</h4><div className="mt-4 space-y-3"><div><div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Top client</div><div className="mt-0.5 font-extrabold text-slate-900 dark:text-white">{reportYearSummary.topClient ? reportYearSummary.topClient.name : '—'}</div>{reportYearSummary.topClient ? <div className="text-xs text-slate-500 dark:text-slate-400">{formatCurrency.format(reportYearSummary.topClient.paid)} paid</div> : null}</div><div className="border-t border-slate-200 pt-3 dark:border-slate-800"><div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Largest expense category</div><div className="mt-0.5 font-extrabold text-slate-900 dark:text-white">{reportYearSummary.topExpenseCategory ? reportYearSummary.topExpenseCategory.category : '—'}</div>{reportYearSummary.topExpenseCategory ? <div className="text-xs text-slate-500 dark:text-slate-400">{formatCurrency.format(reportYearSummary.topExpenseCategory.amount)}</div> : null}</div></div></section>
+                </div>
+              </div>
+
               {/* P&L Preview Modal */}
               {showPLPreview && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-stretch justify-stretch p-0 modal-overlay">
@@ -9729,6 +9991,7 @@ html, body, #root {
                 </div>
               )}
 
+              {(reportsMenuSection === 'taxsnapshot' || reportsMenuSection === 'planner') && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <div className="bg-white dark:bg-slate-900 p-6 rounded-lg border border-slate-200 dark:border-slate-800 shadow-md"><div className="flex items-center gap-2 mb-4 text-emerald-600"><Shield size={20} /><span className="font-bold uppercase tracking-widest text-xs">Tax Shield</span></div><div className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">{formatCurrency.format(reportData.taxShield)}</div><p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">Your expenses have lowered your estimated tax bill by this amount. Every valid business expense saves you money at tax time.</p></div>
                  
@@ -9771,6 +10034,7 @@ html, body, #root {
                    </p>
                  </div>
               </div>
+              )}
            </div>
         )}
 
@@ -10991,7 +11255,7 @@ html, body, #root {
                   Mileage
                 </button>
                 <button
-                  onClick={() => setCurrentPage(Page.Reports)}
+                  onClick={() => { setReportsMenuSection('menu'); setCurrentPage(Page.Reports); mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
                   className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-900"
                 >
                   Reports
@@ -11175,7 +11439,7 @@ html, body, #root {
 
             {/* Reports */}
             <button 
-              onClick={() => setCurrentPage(Page.Reports)} 
+              onClick={() => { setReportsMenuSection('menu'); setCurrentPage(Page.Reports); mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }} 
               className={`dark-chrome-nav-item ${currentPage === Page.Reports ? 'active' : ''} flex-1 flex flex-col items-center justify-center py-1 transition-all active:scale-95 ${currentPage === Page.Reports ? 'bg-blue-600 text-white rounded-xl shadow-sm mx-0.5' : ''}`}
               style={currentPage === Page.Reports ? darkChromeNavActiveStyle : darkChromeNavInactiveStyle}
             >
