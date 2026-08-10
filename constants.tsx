@@ -77,533 +77,343 @@ export const TAX_PLANNER_2026 = {
 };
 
 // --- Demo Data Generator ---
+// v38.0.16: one curated, deterministic commercial demo. The records are
+// intentionally connected so Home, Jobs, Reports, Tax Prep, Goals, invoices,
+// estimates, mileage and receipts all tell the same business story.
 export const getFreshDemoData = () => {
-  // Helper functions
-  const randomDate = (daysAgo: number) => {
-    const date = new Date();
-    date.setDate(date.getDate() - daysAgo);
-    return date.toISOString().split('T')[0];
+  const anchor = new Date();
+  anchor.setHours(12, 0, 0, 0);
+
+  const iso = (date: Date) => date.toISOString().split('T')[0];
+  const addDays = (days: number) => {
+    const date = new Date(anchor);
+    date.setDate(date.getDate() + days);
+    return iso(date);
   };
-
-  const randomAmount = (min: number, max: number) => {
-    return Math.round((Math.random() * (max - min) + min) * 100) / 100;
+  const currentMonthPast = (daysBack: number) => {
+    const day = Math.max(1, anchor.getDate() - daysBack);
+    return iso(new Date(anchor.getFullYear(), anchor.getMonth(), day, 12));
   };
-
-  const randomFrom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
-
-  let idCounter = 1000;
-  const generateId = (prefix: string) => `${prefix}_${idCounter++}`;
-
-  const descriptions: Record<string, string[]> = {
-    'Consulting / Freelance': ['Strategy consulting', 'Business analysis', 'Process optimization', 'Market research'],
-    'Sales / Services': ['Web development', 'Mobile app', 'API integration', 'Database design'],
-    'Product Sales': ['Online store sales', 'E-commerce revenue', 'Digital product sales'],
-    'Advertising / Marketing': ['Google Ads', 'Facebook Ads', 'LinkedIn Premium', 'Instagram promotion'],
-    'Software / SaaS': ['Adobe Creative Cloud', 'Microsoft 365', 'Slack Premium', 'Zoom Pro'],
-    'Rent / Workspace': ['Office rent', 'Co-working space'],
-    'Travel': ['Flight to client meeting', 'Hotel - conference', 'Rental car', 'Uber/Lyft'],
-    'Meals (Business)': ['Client lunch', 'Team dinner', 'Coffee meeting', 'Conference meals'],
-    'Equipment': ['Laptop', 'Monitor', 'Desk chair', 'External hard drive', 'Camera gear']
+  const monthDate = (monthOffset: number, preferredDay: number) => {
+    const year = anchor.getFullYear();
+    const month = anchor.getMonth() + monthOffset;
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    return iso(new Date(year, month, Math.min(preferredDay, lastDay), 12));
   };
+  const yearDate = (year: number, monthIndex: number, preferredDay: number) => {
+    const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+    return iso(new Date(year, monthIndex, Math.min(preferredDay, lastDay), 12));
+  };
+  const reviewedAt = (date: string) => `${date}T12:00:00.000Z`;
+
+  const currentYear = anchor.getFullYear();
+  const previousYear = currentYear - 1;
+  const today = iso(anchor);
 
   const clients = [
-    'Acme Corporation', 'TechStart Inc', 'Global Ventures LLC', 'Digital Dreams Co',
-    'Blue Ocean Partners', 'Summit Solutions', 'Nexus Technologies', 'Bright Future Consulting',
-    'Metro Marketing Group', 'Apex Innovations', 'Stellar Systems', 'Prime Enterprises',
-    'Fusion Creative', 'Quantum Analytics', 'Phoenix Group'
+    {
+      id: 'cli_demo_1', name: 'Kenny Barria', company: 'KB Landscaping',
+      email: 'kenny@kblandscaping.com', phone: '(305) 555-0198',
+      address: '12 Palm St, Miami, FL 33101', status: 'client' as const,
+      createdAt: addDays(-180), updatedAt: addDays(-2),
+      notes: 'Monthly property-maintenance client. Prefers text follow-ups.'
+    },
+    {
+      id: 'cli_demo_2', name: 'Sophia Stanley', company: 'Stanley Studio',
+      email: 'sophia@stanleystudio.co', phone: '(512) 555-0234',
+      address: '88 Market Ave, Suite 200, Austin, TX 78701', status: 'client' as const,
+      createdAt: addDays(-220), updatedAt: addDays(-8),
+      notes: 'Branding client with a completed project.'
+    },
+    {
+      id: 'cli_demo_3', name: 'Jimmy Wilson', company: 'Wilson Renovations',
+      email: 'jimmy@wilsonreno.com', phone: '(619) 555-0142',
+      address: '5 Harbor Rd, San Diego, CA 92101', status: 'client' as const,
+      createdAt: addDays(-320), updatedAt: addDays(-1),
+      notes: 'Repeat customer. Active bathroom renovation.'
+    },
+    {
+      id: 'cli_demo_4', name: 'Maria Chen', company: 'Chen Tech Solutions',
+      email: 'maria@chentech.io', phone: '(415) 555-0321',
+      address: '500 Tech Blvd, San Francisco, CA 94107', status: 'client' as const,
+      createdAt: addDays(-140), updatedAt: addDays(-1),
+      notes: 'Office refresh in progress. Invoice is overdue.'
+    },
+    {
+      id: 'cli_demo_5', name: 'Omar Hassan', company: 'OH Auto Detailing',
+      email: 'omar@ohdetailing.com', phone: '(813) 555-0284',
+      address: '9 River Dr, Tampa, FL 33602', status: 'lead' as const,
+      createdAt: addDays(-35), updatedAt: addDays(-3),
+      notes: 'New lead. Draft estimate still needs to be finished.'
+    },
   ];
 
-  // Generate 150 income transactions
-  const incomeTransactions = [];
-  for (let i = 0; i < 150; i++) {
-    const category = randomFrom(CATS_IN);
-    const daysAgo = Math.floor(Math.random() * 365);
-    const amount = randomAmount(500, 8000);
-    
-    incomeTransactions.push({
-      id: generateId('tx'),
-      name: descriptions[category]?.[Math.floor(Math.random() * descriptions[category].length)] || 'Service provided',
-      amount,
-      category,
-      date: randomDate(daysAgo),
-      type: 'income' as const,
-      notes: ''
-    });
-  }
-
-  // Generate 180 expense transactions
-  const expenseTransactions = [];
-  for (let i = 0; i < 180; i++) {
-    const category = randomFrom(CATS_OUT);
-    const daysAgo = Math.floor(Math.random() * 365);
-    let amount;
-    
-    if (category === 'Rent / Workspace') amount = randomAmount(1500, 3000);
-    else if (category === 'Equipment') amount = randomAmount(300, 2500);
-    else if (category === 'Insurance') amount = randomAmount(200, 800);
-    else if (category === 'Software / SaaS') amount = randomAmount(15, 150);
-    else if (category === 'Travel') amount = randomAmount(100, 1200);
-    else if (category === 'Advertising / Marketing') amount = randomAmount(50, 1500);
-    else amount = randomAmount(20, 500);
-    
-    expenseTransactions.push({
-      id: generateId('tx'),
-      name: descriptions[category]?.[Math.floor(Math.random() * descriptions[category].length)] || 'Business expense',
-      amount,
-      category,
-      date: randomDate(daysAgo),
-      type: 'expense' as const,
-      notes: ''
-    });
-  }
-
-  // Add recurring monthly expenses (12 months)
-  const recurringExpenses = [
-    { category: 'Rent / Workspace', amount: 2200, name: 'Office rent' },
-    { category: 'Phone / Internet', amount: 149, name: 'Comcast Business' },
-    { category: 'Software / SaaS', amount: 54.99, name: 'Adobe Creative Cloud' },
-    { category: 'Software / SaaS', amount: 12.99, name: 'Microsoft 365' },
-    { category: 'Insurance', amount: 385, name: 'Business insurance' }
+  const jobs = [
+    {
+      id: 'job_demo_1', title: 'Master Bathroom Renovation', clientId: 'cli_demo_3', clientName: 'Jimmy Wilson',
+      description: 'Complete master-bath renovation with fixtures, plumbing and finish work.', status: 'active' as const,
+      startDate: addDays(-21), createdAt: addDays(-28), updatedAt: addDays(-2),
+    },
+    {
+      id: 'job_demo_2', title: 'Chen Tech Office Refresh', clientId: 'cli_demo_4', clientName: 'Maria Chen',
+      description: 'Office refresh, hardware installation and client-space improvements.', status: 'active' as const,
+      startDate: addDays(-14), createdAt: addDays(-18), updatedAt: addDays(-1),
+    },
+    {
+      id: 'job_demo_3', title: 'KB Monthly Lawn Care', clientId: 'cli_demo_1', clientName: 'Kenny Barria',
+      description: 'Monthly lawn-care package with four scheduled visits.', status: 'active' as const,
+      startDate: addDays(-40), createdAt: addDays(-45), updatedAt: addDays(-4),
+    },
+    {
+      id: 'job_demo_4', title: 'Stanley Brand Identity', clientId: 'cli_demo_2', clientName: 'Sophia Stanley',
+      description: 'Brand identity system including logo, palette and final brand guide.', status: 'completed' as const,
+      startDate: addDays(-58), endDate: addDays(-23), createdAt: addDays(-64), updatedAt: addDays(-23),
+    },
   ];
 
-  for (let month = 0; month < 12; month++) {
-    recurringExpenses.forEach(expense => {
-      expenseTransactions.push({
-        id: generateId('tx'),
-        name: expense.name,
-        amount: expense.amount,
-        category: expense.category,
-        date: randomDate(month * 30 + Math.floor(Math.random() * 5)),
-        type: 'expense' as const,
-        notes: 'Recurring monthly expense'
-      });
-    });
-  }
-
-  // Generate 80 invoices
-  const invoices = [];
-  for (let i = 0; i < 80; i++) {
-    const daysAgo = Math.floor(Math.random() * 365);
-    const client = randomFrom(clients);
-    const amount = randomAmount(1500, 15000);
-    const dateIssued = randomDate(daysAgo);
-    const dueDaysLater = 30 + Math.floor(Math.random() * 30);
-    const dueDate = randomDate(daysAgo - dueDaysLater);
-    
-    let status: 'paid' | 'unpaid' | 'void';
-    const rand = Math.random();
-    if (daysAgo > 60) {
-      status = rand < 0.8 ? 'paid' : (rand < 0.9 ? 'unpaid' : 'void');
-    } else if (daysAgo > 30) {
-      status = rand < 0.6 ? 'paid' : (rand < 0.85 ? 'unpaid' : 'void');
-    } else {
-      status = rand < 0.3 ? 'paid' : (rand < 0.95 ? 'unpaid' : 'void');
-    }
-    
-    invoices.push({
-      id: generateId('inv'),
-      client,
-      clientCompany: client,
-      clientEmail: `contact@${client.toLowerCase().replace(/\s+/g, '')}.com`,
-      clientAddress: `${Math.floor(Math.random() * 9000 + 1000)} Business Blvd, Suite ${Math.floor(Math.random() * 500)}`,
-      amount,
-      category: randomFrom(CATS_BILLING),
-      description: randomFrom(['Consulting services', 'Web development', 'Design and branding', 'Marketing campaign', 'Software implementation']),
-      date: dateIssued,
-      due: dueDate,
-      status,
+  const estimates = [
+    {
+      id: 'est_demo_1', number: 'EST-0101', clientId: 'cli_demo_3', jobId: 'job_demo_1',
+      client: 'Jimmy Wilson', clientCompany: 'Wilson Renovations', clientEmail: 'jimmy@wilsonreno.com', clientPhone: '(619) 555-0142', clientAddress: '5 Harbor Rd, San Diego, CA 92101',
+      projectTitle: 'Master Bathroom Complete Renovation', category: 'Other Service', description: 'Complete master-bath renovation',
+      scopeOfWork: 'Demolition, plumbing preparation, fixture installation, finish hardware and final walkthrough.', timeline: '5–7 business days',
+      exclusions: 'Tile replacement, electrical modifications and permit fees are excluded.', acceptanceTerms: 'Reply APPROVED or sign and return.',
+      date: addDays(-26), validUntil: addDays(4), status: 'accepted' as const, sentAt: addDays(-24), lastFollowUp: addDays(-21),
       items: [
-        {
-          id: generateId('item'),
-          description: 'Professional services rendered',
-          quantity: 1,
-          rate: amount
-        }
+        { id: 'est1_labor', description: 'Skilled labor', quantity: 32, rate: 95 },
+        { id: 'est1_fixture', description: 'Vanity, fixtures and toilet', quantity: 1, rate: 2450 },
+        { id: 'est1_plumbing', description: 'Plumbing materials', quantity: 1, rate: 820 },
+        { id: 'est1_finish', description: 'Finish hardware and supplies', quantity: 1, rate: 540 },
       ],
-      subtotal: amount,
-      notes: '',
-      discount: 0,
-      taxRate: 0,
-      shipping: 0,
-      recurring: Math.random() < 0.15
-    });
-  }
-
-  // Add specific overdue invoices
-  const overdueInvoices = [
-    { client: 'Tech Giants LLC', amount: 8500, daysOverdue: 15 },
-    { client: 'Startup Ventures', amount: 6200, daysOverdue: 7 },
-    { client: 'Enterprise Solutions', amount: 12000, daysOverdue: 45 }
-  ];
-
-  overdueInvoices.forEach(overdue => {
-    const issueDate = randomDate(overdue.daysOverdue + 45);
-    const dueDate = randomDate(overdue.daysOverdue);
-    
-    invoices.push({
-      id: generateId('inv'),
-      client: overdue.client,
-      clientCompany: overdue.client,
-      clientEmail: `billing@${overdue.client.toLowerCase().replace(/\s+/g, '')}.com`,
-      clientAddress: `${Math.floor(Math.random() * 9000 + 1000)} Corporate Dr`,
-      amount: overdue.amount,
-      category: 'Consulting / Freelance',
-      description: 'Professional services rendered',
-      date: issueDate,
-      due: dueDate,
-      status: 'unpaid' as const,
+      subtotal: 6850, discount: 0, taxRate: 0, shipping: 0, amount: 6850,
+      notes: 'Accepted and converted to invoice.', terms: '50% to schedule, balance on completion.'
+    },
+    {
+      id: 'est_demo_2', number: 'EST-0102', clientId: 'cli_demo_4', jobId: 'job_demo_2',
+      client: 'Maria Chen', clientCompany: 'Chen Tech Solutions', clientEmail: 'maria@chentech.io', clientPhone: '(415) 555-0321', clientAddress: '500 Tech Blvd, San Francisco, CA 94107',
+      projectTitle: 'Office Refresh & Hardware Installation', category: 'Other Service', description: 'Office refresh and hardware installation',
+      scopeOfWork: 'Refresh work areas, install hardware and complete punch-list items.', timeline: '3–4 business days',
+      date: addDays(-20), validUntil: addDays(8), status: 'accepted' as const, sentAt: addDays(-19),
       items: [
-        {
-          id: generateId('item'),
-          description: 'Professional services',
-          quantity: 1,
-          rate: overdue.amount
-        }
+        { id: 'est2_labor', description: 'Installation labor', quantity: 16, rate: 110 },
+        { id: 'est2_materials', description: 'Hardware and materials', quantity: 1, rate: 1640 },
       ],
-      subtotal: overdue.amount,
-      notes: `OVERDUE ${overdue.daysOverdue} days - requires immediate attention`,
-      discount: 0,
-      taxRate: 0,
-      shipping: 0,
-      recurring: false
-    });
-  });
-
-  // Generate tax payments
-  const taxPayments = [];
-  const quarters = [
-    { month: 0, label: 'Q4 2025' },
-    { month: 3, label: 'Q1 2026' },
-    { month: 6, label: 'Q2 2026' },
-    { month: 9, label: 'Q3 2026' }
+      subtotal: 3400, discount: 0, taxRate: 0, shipping: 0, amount: 3400,
+      notes: 'Accepted. Work is in progress.', terms: 'Net 15 after invoicing.'
+    },
+    {
+      id: 'est_demo_3', number: 'EST-0103', clientId: 'cli_demo_1', jobId: 'job_demo_3',
+      client: 'Kenny Barria', clientCompany: 'KB Landscaping', clientEmail: 'kenny@kblandscaping.com', clientPhone: '(305) 555-0198', clientAddress: '12 Palm St, Miami, FL 33101',
+      projectTitle: 'Monthly Lawn Care Package', category: 'Other Service', description: 'Four monthly lawn-care visits',
+      scopeOfWork: 'Mowing, edging, blowing, hedge trim and monthly weed-control treatment.', timeline: 'Ongoing monthly service',
+      date: addDays(-8), validUntil: addDays(6), status: 'sent' as const, sentAt: addDays(-7), followUpDate: today, followUpCount: 0,
+      items: [
+        { id: 'est3_visits', description: 'Weekly lawn service', quantity: 4, rate: 95 },
+        { id: 'est3_trim', description: 'Hedge trim and weed treatment', quantity: 1, rate: 120 },
+      ],
+      subtotal: 500, discount: 0, taxRate: 0, shipping: 0, amount: 500,
+      notes: 'Follow-up is due today.', terms: 'Monthly billing, Net 7.'
+    },
+    {
+      id: 'est_demo_4', number: 'EST-0104', clientId: 'cli_demo_2', jobId: 'job_demo_4',
+      client: 'Sophia Stanley', clientCompany: 'Stanley Studio', clientEmail: 'sophia@stanleystudio.co', clientPhone: '(512) 555-0234', clientAddress: '88 Market Ave, Suite 200, Austin, TX 78701',
+      projectTitle: 'Complete Brand Identity System', category: 'Graphic Design', description: 'Brand identity system',
+      scopeOfWork: 'Discovery, logo concepts, revisions, color system, typography and final brand guide.', timeline: '3 weeks',
+      date: addDays(-58), validUntil: addDays(-30), status: 'accepted' as const, sentAt: addDays(-56),
+      items: [
+        { id: 'est4_discovery', description: 'Discovery and visual direction', quantity: 1, rate: 600 },
+        { id: 'est4_design', description: 'Logo and identity design', quantity: 1, rate: 1200 },
+        { id: 'est4_guide', description: 'Brand guide and final files', quantity: 1, rate: 600 },
+      ],
+      subtotal: 2400, discount: 0, taxRate: 0, shipping: 0, amount: 2400,
+      notes: 'Completed project.', terms: '50% upfront, 50% at delivery.'
+    },
+    {
+      id: 'est_demo_5', number: 'EST-0105', clientId: 'cli_demo_5',
+      client: 'Omar Hassan', clientCompany: 'OH Auto Detailing', clientEmail: 'omar@ohdetailing.com', clientPhone: '(813) 555-0284', clientAddress: '9 River Dr, Tampa, FL 33602',
+      projectTitle: 'Two-Vehicle Detail Package', category: 'Other Service', description: 'Full-detail package for two vehicles',
+      scopeOfWork: 'Interior deep clean, exterior wash, polish and protective finish.', timeline: '1 day',
+      date: addDays(-3), validUntil: addDays(11), status: 'draft' as const,
+      items: [
+        { id: 'est5_sedan', description: 'Sedan full detail', quantity: 1, rate: 580 },
+        { id: 'est5_suv', description: 'SUV full detail', quantity: 1, rate: 670 },
+      ],
+      subtotal: 1250, discount: 0, taxRate: 0, shipping: 0, amount: 1250,
+      notes: 'Draft estimate — finish and send.', terms: 'Payment on completion.'
+    },
+    {
+      id: 'est_demo_6', number: 'EST-0106', clientId: 'cli_demo_5',
+      client: 'Omar Hassan', clientCompany: 'OH Auto Detailing', clientEmail: 'omar@ohdetailing.com', clientPhone: '(813) 555-0284', clientAddress: '9 River Dr, Tampa, FL 33602',
+      projectTitle: 'Fleet Wash Pilot', category: 'Other Service', description: 'Pilot fleet wash service',
+      date: addDays(-42), validUntil: addDays(-20), status: 'declined' as const,
+      items: [{ id: 'est6_pilot', description: 'Fleet wash pilot', quantity: 1, rate: 1800 }],
+      subtotal: 1800, discount: 0, taxRate: 0, shipping: 0, amount: 1800,
+      notes: 'Declined after budget review.', terms: 'Net 7.'
+    },
   ];
 
-  quarters.forEach(quarter => {
-    const amount = randomAmount(3000, 8000);
-    taxPayments.push({
-      id: generateId('tax'),
-      amount,
-      date: randomDate(365 - (quarter.month * 30)),
-      type: 'Estimated' as const,
-      note: `${quarter.label} estimated tax payment`
-    });
-  });
+  const invoices = [
+    {
+      id: 'inv_demo_1', number: 'INV-0101', clientId: 'cli_demo_3', jobId: 'job_demo_1',
+      client: 'Jimmy Wilson', clientCompany: 'Wilson Renovations', clientEmail: 'jimmy@wilsonreno.com', clientAddress: '5 Harbor Rd, San Diego, CA 92101',
+      amount: 6850, category: 'Sales / Services', description: 'Master Bathroom Complete Renovation',
+      date: currentMonthPast(9), due: addDays(-1), status: 'paid' as const, payMethod: 'Bank Transfer', linkedTransactionId: 'tx_demo_income_1',
+      items: [
+        { id: 'inv1_labor', description: 'Skilled labor', quantity: 32, rate: 95 },
+        { id: 'inv1_fixture', description: 'Vanity, fixtures and toilet', quantity: 1, rate: 2450 },
+        { id: 'inv1_plumbing', description: 'Plumbing materials', quantity: 1, rate: 820 },
+        { id: 'inv1_finish', description: 'Finish hardware and supplies', quantity: 1, rate: 540 },
+      ],
+      subtotal: 6850, discount: 0, taxRate: 0, shipping: 0, notes: 'Paid in full.', terms: 'Balance due on completion.'
+    },
+    {
+      id: 'inv_demo_2', number: 'INV-0102', clientId: 'cli_demo_4', jobId: 'job_demo_2',
+      client: 'Maria Chen', clientCompany: 'Chen Tech Solutions', clientEmail: 'maria@chentech.io', clientAddress: '500 Tech Blvd, San Francisco, CA 94107',
+      amount: 3400, category: 'Sales / Services', description: 'Office Refresh & Hardware Installation',
+      date: addDays(-18), due: addDays(-4), status: 'unpaid' as const,
+      items: [
+        { id: 'inv2_labor', description: 'Installation labor', quantity: 16, rate: 110 },
+        { id: 'inv2_materials', description: 'Hardware and materials', quantity: 1, rate: 1640 },
+      ],
+      subtotal: 3400, discount: 0, taxRate: 0, shipping: 0, notes: 'Overdue — follow-up needed.', terms: 'Net 14.'
+    },
+    {
+      id: 'inv_demo_3', number: 'INV-0103', clientId: 'cli_demo_1', jobId: 'job_demo_3',
+      client: 'Kenny Barria', clientCompany: 'KB Landscaping', clientEmail: 'kenny@kblandscaping.com', clientAddress: '12 Palm St, Miami, FL 33101',
+      amount: 500, category: 'Sales / Services', description: 'Monthly Lawn Care Package',
+      date: addDays(-2), due: addDays(5), status: 'unpaid' as const,
+      items: [
+        { id: 'inv3_visits', description: 'Weekly lawn service', quantity: 4, rate: 95 },
+        { id: 'inv3_trim', description: 'Hedge trim and weed treatment', quantity: 1, rate: 120 },
+      ],
+      subtotal: 500, discount: 0, taxRate: 0, shipping: 0, notes: 'Current invoice.', terms: 'Net 7.'
+    },
+    {
+      id: 'inv_demo_4', number: 'INV-0104', clientId: 'cli_demo_2', jobId: 'job_demo_4',
+      client: 'Sophia Stanley', clientCompany: 'Stanley Studio', clientEmail: 'sophia@stanleystudio.co', clientAddress: '88 Market Ave, Suite 200, Austin, TX 78701',
+      amount: 2400, category: 'Consulting / Freelance', description: 'Complete Brand Identity System',
+      date: currentMonthPast(6), due: addDays(7), status: 'paid' as const, payMethod: 'Card', linkedTransactionId: 'tx_demo_income_2',
+      items: [
+        { id: 'inv4_discovery', description: 'Discovery and visual direction', quantity: 1, rate: 600 },
+        { id: 'inv4_design', description: 'Logo and identity design', quantity: 1, rate: 1200 },
+        { id: 'inv4_guide', description: 'Brand guide and final files', quantity: 1, rate: 600 },
+      ],
+      subtotal: 2400, discount: 0, taxRate: 0, shipping: 0, notes: 'Paid and completed.', terms: 'Due on delivery.'
+    },
+    {
+      id: 'inv_demo_5', number: 'INV-0105', clientId: 'cli_demo_5',
+      client: 'Omar Hassan', clientCompany: 'OH Auto Detailing', clientEmail: 'omar@ohdetailing.com', clientAddress: '9 River Dr, Tampa, FL 33602',
+      amount: 780, category: 'Sales / Services', description: 'Previous detailing service',
+      date: addDays(-24), due: addDays(-9), status: 'unpaid' as const,
+      items: [{ id: 'inv5_detail', description: 'Detailing service', quantity: 1, rate: 780 }],
+      subtotal: 780, discount: 0, taxRate: 0, shipping: 0, notes: 'Overdue — reminder available.', terms: 'Net 15.'
+    },
+    {
+      id: 'inv_demo_6', number: 'INV-0106', clientId: 'cli_demo_3',
+      client: 'Jimmy Wilson', clientCompany: 'Wilson Renovations', clientEmail: 'jimmy@wilsonreno.com', clientAddress: '5 Harbor Rd, San Diego, CA 92101',
+      amount: 4200, category: 'Sales / Services', description: 'Kitchen repair milestone',
+      date: monthDate(-1, 12), due: monthDate(-1, 26), status: 'paid' as const, payMethod: 'Check', linkedTransactionId: 'tx_demo_income_3',
+      items: [
+        { id: 'inv6_labor', description: 'Repair labor', quantity: 20, rate: 150 },
+        { id: 'inv6_materials', description: 'Materials', quantity: 1, rate: 1200 },
+      ],
+      subtotal: 4200, discount: 0, taxRate: 0, shipping: 0, notes: 'Previous-month paid work.', terms: 'Net 14.'
+    },
+  ];
 
-  taxPayments.push({
-    id: generateId('tax'),
-    amount: randomAmount(8000, 15000),
-    date: randomDate(350),
-    type: 'Annual' as const,
-    note: '2025 annual tax payment'
-  });
-
-  for (let i = 0; i < 5; i++) {
-    taxPayments.push({
-      id: generateId('tax'),
-      amount: randomAmount(500, 3000),
-      date: randomDate(Math.floor(Math.random() * 365)),
-      type: 'Other' as const,
-      note: 'Additional tax payment'
-    });
-  }
-
-  // --- V7 Demo: Clients (Leads) + Estimates ---
-  const computeTotal = (subtotal: number, discount = 0, taxRate = 0, shipping = 0) => {
-    const afterDiscount = Math.max(0, subtotal - (discount || 0));
-    const tax = (taxRate || 0) > 0 ? afterDiscount * ((taxRate || 0) / 100) : 0;
-    return Math.round((afterDiscount + tax + (shipping || 0)) * 100) / 100;
+  const expenseDates = {
+    hardware: currentMonthPast(8),
+    fuel: currentMonthPast(7),
+    subcontractor: currentMonthPast(5),
+    meal: currentMonthPast(4),
+    office: monthDate(-1, 18),
+    refreshments: monthDate(-1, 20),
+    drillBits: monthDate(-1, 22),
   };
 
-  const demoClients = [
-    {
-      id: 'cli_demo_1',
-      name: 'Kenny Barria',
-      company: 'KB Landscaping',
-      email: 'kenny@example.com',
-      phone: '+1 (555) 010-2001',
-      address: '12 Palm St, Miami, FL',
-      status: 'lead' as const,
-      createdAt: randomDate(60),
-      updatedAt: randomDate(2),
-      notes: 'Requested a maintenance quote. Prefers SMS follow-ups.'
-    },
-    {
-      id: 'cli_demo_2',
-      name: 'Sophia Stanley',
-      company: 'Stanley Studio',
-      email: 'sophia@example.com',
-      phone: '+1 (555) 010-2002',
-      address: '88 Market Ave, Austin, TX',
-      status: 'lead' as const,
-      createdAt: randomDate(45),
-      updatedAt: randomDate(10),
-      notes: 'Brand kit inquiry. Waiting on budget approval.'
-    },
-    {
-      id: 'cli_demo_3',
-      name: 'Jimmy Wilson',
-      company: 'Wilson Renovations',
-      email: 'jimmy@example.com',
-      phone: '+1 (555) 010-2003',
-      address: '5 Harbor Rd, San Diego, CA',
-      status: 'client' as const,
-      createdAt: randomDate(200),
-      updatedAt: randomDate(1),
-      notes: 'Repeat customer. Quick payer.'
-    },
-    {
-      id: 'cli_demo_4',
-      name: 'Maria Chen',
-      company: 'Chen Wellness',
-      email: 'maria@chenwellness.com',
-      phone: '+1 (555) 010-2004',
-      address: '22 Sunset Blvd, Los Angeles, CA',
-      status: 'client' as const,
-      createdAt: randomDate(150),
-      updatedAt: randomDate(6),
-      notes: 'Ongoing monthly service.'
-    },
-    {
-      id: 'cli_demo_5',
-      name: 'Omar Hassan',
-      company: 'OH Auto Detailing',
-      email: 'omar@ohdetailing.com',
-      phone: '+1 (555) 010-2005',
-      address: '9 River Dr, Tampa, FL',
-      status: 'lead' as const,
-      createdAt: randomDate(20),
-      updatedAt: randomDate(3),
-      notes: 'Asked for 2-vehicle package estimate.'
-    },
-    {
-      id: 'cli_demo_6',
-      name: 'Rich Richards',
-      company: 'Richards Consulting',
-      email: 'rich@example.com',
-      phone: '+1 (555) 010-2006',
-      address: '101 King St, New York, NY',
-      status: 'inactive' as const,
-      createdAt: randomDate(380),
-      updatedAt: randomDate(120),
-      notes: 'Paused services this year.'
-    }
+  const transactions = [
+    { id: 'tx_demo_income_1', date: currentMonthPast(8), name: 'Pmt: Jimmy Wilson', category: 'Sales / Services', amount: 6850, type: 'income' as const, notes: 'Payment for INV-0101', jobId: 'job_demo_1' },
+    { id: 'tx_demo_income_2', date: currentMonthPast(5), name: 'Pmt: Sophia Stanley', category: 'Consulting / Freelance', amount: 2400, type: 'income' as const, notes: 'Payment for INV-0104', jobId: 'job_demo_4' },
+    { id: 'tx_demo_income_4', date: currentMonthPast(2), name: 'On-site consultation', category: 'Consulting / Freelance', amount: 600, type: 'income' as const, notes: 'Direct service payment' },
+    { id: 'tx_demo_income_3', date: monthDate(-1, 17), name: 'Pmt: Jimmy Wilson', category: 'Sales / Services', amount: 4200, type: 'income' as const, notes: 'Payment for INV-0106' },
+    { id: 'tx_demo_income_5', date: monthDate(-1, 8), name: 'Small repair call', category: 'Sales / Services', amount: 1600, type: 'income' as const, notes: 'Direct service payment' },
+
+    { id: 'tx_demo_exp_1', date: expenseDates.hardware, name: 'Hardware materials — Ace Hardware', category: 'Equipment', amount: 1450, type: 'expense' as const, notes: 'Bathroom fixtures and installation materials', receiptId: 'rcpt_demo_4', reviewedAt: reviewedAt(expenseDates.hardware), jobId: 'job_demo_1' },
+    { id: 'tx_demo_exp_2', date: expenseDates.fuel, name: 'Fuel — Shell', category: 'Travel', amount: 80, type: 'expense' as const, notes: 'Travel to renovation job site', receiptId: 'rcpt_demo_2', reviewedAt: reviewedAt(expenseDates.fuel), jobId: 'job_demo_1' },
+    { id: 'tx_demo_exp_3', date: expenseDates.subcontractor, name: 'Subcontractor help', category: 'Contractors', amount: 780, type: 'expense' as const, notes: 'Demo: receipt still needs to be attached', reviewedAt: reviewedAt(expenseDates.subcontractor), jobId: 'job_demo_1' },
+    { id: 'tx_demo_exp_4', date: expenseDates.meal, name: 'Business meal — Corner Restaurant', category: 'Meals (Business)', amount: 92.80, type: 'expense' as const, notes: 'Client project lunch', receiptId: 'rcpt_demo_3', reviewedAt: reviewedAt(expenseDates.meal), jobId: 'job_demo_2' },
+    { id: 'tx_demo_exp_5', date: expenseDates.office, name: 'Office supplies — Office Depot', category: 'Office Supplies', amount: 146.25, type: 'expense' as const, notes: 'Project organization supplies', receiptId: 'rcpt_demo_1', reviewedAt: reviewedAt(expenseDates.office), jobId: 'job_demo_2' },
+    { id: 'tx_demo_exp_6', date: expenseDates.refreshments, name: 'Groceries / client refreshments — Market Fresh', category: 'Meals (Business)', amount: 64.50, type: 'expense' as const, notes: 'Refreshments for scheduled lawn-care work', receiptId: 'rcpt_demo_5', reviewedAt: reviewedAt(expenseDates.refreshments), jobId: 'job_demo_3' },
+    { id: 'tx_demo_exp_7', date: expenseDates.drillBits, name: 'Replacement drill bits', category: 'Equipment', amount: 118, type: 'expense' as const, notes: 'Demo: new expense awaiting review and receipt', jobId: 'job_demo_2' },
+
+    // Prior-year history keeps All Time and year selectors useful without distorting current Tax Prep Readiness.
+    { id: 'tx_demo_hist_1', date: yearDate(previousYear, 10, 18), name: 'Exterior repair project', category: 'Sales / Services', amount: 5200, type: 'income' as const, notes: 'Prior-year demo history' },
+    { id: 'tx_demo_hist_2', date: yearDate(previousYear, 8, 7), name: 'Maintenance contract', category: 'Sales / Services', amount: 3600, type: 'income' as const, notes: 'Prior-year demo history' },
+    { id: 'tx_demo_hist_3', date: yearDate(previousYear, 5, 21), name: 'Design consultation', category: 'Consulting / Freelance', amount: 2800, type: 'income' as const, notes: 'Prior-year demo history' },
+    { id: 'tx_demo_hist_4', date: yearDate(previousYear, 2, 12), name: 'Service call', category: 'Sales / Services', amount: 1900, type: 'income' as const, notes: 'Prior-year demo history' },
+    { id: 'tx_demo_hist_5', date: yearDate(previousYear, 10, 20), name: 'Prior-year materials', category: 'Equipment', amount: 980, type: 'expense' as const, notes: 'Prior-year demo history' },
+    { id: 'tx_demo_hist_6', date: yearDate(previousYear, 8, 9), name: 'Business insurance', category: 'Insurance', amount: 640, type: 'expense' as const, notes: 'Prior-year demo history' },
+    { id: 'tx_demo_hist_7', date: yearDate(previousYear, 5, 23), name: 'Software subscriptions', category: 'Software / SaaS', amount: 310, type: 'expense' as const, notes: 'Prior-year demo history' },
+    { id: 'tx_demo_hist_8', date: yearDate(previousYear, 2, 13), name: 'Advertising', category: 'Advertising / Marketing', amount: 420, type: 'expense' as const, notes: 'Prior-year demo history' },
+  ].sort((a, b) => b.date.localeCompare(a.date));
+
+  const mileageTrips = [
+    { id: 'mi_demo_1', date: addDays(-19), miles: 42.3, purpose: 'Initial site visit', client: 'Jimmy Wilson', jobId: 'job_demo_1', notes: 'Bathroom renovation walkthrough' },
+    { id: 'mi_demo_2', date: addDays(-12), miles: 18.1, purpose: 'Materials pickup', client: 'Jimmy Wilson', jobId: 'job_demo_1', notes: 'Fixture pickup' },
+    { id: 'mi_demo_3', date: addDays(-6), miles: 24.2, purpose: 'Job-site work', client: 'Jimmy Wilson', jobId: 'job_demo_1', notes: 'Installation visit' },
+    { id: 'mi_demo_4', date: addDays(-10), miles: 22.5, purpose: 'Office site visit', client: 'Maria Chen', jobId: 'job_demo_2', notes: 'Hardware measurements' },
+    { id: 'mi_demo_5', date: addDays(-3), miles: 18.7, purpose: 'Office installation', client: 'Maria Chen', jobId: 'job_demo_2', notes: 'Finish work' },
+    { id: 'mi_demo_6', date: addDays(-4), miles: 12.4, purpose: 'Lawn-care visit', client: 'Kenny Barria', jobId: 'job_demo_3', notes: 'Scheduled service' },
+    { id: 'mi_demo_7', date: addDays(-24), miles: 26.8, purpose: 'Final client presentation', client: 'Sophia Stanley', jobId: 'job_demo_4', notes: 'Brand guide delivery' },
+    { id: 'mi_demo_8', date: addDays(-16), miles: 8.0, purpose: '', client: '', notes: 'Demo: purpose still needs to be added' },
   ];
 
-  const demoEstimates = [
-    {
-      id: 'est_demo_1',
-      number: 'EST-0007',
-      clientId: 'cli_demo_3',
-      client: 'Jimmy Wilson',
-      clientCompany: 'Wilson Renovations',
-      clientEmail: 'jimmy@example.com',
-      clientAddress: '5 Harbor Rd, San Diego, CA',
-      amount: 0,
-      category: 'Other Service',
-      description: 'Bathroom repair + fixture replacement',
-      date: randomDate(5),
-      validUntil: randomDate(-9),
-      status: 'accepted' as const,
-      items: [
-        { id: generateId('eitem'), description: 'Labor (3 hrs)', quantity: 3, rate: 95 },
-        { id: generateId('eitem'), description: 'Fixture & materials', quantity: 1, rate: 180 }
-      ],
-      subtotal: 465,
-      discount: 0,
-      taxRate: 8,
-      shipping: 0,
-      poNumber: 'PO-1027',
-      notes: 'Accepted - click Convert to Invoice to see workflow.',
-      terms: '50% deposit to schedule work. Balance due on completion.'
-    },
-    {
-      id: 'est_demo_2',
-      number: 'EST-0008',
-      clientId: 'cli_demo_1',
-      client: 'Kenny Barria',
-      clientCompany: 'KB Landscaping',
-      clientEmail: 'kenny@example.com',
-      clientAddress: '12 Palm St, Miami, FL',
-      amount: 0,
-      category: 'Other Service',
-      description: 'Monthly lawn maintenance (4 visits)',
-      date: randomDate(2),
-      validUntil: randomDate(-12),
-      status: 'sent' as const,
-      items: [
-        { id: generateId('eitem'), description: 'Lawn mow + edge (per visit)', quantity: 4, rate: 85 },
-        { id: generateId('eitem'), description: 'Hedge trim (one time)', quantity: 1, rate: 120 }
-      ],
-      subtotal: 460,
-      discount: 20,
-      taxRate: 0,
-      shipping: 0,
-      notes: 'Sent - follow up in 3 days if no response.',
-      terms: 'Net 7 days after acceptance.'
-    },
-    {
-      id: 'est_demo_3',
-      number: 'EST-0009',
-      clientId: 'cli_demo_2',
-      client: 'Sophia Stanley',
-      clientCompany: 'Stanley Studio',
-      clientEmail: 'sophia@example.com',
-      clientAddress: '88 Market Ave, Austin, TX',
-      amount: 0,
-      category: 'Other Service',
-      description: 'Brand kit design (logo, colors, typography)',
-      date: randomDate(15),
-      validUntil: randomDate(-3),
-      status: 'draft' as const,
-      items: [
-        { id: generateId('eitem'), description: 'Discovery call + moodboard', quantity: 1, rate: 250 },
-        { id: generateId('eitem'), description: 'Logo concepts (3)', quantity: 1, rate: 900 },
-        { id: generateId('eitem'), description: 'Final files + brand guide', quantity: 1, rate: 650 }
-      ],
-      subtotal: 1800,
-      discount: 0,
-      taxRate: 0,
-      shipping: 0,
-      notes: 'Draft - not yet sent.',
-      terms: '50% upfront. Remaining due before delivery.'
-    },
-    {
-      id: 'est_demo_4',
-      number: 'EST-0010',
-      clientId: 'cli_demo_4',
-      client: 'Maria Chen',
-      clientCompany: 'Chen Wellness',
-      clientEmail: 'maria@chenwellness.com',
-      clientAddress: '22 Sunset Blvd, Los Angeles, CA',
-      amount: 0,
-      category: 'Other Service',
-      description: 'Monthly bookkeeping + reporting',
-      date: randomDate(18),
-      validUntil: randomDate(-2),
-      status: 'accepted' as const,
-      items: [
-        { id: generateId('eitem'), description: 'Monthly bookkeeping', quantity: 1, rate: 450 },
-        { id: generateId('eitem'), description: 'Quarterly review call', quantity: 1, rate: 150 }
-      ],
-      subtotal: 600,
-      discount: 0,
-      taxRate: 0,
-      shipping: 0,
-      notes: 'Accepted - good example for recurring monthly service.',
-      terms: 'Net 15 after invoicing.'
-    },
-    {
-      id: 'est_demo_5',
-      number: 'EST-0011',
-      clientId: 'cli_demo_6',
-      client: 'Rich Richards',
-      clientCompany: 'Richards Consulting',
-      clientEmail: 'rich@example.com',
-      clientAddress: '101 King St, New York, NY',
-      amount: 0,
-      category: 'Other Service',
-      description: 'Quarterly strategy workshop (1 day)',
-      date: randomDate(40),
-      validUntil: randomDate(20),
-      status: 'declined' as const,
-      items: [
-        { id: generateId('eitem'), description: 'On-site workshop', quantity: 1, rate: 2500 },
-        { id: generateId('eitem'), description: 'Follow-up report', quantity: 1, rate: 600 }
-      ],
-      subtotal: 3100,
-      discount: 100,
-      taxRate: 0,
-      shipping: 0,
-      notes: 'Declined - budget shifted.',
-      terms: 'Net 14 upon acceptance.'
-    },
-    {
-      id: 'est_demo_6',
-      number: 'EST-0012',
-      clientId: 'cli_demo_5',
-      client: 'Omar Hassan',
-      clientCompany: 'OH Auto Detailing',
-      clientEmail: 'omar@ohdetailing.com',
-      clientAddress: '9 River Dr, Tampa, FL',
-      amount: 0,
-      category: 'Other Service',
-      description: 'Full detail package (2 vehicles)',
-      date: randomDate(1),
-      validUntil: randomDate(-6),
-      status: 'sent' as const,
-      items: [
-        { id: generateId('eitem'), description: 'Sedan full detail', quantity: 1, rate: 220 },
-        { id: generateId('eitem'), description: 'SUV full detail', quantity: 1, rate: 260 }
-      ],
-      subtotal: 480,
-      discount: 0,
-      taxRate: 0,
-      shipping: 0,
-      notes: 'Sent today - shows quick mobile estimate use.',
-      terms: 'Pay on completion after acceptance.'
-    }
-  ].map((e: any) => ({ ...e, amount: computeTotal(e.subtotal || 0, e.discount || 0, e.taxRate || 0, e.shipping || 0) }));
+  const receipts = [
+    { id: 'rcpt_demo_1', date: expenseDates.office, imageKey: 'rcpt_demo_1', mimeType: 'image/png', note: 'Office supplies — Office Depot' },
+    { id: 'rcpt_demo_2', date: expenseDates.fuel, imageKey: 'rcpt_demo_2', mimeType: 'image/png', note: 'Fuel — Shell' },
+    { id: 'rcpt_demo_3', date: expenseDates.meal, imageKey: 'rcpt_demo_3', mimeType: 'image/png', note: 'Business meal — Corner Restaurant' },
+    { id: 'rcpt_demo_4', date: expenseDates.hardware, imageKey: 'rcpt_demo_4', mimeType: 'image/png', note: 'Hardware materials — Ace Hardware' },
+    { id: 'rcpt_demo_5', date: expenseDates.refreshments, imageKey: 'rcpt_demo_5', mimeType: 'image/png', note: 'Groceries / client refreshments — Market Fresh' },
+  ];
 
-  // Attach demo clientId to many invoices, and add one invoice converted from an estimate
-  const clientIdByName = Object.fromEntries(demoClients.map((c: any) => [c.name, c.id]));
-  const enhancedInvoices = invoices.map((inv: any) => {
-    const cid = clientIdByName[inv.client] || clientIdByName[inv.clientCompany];
-    return cid ? { ...inv, clientId: cid } : inv;
-  });
-
-  const convertedInvoiceAmount = computeTotal(465, 0, 8, 0);
-  enhancedInvoices.unshift({
-    id: generateId('inv'),
-    number: 'INV-0101',
-    clientId: 'cli_demo_3',
-    client: 'Jimmy Wilson',
-    clientCompany: 'Wilson Renovations',
-    clientEmail: 'jimmy@example.com',
-    clientAddress: '5 Harbor Rd, San Diego, CA',
-    amount: convertedInvoiceAmount,
-    category: 'Other Service',
-    description: 'Converted from EST-0007',
-    date: randomDate(3),
-    due: randomDate(-11),
-    status: 'unpaid' as const,
-    items: [
-      { id: generateId('item'), description: 'Labor (3 hrs)', quantity: 3, rate: 95 },
-      { id: generateId('item'), description: 'Fixture & materials', quantity: 1, rate: 180 }
-    ],
-    subtotal: 465,
-    discount: 0,
-    taxRate: 8,
-    shipping: 0,
-    notes: 'Example invoice created from an accepted estimate.',
-    terms: 'Net 14',
-    poNumber: 'PO-1027'
-  });
-
-  // Combine and sort transactions
-  const allTransactions = [...incomeTransactions, ...expenseTransactions]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const taxPayments = [
+    { id: 'tax_demo_1', date: yearDate(currentYear, 0, 15), amount: 950, type: 'Estimated' as const, note: 'Q4 estimated tax payment' },
+    { id: 'tax_demo_2', date: yearDate(currentYear, 3, 15), amount: 1150, type: 'Estimated' as const, note: 'Q1 estimated tax payment' },
+    { id: 'tax_demo_3', date: yearDate(currentYear, 5, 15), amount: 1300, type: 'Estimated' as const, note: 'Q2 estimated tax payment' },
+    { id: 'tax_demo_4', date: yearDate(previousYear, 11, 20), amount: 2400, type: 'Annual' as const, note: 'Prior-year annual tax payment' },
+  ].sort((a, b) => b.date.localeCompare(a.date));
 
   return {
     settings: {
-      businessName: "Acme Creative Studio",
-      ownerName: "Alex Rivera",
-      businessAddress: "123 Innovation Blvd, Tech City, CA 90210",
-      businessEmail: "hello@acmecreative.com",
-      businessPhone: "(555) 123-4567",
-      businessWebsite: "www.acmecreative.com",
+      businessName: 'Rivera Home & Business Services',
+      ownerName: 'Alex Rivera',
+      businessAddress: '214 Cedar Avenue, Austin, TX 78701',
+      businessEmail: 'alex@riveraservices.example',
+      businessPhone: '(512) 555-0148',
+      businessWebsite: 'riveraservices.example',
       payPrefs: DEFAULT_PAY_PREFS,
-      taxRate: 15,
-      stateTaxRate: 5,
+      taxRate: 18,
+      stateTaxRate: 0,
       taxEstimationMethod: 'custom' as const,
       filingStatus: 'single' as const,
-      currencySymbol: "$",
-      defaultInvoiceTerms: "Net 15. Please make checks payable to Acme Creative Studio.",
-      defaultInvoiceNotes: "Thank you for your business!"
+      currencySymbol: '$',
+      defaultInvoiceTerms: 'Net 14. Thank you for your business.',
+      defaultInvoiceNotes: 'Please contact us with any questions.',
+      requireReceiptOverThreshold: false,
+      receiptThreshold: 0,
+      receiptReminderEnabled: true,
+      mileageRateCents: 72.5,
+      companyEquityEnabled: true,
+      monthlyRevenueGoal: 12000,
+      monthlyProfitGoal: 8500,
     },
-    transactions: allTransactions,
-    clients: demoClients,
-    estimates: demoEstimates,
-    invoices: enhancedInvoices.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-    taxPayments: taxPayments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    transactions,
+    clients,
+    jobs,
+    estimates,
+    invoices: invoices.sort((a, b) => b.date.localeCompare(a.date)),
+    mileageTrips,
+    receipts,
+    taxPayments,
   };
 };

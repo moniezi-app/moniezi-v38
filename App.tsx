@@ -576,9 +576,6 @@ const Logo: React.FC<{ size?: 'sm' | 'lg', onClick?: () => void, forceDarkText?:
           <span className="font-bold">Moni</span>
           <span className={`font-bold ${onDarkSurface ? 'bg-gradient-to-r bg-clip-text text-transparent from-blue-400 to-indigo-300' : forceDarkText ? 'text-blue-700' : 'bg-gradient-to-r bg-clip-text text-transparent from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400'}`}>ezi</span>
         </div>
-        <div className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.18em] sm:tracking-[0.22em] ${onDarkSurface ? '' : 'text-slate-600 dark:text-slate-300'} mt-0.5 sm:mt-1 pl-0.5`} style={{ whiteSpace: 'nowrap', color: onDarkSurface ? '#cbd5e1' : undefined }}>
-          Pro Finance
-        </div>
        
             </div>
     </div>
@@ -800,8 +797,8 @@ class PageErrorBoundary extends React.Component<
   }
 }
 
-const CUSTOMER_VERSION = "38.0.15"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
-setReportAppVersion("38.0.15");
+const CUSTOMER_VERSION = "38.0.16"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
+setReportAppVersion("38.0.16");
 const LICENSE_STORAGE_KEY = `moniezi_license_v1_${STORAGE_NAMESPACE}`;
 const DEVICE_ID_STORAGE_KEY = `moniezi_device_id_v1_${STORAGE_NAMESPACE}`;
 const LICENSE_TOKEN_SALT = "moniezi_v35_offline_binding";
@@ -3386,542 +3383,34 @@ export default function App() {
   const handleSeedDemoData = async () => {
     const demo = getFreshDemoData();
     setIsDemoData(true);
-    // --- Demo Clients + Estimates (V7) ---
-    const toISO = (d: Date) => d.toISOString().split('T')[0];
-    const today = new Date();
-    const daysAgo = (n: number) => new Date(today.getTime() - n * 24 * 60 * 60 * 1000);
-    const daysFromNow = (n: number) => new Date(today.getTime() + n * 24 * 60 * 60 * 1000);
 
-    const demoClients: Client[] = [
-      {
-        id: 'cli_demo_1',
-        name: 'Kenny Barria',
-        company: 'KB Landscaping',
-        email: 'kenny@kblandscaping.com',
-        phone: '(305) 555-0198',
-        address: '12 Palm St, Miami, FL 33101',
-        status: 'lead',
-        createdAt: toISO(daysAgo(45)),
-        updatedAt: toISO(daysAgo(2)),
-      },
-      {
-        id: 'cli_demo_2',
-        name: 'Sophia Stanley',
-        company: 'Stanley Studio',
-        email: 'sophia@stanleystudio.co',
-        phone: '(512) 555-0234',
-        address: '88 Market Ave, Suite 200, Austin, TX 78701',
-        status: 'lead',
-        createdAt: toISO(daysAgo(30)),
-        updatedAt: toISO(daysAgo(3)),
-      },
-      {
-        id: 'cli_demo_3',
-        name: 'Jimmy Wilson',
-        company: 'Wilson Renovations',
-        email: 'jimmy@wilsonreno.com',
-        phone: '(619) 555-0142',
-        address: '5 Harbor Rd, San Diego, CA 92101',
-        status: 'client',
-        createdAt: toISO(daysAgo(120)),
-        updatedAt: toISO(daysAgo(1)),
-      },
-      {
-        id: 'cli_demo_4',
-        name: 'Rich Richards',
-        company: 'Richards Consulting',
-        email: 'rich@richardsconsulting.com',
-        phone: '(212) 555-0187',
-        address: '101 King St, Floor 15, New York, NY 10005',
-        status: 'inactive',
-        createdAt: toISO(daysAgo(300)),
-        updatedAt: toISO(daysAgo(45)),
-      },
-      {
-        id: 'cli_demo_5',
-        name: 'Maria Chen',
-        company: 'Chen Tech Solutions',
-        email: 'maria@chentech.io',
-        phone: '(415) 555-0321',
-        address: '500 Tech Blvd, San Francisco, CA 94107',
-        status: 'lead',
-        createdAt: toISO(daysAgo(5)),
-        updatedAt: toISO(daysAgo(1)),
-        notes: 'Referred by Jimmy Wilson. Interested in e-commerce site.',
-      },
-    ];
+    // v38.0.16 uses one authoritative demo object. Nothing is generated or
+    // appended here, so the first-run counts always match the records loaded.
+    setTransactions([...(demo.transactions || [])] as Transaction[]);
+    setInvoices([...(demo.invoices || [])] as Invoice[]);
+    setEstimates([...(demo.estimates || [])] as Estimate[]);
+    setClients([...(demo.clients || [])] as Client[]);
+    setJobs(normalizeJobs(demo.jobs || []));
+    setMileageTrips([...(demo.mileageTrips || [])] as MileageTrip[]);
+    setReceipts([...(demo.receipts || [])] as ReceiptType[]);
+    setSettings({ ...demo.settings } as UserSettings);
+    setTaxPayments([...(demo.taxPayments || [])] as TaxPayment[]);
 
-    const demoEstimates: Estimate[] = [
-      {
-        id: 'est_demo_1',
-        number: 'EST-2501-0001',
-        clientId: 'cli_demo_3',
-        client: 'Jimmy Wilson',
-        clientCompany: 'Wilson Renovations',
-        clientEmail: 'jimmy@wilsonreno.com',
-        clientPhone: '(619) 555-0142',
-        clientAddress: '5 Harbor Rd, San Diego, CA 92101',
-        projectTitle: 'Master Bathroom Complete Renovation',
-        scopeOfWork: `PROJECT OVERVIEW
-Full renovation of the master bathroom (approx. 85 sq ft) including all fixtures, plumbing, and finishes.
-
-DEMOLITION & PREP
-• Remove and dispose of existing vanity, toilet, and all fixtures
-• Disconnect and cap existing plumbing lines
-• Protect adjacent flooring and walls during work
-
-PLUMBING WORK
-• Install new water supply lines for vanity and toilet
-• Relocate drain for new vanity position
-• Install new shut-off valves and pressure test
-
-FIXTURE INSTALLATION
-• 36" floating vanity with undermount sink
-• Kohler Highline comfort height toilet
-• Single-handle widespread faucet in brushed nickel
-
-FINISHING
-• Caulk all fixtures with mildew-resistant silicone
-• Install new toilet paper holder and towel bar
-• Final walkthrough and 1-year workmanship warranty`,
-        timeline: '5-7 business days',
-        exclusions: `• Tile work / flooring
-• Electrical modifications
-• Drywall repair beyond fixture areas
-• Permit fees
-• Painting or wall finishing`,
-        acceptanceTerms: 'Reply "APPROVED" to this email or sign and return.',
-        category: 'Service',
-        description: 'Bathroom repair + fixture replacement',
-        date: toISO(daysAgo(12)),
-        validUntil: toISO(daysFromNow(2)),
-        status: 'accepted',
-        sentAt: toISO(daysAgo(10)),
-        followUpDate: toISO(daysAgo(3)),
-        followUpCount: 1,
-        lastFollowUp: toISO(daysAgo(5)),
-        items: [
-          { id: 'e1_i1', description: 'Labor - Demolition (4 hrs @ $95/hr)', quantity: 4, rate: 95 },
-          { id: 'e1_i2', description: 'Labor - Plumbing rough-in (6 hrs)', quantity: 6, rate: 95 },
-          { id: 'e1_i3', description: 'Labor - Fixture installation (4 hrs)', quantity: 4, rate: 95 },
-          { id: 'e1_i4', description: '36" Floating Vanity w/ Undermount Sink', quantity: 1, rate: 680 },
-          { id: 'e1_i5', description: 'Kohler Highline Comfort Height Toilet', quantity: 1, rate: 320 },
-          { id: 'e1_i6', description: 'Widespread Faucet (Brushed Nickel)', quantity: 1, rate: 185 },
-          { id: 'e1_i7', description: 'Supply lines, valves, hardware kit', quantity: 1, rate: 95 },
-        ],
-        subtotal: 2610,
-        discount: 150,
-        taxRate: 8,
-        shipping: 0,
-        amount: Math.round((2460 + 2460 * 0.08) * 100) / 100,
-        notes: 'Thank you for choosing Wilson Renovations! All materials include manufacturer warranty.',
-        terms: `PAYMENT: 50% deposit to schedule, 50% upon completion.
-CHANGES: Work outside scope quoted separately.`,
-        poNumber: 'WR-2025-1027',
-      },
-      {
-        id: 'est_demo_2',
-        number: 'EST-2501-0002',
-        clientId: 'cli_demo_1',
-        client: 'Kenny Barria',
-        clientCompany: 'KB Landscaping',
-        clientEmail: 'kenny@kblandscaping.com',
-        clientPhone: '(305) 555-0198',
-        clientAddress: '12 Palm St, Miami, FL 33101',
-        projectTitle: 'Premium Monthly Lawn Care Package',
-        scopeOfWork: `WEEKLY SERVICES (Every Thursday)
-• Complete lawn mowing with professional equipment
-• Precise edging along walkways and driveways
-• String trimming around trees and fences
-• Blowing of all clippings from hard surfaces
-
-MONTHLY SERVICES
-• Hedge and shrub trimming (up to 6ft)
-• Bed edging and definition
-• Weed control treatment
-
-INCLUDED WITH EVERY VISIT
-• Green waste removal and disposal
-• Visual inspection for pest/disease
-• Photo documentation via app`,
-        timeline: 'Ongoing service - Monthly billing',
-        exclusions: `• Tree trimming above 6ft
-• Major landscaping changes
-• Pest control treatments
-• Fertilization (add-on available)
-• Irrigation repairs`,
-        acceptanceTerms: 'Sign below to begin service within 5 business days.',
-        category: 'Service',
-        description: 'Monthly lawn maintenance (4 visits)',
-        date: toISO(daysAgo(8)),
-        validUntil: toISO(daysFromNow(6)),
-        status: 'sent',
-        sentAt: toISO(daysAgo(7)),
-        followUpDate: toISO(daysAgo(0)),
-        followUpCount: 0,
-        items: [
-          { id: 'e2_i1', description: 'Weekly mowing, edging & blowing (4 visits)', quantity: 4, rate: 85 },
-          { id: 'e2_i2', description: 'Monthly hedge & shrub trimming', quantity: 1, rate: 120 },
-          { id: 'e2_i3', description: 'Weed control treatment', quantity: 1, rate: 65 },
-          { id: 'e2_i4', description: 'Irrigation inspection', quantity: 1, rate: 45 },
-        ],
-        subtotal: 570,
-        discount: 70,
-        taxRate: 0,
-        shipping: 0,
-        amount: 500,
-        notes: 'FIRST MONTH BONUS: Complimentary irrigation audit ($75 value). Service day: Thursdays.',
-        terms: `BILLING: Monthly on the 1st, due within 7 days.
-CANCEL: Anytime with 7 days notice.`,
-      },
-      {
-        id: 'est_demo_3',
-        number: 'EST-2501-0003',
-        clientId: 'cli_demo_2',
-        client: 'Sophia Stanley',
-        clientCompany: 'Stanley Studio',
-        clientEmail: 'sophia@stanleystudio.co',
-        clientPhone: '(512) 555-0234',
-        clientAddress: '88 Market Ave, Suite 200\nAustin, TX 78701',
-        projectTitle: 'Complete Brand Identity System',
-        scopeOfWork: `PHASE 1: DISCOVERY (Week 1)
-• 90-minute brand discovery session
-• Competitor analysis (5 competitors)
-• Target audience and persona development
-• Creative brief documentation
-
-PHASE 2: VISUAL DIRECTION (Week 1-2)
-• 2 distinct moodboards
-• Feedback session and direction selection
-
-PHASE 3: LOGO DESIGN (Week 2-3)
-• 3 unique logo concepts
-• 2 rounds of revisions
-• Final logo in all variations
-
-PHASE 4: BRAND SYSTEM (Week 3)
-• Color palette with hex/RGB/CMYK
-• Typography system (2 fonts)
-• Brand guidelines PDF (20+ pages)
-• All final files (AI, EPS, SVG, PNG)`,
-        timeline: '3 weeks from deposit to delivery',
-        exclusions: `• Website design
-• Business cards / stationery
-• Social media templates
-• Photography / video
-• Copywriting`,
-        acceptanceTerms: 'Reply "APPROVED" then pay 50% deposit to begin.',
-        category: 'Design',
-        description: 'Brand kit design (logo, colors, typography)',
-        date: toISO(daysAgo(3)),
-        validUntil: toISO(daysFromNow(11)),
-        status: 'draft',
-        items: [
-          { id: 'e3_i1', description: 'Brand Discovery & Strategy', quantity: 1, rate: 450 },
-          { id: 'e3_i2', description: 'Visual Direction & Moodboards', quantity: 1, rate: 350 },
-          { id: 'e3_i3', description: 'Logo Design (3 concepts)', quantity: 1, rate: 1200 },
-          { id: 'e3_i4', description: 'Revision Rounds (2 included)', quantity: 2, rate: 150 },
-          { id: 'e3_i5', description: 'Brand System & Guidelines', quantity: 1, rate: 600 },
-        ],
-        subtotal: 2900,
-        discount: 0,
-        taxRate: 0,
-        shipping: 0,
-        amount: 2900,
-        notes: 'Excited to work on Stanley Studio\'s brand! Jimmy Wilson referral discount applied.',
-        terms: `PAYMENT: 50% deposit, 50% before delivery.
-REVISIONS: 2 rounds included, additional at $75/hr.`,
-      },
-      {
-        id: 'est_demo_4',
-        number: 'EST-2501-0004',
-        clientId: 'cli_demo_4',
-        client: 'Rich Richards',
-        clientCompany: 'Richards Consulting',
-        clientEmail: 'rich@richardsconsulting.com',
-        clientPhone: '(212) 555-0187',
-        clientAddress: '101 King St, Floor 15\nNew York, NY 10005',
-        projectTitle: 'Executive Leadership Strategy Workshop',
-        scopeOfWork: `PRE-WORKSHOP (2 weeks before)
-• Stakeholder interviews (3 x 45-min)
-• Review strategic documents
-• Custom workshop materials
-• Pre-workshop survey
-
-WORKSHOP DAY (8 hours)
-Morning: Vision & SWOT analysis
-Afternoon: Competitive positioning & 90-day planning
-
-DELIVERABLES (Within 2 weeks)
-• Executive Summary Report (10-15 pages)
-• Strategic Roadmap (1-page visual)
-• Prioritized initiatives with metrics
-• 60-minute follow-up call`,
-        timeline: '1-day workshop + 2 weeks deliverables',
-        exclusions: `• Implementation consulting
-• Ongoing advisory
-• Travel outside NYC metro
-• Catering / venue`,
-        acceptanceTerms: 'Confirm date and pay deposit to book.',
-        category: 'Consulting',
-        description: 'Quarterly strategy workshop (1 day)',
-        date: toISO(daysAgo(45)),
-        validUntil: toISO(daysAgo(15)),
-        status: 'declined',
-        sentAt: toISO(daysAgo(44)),
-        followUpDate: toISO(daysAgo(37)),
-        followUpCount: 2,
-        lastFollowUp: toISO(daysAgo(30)),
-        items: [
-          { id: 'e4_i1', description: 'Stakeholder Interviews (3)', quantity: 3, rate: 350 },
-          { id: 'e4_i2', description: 'Workshop Prep & Materials', quantity: 1, rate: 800 },
-          { id: 'e4_i3', description: 'Full-Day Facilitation (8 hrs)', quantity: 8, rate: 400 },
-          { id: 'e4_i4', description: 'Report & Roadmap', quantity: 1, rate: 1500 },
-          { id: 'e4_i5', description: 'Follow-Up Session', quantity: 1, rate: 450 },
-        ],
-        subtotal: 7000,
-        discount: 500,
-        taxRate: 0,
-        shipping: 0,
-        amount: 6500,
-        notes: 'Client declined - budget reallocated. Will follow up Q2.',
-        terms: `PAYMENT: 40% deposit, 60% before workshop.
-CANCEL: 14+ days = full refund minus $500.`,
-      },
-      {
-        id: 'est_demo_5',
-        number: 'EST-2501-0005',
-        clientId: 'cli_demo_5',
-        client: 'Maria Chen',
-        clientCompany: 'Chen Tech Solutions',
-        clientEmail: 'maria@chentech.io',
-        clientPhone: '(415) 555-0321',
-        clientAddress: '500 Tech Blvd\nSan Francisco, CA 94107',
-        projectTitle: 'Custom E-Commerce Platform',
-        scopeOfWork: `PHASE 1: DISCOVERY (Week 1-2)
-• Requirements gathering & kickoff
-• User journey mapping
-• Technical architecture planning
-
-PHASE 2: DESIGN (Week 3-5)
-• Mobile-first wireframes
-• High-fidelity mockups (Figma)
-• Interactive prototype
-• 2 rounds of revisions
-
-PHASE 3: DEVELOPMENT (Week 6-10)
-• Custom Shopify Plus theme
-• Product catalog (100 SKUs)
-• Payment integration (Stripe + PayPal)
-• Shipping calculator
-• Analytics setup (GA4 + Meta)
-
-PHASE 4: LAUNCH (Week 11-12)
-• QA testing (cross-browser + mobile)
-• Performance optimization
-• Admin training (2 hrs, recorded)
-• 30-day post-launch support`,
-        timeline: '10-12 weeks from kickoff',
-        exclusions: `• Product photography
-• Copywriting
-• Custom app development
-• Ongoing maintenance (after 30 days)
-• Marketing / ads setup`,
-        acceptanceTerms: 'Sign contract and pay 30% deposit to begin.',
-        category: 'Development',
-        description: 'E-commerce website (Shopify Plus)',
-        date: toISO(daysAgo(2)),
-        validUntil: toISO(daysFromNow(12)),
-        status: 'sent',
-        sentAt: toISO(daysAgo(1)),
-        followUpDate: toISO(daysFromNow(6)),
-        followUpCount: 0,
-        items: [
-          { id: 'e5_i1', description: 'Discovery & Planning', quantity: 1, rate: 2000 },
-          { id: 'e5_i2', description: 'UI/UX Design', quantity: 1, rate: 4500 },
-          { id: 'e5_i3', description: 'Shopify Development', quantity: 1, rate: 6500 },
-          { id: 'e5_i4', description: 'Integrations (Payment, Shipping, Analytics)', quantity: 1, rate: 2500 },
-          { id: 'e5_i5', description: 'QA & Performance', quantity: 1, rate: 1500 },
-          { id: 'e5_i6', description: 'Launch, Training & Support', quantity: 1, rate: 2000 },
-        ],
-        subtotal: 19000,
-        discount: 1500,
-        taxRate: 8.625,
-        shipping: 0,
-        amount: Math.round((17500 + 17500 * 0.08625) * 100) / 100,
-        notes: 'Jimmy Wilson referral - $1,500 discount applied. Excited to build this!',
-        terms: `PAYMENT: 30% start, 40% at design approval, 30% before launch.
-TIMELINE: Assumes 48-72hr feedback turnaround.`,
-      },
-    ];
-
-    // Keep original demo data, but add our V7 demo entities
-    
-    // --- Demo receipts + mileage + audit readiness examples ---
-    const currentYear = new Date().getFullYear();
-    const taxYearStr = String(currentYear);
-    const DEMO_RECEIPT_THRESHOLD = 100;
-
-    // Copy demo transactions so we can safely modify them.
-    const baseTx = ([...demo.transactions] as any[]).map(t => ({ ...t }));
-
-    // We seed 5 realistic receipt images and link them to 5 matching expenses (same date + same name),
-    // so new users can instantly understand "receipt ↔ expense" without confusion.
-    const currentYearExpenses = baseTx.filter(
-      (t: any) => t.type === "expense" && String(t.date || "").startsWith(taxYearStr)
-    );
-
-    const receiptTargets = currentYearExpenses.slice(0, 5);
-
-    // Create 5 demo receipts (stored in IndexedDB so preview/download works).
-    // The receipt metadata (date + note) is aligned to the linked expense.
-    const demoReceipts: ReceiptType[] = DEMO_RECEIPT_ASSETS.slice(0, 5).map((asset, i) => {
-      const tx = receiptTargets[i];
-      // Force a clean, easy-to-follow date spread in demo mode.
-      const forcedDate = toISO(daysAgo(9 + i * 4));
-      if (tx) {
-        tx.date = forcedDate;
-        tx.name = asset.note;
-        // Map the receipt type to an intuitive tax category
-        if (asset.note.toLowerCase().includes("fuel") || asset.note.toLowerCase().includes("shell")) tx.category = "Travel";
-        else if (asset.note.toLowerCase().includes("meal") || asset.note.toLowerCase().includes("restaurant")) tx.category = "Meals (Business)";
-        else if (asset.note.toLowerCase().includes("advert")) tx.category = "Advertising / Marketing";
-        else if (asset.note.toLowerCase().includes("materials") || asset.note.toLowerCase().includes("hardware")) tx.category = "Equipment";
-        else tx.category = "Office Supplies";
-
-        tx.receiptId = asset.id;
-
-        // Ensure these linked examples clearly meet the "receipt required" threshold
-        if (Number(tx.amount || 0) < DEMO_RECEIPT_THRESHOLD) {
-          tx.amount = DEMO_RECEIPT_THRESHOLD + (i * 17) + 12;
-        }
-      }
-
-      return {
-        id: asset.id,
-        date: tx?.date || forcedDate,
-        imageKey: asset.id,
-        mimeType: asset.mimeType,
-        note: asset.note,
-      };
-    });
-
-    // Any other current-year expenses should NOT have a receipt linked by default in demo mode.
-    // Also keep them under the receipt threshold to avoid creating extra "missing receipts" beyond our controlled example count.
-    currentYearExpenses.forEach((t: any) => {
-      const isTarget = receiptTargets.some(x => x?.id === t.id);
-      if (!isTarget) {
-        delete t.receiptId;
-        if (Number(t.amount || 0) >= DEMO_RECEIPT_THRESHOLD) {
-          t.amount = 45 + (Math.abs(String(t.id).split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % 35);
-        }
-      }
-    });
-
-    // Ensure receipts are available in the dropdown + Home thumbnails.
-    setReceipts(demoReceipts);
-
-    // Save demo receipt blobs into the receipt DB so thumbnails/preview/download work.
+    // Store the five bundled demo receipt images in IndexedDB so preview,
+    // download and Accountant Package exports work exactly like real receipts.
     try {
-      for (const asset of DEMO_RECEIPT_ASSETS.slice(0, 5)) {
+      for (const asset of DEMO_RECEIPT_ASSETS) {
         const { blob, mimeType } = await fetchDemoReceiptBlob(asset);
         await putReceiptBlob(asset.id, blob, mimeType || asset.mimeType);
       }
     } catch (e) {
-      console.warn("Failed to seed demo receipt blobs", e);
+      console.warn('Failed to seed demo receipt blobs', e);
     }
 
-    // Add 38 missing-receipt examples in the current tax year (so users see "Missing receipts: 38" in Tax Prep).
-    const missingCount = 38;
-    const missingReceiptTx: any[] = Array.from({ length: missingCount }).map((_, i) => {
-      const day = (i % 28) + 1;
-      const date = `${taxYearStr}-01-${String(day).padStart(2, "0")}`;
-      const cat = i % 3 === 0 ? "Travel" : i % 3 === 1 ? "Meals (Business)" : "Office Supplies";
-      return {
-        id: `tx_demo_missing_rcpt_${i + 1}`,
-        name: `Demo expense (receipt missing) #${i + 1}`,
-        amount: DEMO_RECEIPT_THRESHOLD + (i % 9) * 13,
-        category: cat,
-        date,
-        type: "expense" as const,
-        notes: "Demo: receipt not linked yet",
-      };
-    });
-
-    // Seed mileage trips so new users can try Mileage + exports immediately.
-const demoMileageTrips: MileageTrip[] = [
-      { id: "mi_demo_1", date: `${taxYearStr}-01-06`, miles: 12.4, purpose: "Client meeting", client: "Chen Tech Solutions", notes: "Downtown consult" },
-      { id: "mi_demo_2", date: `${taxYearStr}-01-12`, miles: 28.1, purpose: "Equipment pickup", client: "", notes: "Office supplies run" },
-      { id: "mi_demo_3", date: `${taxYearStr}-01-18`, miles: 7.6, purpose: "Bank / post office", client: "", notes: "" },
-      { id: "mi_demo_4", date: `${taxYearStr}-01-23`, miles: 41.3, purpose: "Client site visit", client: "Wilson Renovations", notes: "Scope walk-through" },
-      { id: "mi_demo_5", date: `${taxYearStr}-02-03`, miles: 16.2, purpose: "Networking event", client: "", notes: "" },
-      { id: "mi_demo_6", date: `${taxYearStr}-02-10`, miles: 33.8, purpose: "Vendor meeting", client: "", notes: "Printer / signage" },
-      { id: "mi_demo_7", date: `${taxYearStr}-02-15`, miles: 9.9, purpose: "Client follow-up", client: "Blue Harbor Realty", notes: "" },
-      { id: "mi_demo_8", date: `${taxYearStr}-02-19`, miles: 22.0, purpose: "Business errands", client: "", notes: "" },
-    ];
-    setMileageTrips(demoMileageTrips);
-
-        setTransactions([...(baseTx as Transaction[]), ...(missingReceiptTx as Transaction[])]);
-
-
-    // Fix demo invoices so line-item rates look realistic (avoid single huge rate == total).
-    const demoInvoicesFixed = (demo.invoices || []).map((inv: any) => {
-      const baseTotalRaw = (inv.subtotal ?? inv.amount ?? inv.total ?? 0);
-      const baseTotal = Number(baseTotalRaw);
-      const items = Array.isArray(inv.items) ? inv.items : [];
-      const hasSingleItem = items.length === 1;
-      const single = hasSingleItem ? items[0] : null;
-      const singleRate = single ? Number(single.rate || 0) : 0;
-      const looksUnrealistic = hasSingleItem && (singleRate >= 1000 || Math.abs(singleRate - baseTotal) < 0.01);
-
-      if (!Number.isFinite(baseTotal) || baseTotal <= 0 || !looksUnrealistic) return inv;
-
-      // Build a more realistic mix of service hours + admin + misc.
-      const serviceRate = 175;
-      const adminRate = 125;
-
-      let serviceHours = Math.max(2, Math.round((baseTotal * 0.65) / serviceRate));
-      let adminHours = Math.max(1, Math.round((baseTotal * 0.20) / adminRate));
-      let used = serviceHours * serviceRate + adminHours * adminRate;
-
-      let remaining = Math.max(0, +(baseTotal - used).toFixed(2));
-
-      // If rounding made remaining negative/too small, adjust service hours down.
-      while (remaining < 0 && serviceHours > 2) {
-        serviceHours -= 1;
-        used = serviceHours * serviceRate + adminHours * adminRate;
-        remaining = +(baseTotal - used).toFixed(2);
-      }
-
-      // Spread remaining across multiple units so rate ≠ amount.
-      const miscQty = remaining > 0 ? (remaining >= 500 ? 5 : remaining >= 200 ? 3 : 2) : 0;
-      const miscRate = miscQty > 0 ? +(remaining / miscQty).toFixed(2) : 0;
-
-      const newItems = [
-        { id: `${inv.id}_svc`, description: 'Professional services rendered (hours)', quantity: serviceHours, rate: serviceRate },
-        { id: `${inv.id}_adm`, description: 'Admin / coordination (hours)', quantity: adminHours, rate: adminRate },
-        ...(miscQty > 0 ? [{ id: `${inv.id}_misc`, description: 'Materials / misc', quantity: miscQty, rate: miscRate }] : []),
-      ];
-
-      return {
-        ...inv,
-        items: newItems,
-        subtotal: baseTotal,
-        amount: inv.amount ?? baseTotal,
-      };
-    });
-
-    setInvoices(demoInvoicesFixed as Invoice[]);
-
-    setClients(demoClients);
-    setJobs([]);
-    setEstimates(demoEstimates.map(e => {
-      const t = calcDocTotals(e.items as any, e.discount || 0, e.taxRate || 0, e.shipping || 0);
-      return { ...e, subtotal: t.subtotal, amount: t.total } as Estimate;
-    }));
-    setSettings({ ...demo.settings, requireReceiptOverThreshold: false, receiptThreshold: 0, receiptReminderEnabled: true, mileageRateCents: 72.5, companyEquityEnabled: true });
-    setTaxPayments([...(demo.taxPayments || [])] as TaxPayment[]);
-    setSeedSuccess(true); showToast("Demo data loaded successfully!", "success"); setCurrentPage(Page.Dashboard); setTimeout(() => setSeedSuccess(false), 2000);
+    setSeedSuccess(true);
+    showToast('Demo data loaded successfully!', 'success');
+    setCurrentPage(Page.Dashboard);
+    setTimeout(() => setSeedSuccess(false), 2000);
   };
 
   const handleClearData = () => setShowResetConfirm(true);
@@ -5136,7 +4625,7 @@ const demoMileageTrips: MileageTrip[] = [
   const previousGoalMonthLabel = previousGoalMonthDate.toLocaleDateString(undefined, { month: 'long' });
 
   type DailyEfficiencyAction = {
-    id: 'followup' | 'draft' | 'jobexpense' | 'mileage' | 'invoice' | 'expense' | 'job';
+    id: 'draft' | 'jobexpense' | 'mileage' | 'invoice' | 'expense' | 'job';
     recordId: string;
     title: string;
     detail: string;
@@ -5144,10 +4633,6 @@ const demoMileageTrips: MileageTrip[] = [
 
   const dailyEfficiencyActions = useMemo<DailyEfficiencyAction[]>(() => {
     const byDateDesc = <T extends { date?: string }>(items: T[]) => items.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
-    const overdue = invoices
-      .filter(invoice => invoice.status === 'unpaid' && getDaysOverdue(invoice.due) > 0)
-      .slice()
-      .sort((a, b) => getDaysOverdue(b.due) - getDaysOverdue(a.due))[0];
     const draftEstimate = byDateDesc(estimates.filter(estimate => estimate.status === 'draft'))[0];
     const activeJob = jobs.filter(job => job.status === 'active').slice().sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)))[0];
     const lastMileage = byDateDesc(mileageTrips)[0];
@@ -5156,7 +4641,6 @@ const demoMileageTrips: MileageTrip[] = [
     const lastJob = jobs.slice().sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)))[0];
     const actions: DailyEfficiencyAction[] = [];
 
-    if (overdue) actions.push({ id: 'followup', recordId: overdue.id, title: `Follow up ${overdue.client || 'overdue invoice'}`, detail: `${formatCurrency.format(overdue.amount)} overdue · open reminder tools` });
     if (draftEstimate) actions.push({ id: 'draft', recordId: draftEstimate.id, title: `Continue ${draftEstimate.number || 'draft estimate'}`, detail: draftEstimate.client ? `For ${draftEstimate.client}` : 'Finish and send the estimate' });
     if (activeJob) actions.push({ id: 'jobexpense', recordId: activeJob.id, title: `Add expense to ${activeJob.title}`, detail: 'Start an expense already linked to this job' });
     if (lastMileage) actions.push({ id: 'mileage', recordId: lastMileage.id, title: 'Repeat last mileage trip', detail: `${lastMileage.purpose || 'Business trip'} · ${Number(lastMileage.miles || 0).toLocaleString()} mi` });
@@ -5167,16 +4651,6 @@ const demoMileageTrips: MileageTrip[] = [
   }, [invoices, estimates, jobs, mileageTrips, transactions, formatCurrency]);
 
   const handleDailyEfficiencyAction = (action: DailyEfficiencyAction) => {
-    if (action.id === 'followup') {
-      const invoice = invoices.find(item => item.id === action.recordId);
-      if (!invoice) return;
-      setBillingDocType('invoice');
-      setCurrentPage(Page.Invoices);
-      setActiveItem(invoice);
-      setDrawerMode('edit_inv');
-      setIsDrawerOpen(true);
-      return;
-    }
     if (action.id === 'draft') {
       const estimate = estimates.find(item => item.id === action.recordId);
       if (!estimate) return;
@@ -7194,7 +6668,7 @@ const demoMileageTrips: MileageTrip[] = [
           </div>
           <div className="flex items-center justify-center gap-3">
             <Loader2 size={20} className="animate-spin text-blue-500" />
-            <span className="text-slate-400 font-medium">Loading Moniezi...</span>
+            <span className="text-slate-400 font-medium">Loading MONIEZI...</span>
           </div>
         </div>
       </div>
@@ -7302,7 +6776,7 @@ const demoMileageTrips: MileageTrip[] = [
                 rel="noreferrer"
                 className="w-full min-h-[60px] px-5 py-4 bg-blue-600 hover:bg-blue-500 !text-white font-bold rounded-xl text-center flex items-center justify-center transition-colors"
               >
-                Buy MONIEZI Pro Finance
+                Buy MONIEZI
               </a>
             ) : (
               <div className="w-full min-h-[72px] px-5 py-4 bg-slate-800 text-slate-300 font-semibold rounded-xl text-center flex items-center justify-center">
@@ -8536,7 +8010,7 @@ html, body, #root {
                 <div className="divide-y divide-slate-200 dark:divide-slate-800">
                   {dailyEfficiencyActions.map(action => (
                     <button key={`${action.id}-${action.recordId}`} type="button" onClick={() => handleDailyEfficiencyAction(action)} className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">{action.id === 'followup' ? <Megaphone size={17} /> : action.id === 'jobexpense' || action.id === 'job' ? <Briefcase size={17} /> : action.id === 'mileage' ? <Car size={17} /> : <Repeat size={17} />}</div>
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">{action.id === 'jobexpense' || action.id === 'job' ? <Briefcase size={17} /> : action.id === 'mileage' ? <Car size={17} /> : <Repeat size={17} />}</div>
                       <div className="min-w-0 flex-1"><div className="text-sm font-extrabold text-slate-900 dark:text-white">{action.title}</div><div className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">{action.detail}</div></div>
                       <ChevronRight size={17} className="shrink-0 text-slate-400" />
                     </button>
@@ -8546,62 +8020,49 @@ html, body, #root {
             </section>
 
             <div
-                className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 shadow-lg rounded-3xl p-6 relative overflow-hidden cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all"
-                onClick={() => {
-                  const mode = totals.overdueCount > 0 ? 'overdue' : totals.pendingCount > 0 ? 'unpaid' : 'all';
-                  setInvoiceQuickFilter(mode);
+              className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm transition-all hover:border-blue-400 hover:shadow-md dark:border-slate-700 dark:bg-slate-900"
+              onClick={() => {
+                setInvoiceQuickFilter(totals.pendingCount > 0 ? 'unpaid' : 'all');
+                setCurrentPage(Page.Invoices);
+              }}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  setInvoiceQuickFilter(totals.pendingCount > 0 ? 'unpaid' : 'all');
                   setCurrentPage(Page.Invoices);
-                }}
-              >
-                <div className="text-center">
-                  <div
-                    className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                      totals.overdueCount > 0
-                        ? 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-300'
-                        : totals.pendingCount > 0
-                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
-                        : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
-                    }`}
-                  >
-                    {totals.overdueCount > 0 ? <AlertTriangle size={24} /> : totals.pendingCount > 0 ? <Clock3 size={24} /> : <CheckCircle size={24} />}
+                }
+              }}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300"><FileText size={20} /></div>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Invoices & Collections</h3>
+                    <p className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">Open customer balances</p>
                   </div>
-
-                  <div
-                    className={`text-4xl font-extrabold tracking-tight mb-2 ${
-                      totals.overdueCount > 0
-                        ? 'text-red-600 dark:text-red-300'
-                        : totals.pendingCount > 0
-                        ? 'text-amber-700 dark:text-amber-300'
-                        : 'text-emerald-700 dark:text-emerald-300'
-                    }`}
-                  >
-                    {formatCurrency.format(totals.overdueCount > 0 ? totals.overdueAmount : totals.pendingAmount)}
-                  </div>
-
-                  <div className="text-sm font-extrabold text-slate-900 dark:text-white">
-                    {totals.overdueCount > 0 ? 'Overdue Invoices' : totals.pendingCount > 0 ? 'Unpaid Invoices' : 'All invoices paid'}
-                  </div>
-
-                  <div
-                    className={`inline-flex mt-3 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                      totals.overdueCount > 0
-                        ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300'
-                        : totals.pendingCount > 0
-                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
-                        : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
-                    }`}
-                  >
-                    {totals.overdueCount > 0 ? `${totals.overdueCount} overdue` : totals.pendingCount > 0 ? `${totals.pendingCount} unpaid` : 'Great job'}
-                  </div>
-
-                  <div className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold mt-3">Tap to open invoices</div>
+                </div>
+                <ChevronRight size={18} className="shrink-0 text-slate-400" />
+              </div>
+              <div className="mt-4 grid grid-cols-2 divide-x divide-slate-200 rounded-lg border border-slate-200 bg-slate-50 dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-950/60">
+                <div className="px-4 py-3.5">
+                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Open</div>
+                  <div className="mt-1 text-lg font-extrabold tabular-nums text-slate-950 dark:text-white">{formatCurrency.format(totals.pendingAmount)}</div>
+                  <div className="mt-0.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">{totals.pendingCount} invoice{totals.pendingCount === 1 ? '' : 's'}</div>
+                </div>
+                <div className="px-4 py-3.5">
+                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Overdue</div>
+                  <div className={`mt-1 text-lg font-extrabold tabular-nums ${totals.overdueCount > 0 ? 'text-red-600 dark:text-red-300' : 'text-slate-950 dark:text-white'}`}>{formatCurrency.format(totals.overdueAmount)}</div>
+                  <div className="mt-0.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">{totals.overdueCount} invoice{totals.overdueCount === 1 ? '' : 's'}</div>
                 </div>
               </div>
+            </div>
 
             {/* Sales Pipeline Widget */}
             {(pipelineStats.totalEstimates > 0 || pipelineStats.pipelineValue > 0) && (
               <div
-                className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 shadow-lg rounded-3xl p-6 relative overflow-hidden cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                className="rounded-xl border border-slate-300 bg-white p-6 shadow-sm transition-all hover:border-purple-400 hover:shadow-md dark:border-slate-700 dark:bg-slate-900"
                 onClick={() => {
                   setBillingDocType('estimate');
                   setCurrentPage(Page.Invoices);
@@ -8659,71 +8120,6 @@ html, body, #root {
                   </div>
                 </div>
 
-                {/* Follow-up Alerts - Detailed */}
-                {pipelineStats.needsFollowUp > 0 && (
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center gap-2 text-xs font-bold text-orange-700 dark:text-orange-400 uppercase tracking-wider">
-                      <Clock3 size={14} />
-                      Follow-ups Due ({pipelineStats.needsFollowUp})
-                    </div>
-                    {pipelineStats.overdueFollowUps.slice(0, 3).map((est: Estimate) => (
-                      <div 
-                        key={est.id} 
-                        className="flex flex-col items-stretch gap-3 p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/30 cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-all sm:flex-row sm:items-center sm:justify-between"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setBillingDocType('estimate');
-                          setCurrentPage(Page.Invoices);
-                        }}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-bold text-orange-900 dark:text-orange-200">{est.client}</div>
-                          <div className="text-xs text-orange-700 dark:text-orange-400 leading-relaxed">
-                            <span>{formatCurrency.format(est.amount)}</span>
-                            <span> • Due</span>
-                            <br />
-                            <span>{est.followUpDate || 'now'}</span>
-                          </div>
-                        </div>
-                        <div className="flex gap-2 self-start sm:self-auto sm:flex-shrink-0">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); recordFollowUp(est, 7); }}
-                            className="px-3 py-2 rounded-md text-xs font-bold bg-white dark:bg-slate-800 text-orange-700 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-slate-700 transition-all border border-orange-200/50 dark:border-orange-800/50"
-                            title="Record follow-up, set next in 7 days"
-                          >
-                            Done
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); snoozeFollowUp(est, 3); }}
-                            className="px-3 py-2 rounded-md text-xs font-bold bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all border border-slate-200/50 dark:border-slate-700/50"
-                            title="Snooze 3 days"
-                          >
-                            +3d
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {pipelineStats.needsFollowUp > 3 && (
-                      <div className="text-xs text-center text-orange-600 dark:text-orange-400 font-medium">
-                        +{pipelineStats.needsFollowUp - 3} more needing attention
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Upcoming Follow-ups */}
-                {pipelineStats.upcomingFollowUps.length > 0 && pipelineStats.needsFollowUp === 0 && (
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 mb-4">
-                    <Calendar size={18} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-bold text-blue-800 dark:text-blue-300">
-                        {pipelineStats.upcomingFollowUps.length} follow-up{pipelineStats.upcomingFollowUps.length !== 1 ? 's' : ''} coming up
-                      </div>
-                      <div className="text-xs text-blue-600 dark:text-blue-400">In the next 3 days</div>
-                    </div>
-                  </div>
-                )}
-
                 {/* Won Revenue */}
                 {pipelineStats.accepted.amount > 0 && (
                   <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
@@ -8744,7 +8140,7 @@ html, body, #root {
               <div className="space-y-3">
                 {transactions.length === 0 ? <EmptyState icon={<ClipboardList size={24} />} title="No activity yet" subtitle="Your latest transactions will appear here once you start recording." action={handleOpenQuickAdd} actionLabel="Add Transaction" /> :
                   transactions.slice().sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5).map(t => (
-                    <div key={t.id} className="group flex items-center justify-between p-5 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-blue-500/30 hover:shadow-lg transition-all cursor-pointer shadow-sm relative z-10" onClick={() => handleEditItem(t)}>
+                    <div key={t.id} className="group flex items-center justify-between p-5 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-700 hover:border-blue-500/40 hover:shadow-md transition-all cursor-pointer shadow-sm relative z-10" onClick={() => handleEditItem(t)}>
                       <div className="flex items-center gap-4 flex-1 min-w-0">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${t.type === 'income' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600'}`}>{t.type === 'income' ? <ArrowRight size={18} className="-rotate-45" strokeWidth={2.5} /> : <ArrowRight size={18} className="rotate-45" strokeWidth={2.5} />}</div>
                         <div className="min-w-0 pr-2">
@@ -8762,7 +8158,7 @@ html, body, #root {
               </div>
             </div>
 
-            <div onClick={() => { setScrollToTaxSnapshot(true); setCurrentPage(Page.Reports); }} className="bg-white dark:bg-slate-950 text-slate-900 dark:text-white p-6 rounded-xl shadow-md border border-slate-200 dark:border-slate-800 cursor-pointer active:scale-95 transition-all hover:shadow-lg hover:border-emerald-500/30 group">
+            <div onClick={() => { setScrollToTaxSnapshot(true); setCurrentPage(Page.Reports); }} className="bg-white dark:bg-slate-950 text-slate-900 dark:text-white p-6 rounded-xl shadow-sm border border-slate-300 dark:border-slate-700 cursor-pointer active:scale-95 transition-all hover:shadow-md hover:border-emerald-500/40 group">
                <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-3 text-emerald-600 dark:text-emerald-400"><Calculator size={20} /><span className="text-xs font-bold uppercase tracking-widest font-brand">Tax Snapshot</span></div>
                   <ArrowRight size={18} className="text-slate-300 dark:text-slate-300 -rotate-45 group-hover:rotate-0 group-hover:text-emerald-500 transition-all duration-300"/>
@@ -11341,7 +10737,7 @@ html, body, #root {
                   </div>
 
                   <div className="bg-white border-t border-slate-200 px-6 sm:px-8 py-4 text-xs text-slate-500 flex items-center justify-between gap-4">
-                    <div>MONIEZI Pro Finance | Generated privately from your local business records.</div>
+                    <div>MONIEZI | Generated privately from your local business records.</div>
                     <div>{settings.businessName} | P&amp;L | {proPLData.periodLabel}</div>
                   </div>
                 </div>
@@ -11814,7 +11210,7 @@ html, body, #root {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/10 p-4">
                       <div className="text-[10px] font-black uppercase tracking-widest text-indigo-700 dark:text-indigo-300 mb-1">Current Build</div>
-                      <div className="text-lg font-black text-slate-950 dark:text-white">MONIEZI Pro Finance</div>
+                      <div className="text-lg font-black text-slate-950 dark:text-white">MONIEZI</div>
                       <div className="text-sm font-bold text-slate-700 dark:text-slate-200 mt-1">App version {CUSTOMER_VERSION}</div>
                     </div>
                     <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10 p-4">
@@ -12183,8 +11579,8 @@ html, body, #root {
                             : 'text-red-700 dark:text-red-300'
                         }`}>
                           {isLicenseValid 
-                            ? 'Your Moniezi license is valid and active'
-                            : 'Please activate your license to use Moniezi'
+                            ? 'Your MONIEZI license is valid and active'
+                            : 'Please activate your license to use MONIEZI'
                           }
                         </p>
                       </div>
@@ -12630,7 +12026,7 @@ html, body, #root {
 
           <div className="px-1 pt-6 border-t border-slate-300 dark:border-slate-700">
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-              MONIEZI Pro Finance v{CUSTOMER_VERSION} · Your records stay on this device.
+              MONIEZI v{CUSTOMER_VERSION} · Your records stay on this device.
               Back them up regularly from Settings.
             </p>
           </div>

@@ -982,7 +982,7 @@ export function CompanyEquityModule({ equity, onChange, currencySymbol, defaultB
         <section id="moniezi-equity-section-guide" className={`${cardClass} p-5 space-y-5`}>
           <div>
             <h2 className="text-xl font-black text-slate-950 dark:!text-white">Private Raise Overview</h2>
-            <p className={subTextClass}>Use this screen as the owner's back-office tracker while MONIEZI Raise handles the investor-facing signup page.</p>
+            <p className={subTextClass}>Use this screen as the owner's back-office record of ownership, stakeholders, reservations, and investment instruments.</p>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
             {[
@@ -1175,7 +1175,7 @@ export function CompanyEquityModule({ equity, onChange, currencySymbol, defaultB
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div>
               <h2 className="text-xl font-black text-slate-950 dark:!text-white">Investor Packages</h2>
-              <p className={subTextClass}>Draft and track the package you send to friends, family, or early private investors. MONIEZI Raise can handle the public-facing signup later.</p>
+              <p className={subTextClass}>Draft and track the package you send to friends, family, or early private investors, including amount, instrument, status, and follow-up.</p>
             </div>
             <button onClick={() => setPackageDraft(emptyInvestorPackage(companyName))} className="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-extrabold flex items-center gap-2"><Plus size={16}/> New Package</button>
           </div>

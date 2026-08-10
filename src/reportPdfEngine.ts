@@ -480,7 +480,7 @@ const drawFooter = (
   const idText = sanitizePdfText(identity);
   const pageText = sanitizePdfText(pageLabel);
   const provText = sanitizePdfText(
-    `Generated ${generatedAtLabel}${REPORT_APP_VERSION ? ` | MONIEZI Pro Finance v${REPORT_APP_VERSION}` : ' | MONIEZI Pro Finance'}`,
+    `Generated ${generatedAtLabel}${REPORT_APP_VERSION ? ` | MONIEZI v${REPORT_APP_VERSION}` : ' | MONIEZI'}`,
   );
 
   // Centre the block in the band between the rule and the page edge.
@@ -870,8 +870,8 @@ export async function generateTaxSummaryPdfBytes(data: TaxSummaryPdfData): Promi
 
   pdfDoc.setTitle(sanitizePdfText(`MONIEZI Tax Prep Package ${data.taxYear}`));
   pdfDoc.setAuthor('MONIEZI');
-  pdfDoc.setCreator('MONIEZI Pro Finance');
-  pdfDoc.setProducer('MONIEZI Pro Finance');
+  pdfDoc.setCreator('MONIEZI');
+  pdfDoc.setProducer('MONIEZI');
   pdfDoc.setSubject(sanitizePdfText(`Tax Prep Package ${data.taxYear}`));
 
   return pdfDoc.save();
@@ -1408,8 +1408,8 @@ export async function generateProfitLossPdfBytes(data: ProfitLossPdfData): Promi
 
   pdfDoc.setTitle(sanitizePdfText(`MONIEZI Profit & Loss ${data.periodLabel}`));
   pdfDoc.setAuthor('MONIEZI');
-  pdfDoc.setCreator('MONIEZI Pro Finance');
-  pdfDoc.setProducer('MONIEZI Pro Finance');
+  pdfDoc.setCreator('MONIEZI');
+  pdfDoc.setProducer('MONIEZI');
   pdfDoc.setSubject(sanitizePdfText(`Profit & Loss ${data.periodLabel}`));
 
   return pdfDoc.save();

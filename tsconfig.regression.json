@@ -22,6 +22,7 @@
   },
   "include": [
     "types.ts",
+    "constants.tsx",
     "src/features/mileage/draft.ts",
     "src/features/jobs/jobCore.ts",
     "src/features/goals/monthlyGoals.ts",
