@@ -95,7 +95,6 @@ import { migrateLegacyStorage } from './services/storageMigration';
 import { putReceiptBlob, getReceiptBlob, deleteReceiptBlob, dataUrlToBlob, blobToDataUrl, clearAllReceipts } from './services/receiptStore';
 import { DEMO_RECEIPT_ASSETS } from './services/demoReceipts';
 import { loadAppState, saveAppState, clearAppState } from './services/appStore';
-import { MobileFormShell } from './src/components/mobile/MobileFormShell';
 import { AppDrawer } from './src/components/mobile/AppDrawer';
 import { GlobalSearchPanel } from './src/components/GlobalSearchPanel';
 import { buildGlobalSearchGroups, type GlobalSearchResult } from './src/features/search/globalSearch';
@@ -681,8 +680,10 @@ const PeriodSelector: React.FC<{
   refDate: Date,
   setRefDate: (d: Date) => void,
   /** Restrict the choices per screen. Invoices don't need Day or Week. */
-  options?: FilterPeriod[]
-}> = ({ period, setPeriod, refDate, setRefDate, options }) => {
+  options?: FilterPeriod[],
+  /** Optional outer spacing override for screens that compose this selector with other controls. */
+  className?: string
+}> = ({ period, setPeriod, refDate, setRefDate, options, className }) => {
 
   const choices = options && options.length ? options : (['all', 'daily', 'weekly', 'monthly', 'yearly'] as FilterPeriod[]);
 
@@ -710,7 +711,7 @@ const PeriodSelector: React.FC<{
   const steppable = period !== 'all';
 
   return (
-    <div className="mb-6 min-w-0 max-w-full">
+    <div className={`min-w-0 max-w-full ${className ?? 'mb-6'}`}> 
       <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm min-w-0 max-w-full">
 
         <div className="relative shrink-0">
@@ -801,8 +802,8 @@ class PageErrorBoundary extends React.Component<
   }
 }
 
-const CUSTOMER_VERSION = "38.0.5"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
-setReportAppVersion("38.0.5");
+const CUSTOMER_VERSION = "38.0.10"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
+setReportAppVersion("38.0.10");
 const LICENSE_STORAGE_KEY = `moniezi_license_v1_${STORAGE_NAMESPACE}`;
 const DEVICE_ID_STORAGE_KEY = `moniezi_device_id_v1_${STORAGE_NAMESPACE}`;
 const LICENSE_TOKEN_SALT = "moniezi_v35_offline_binding";
@@ -1005,6 +1006,7 @@ export default function App() {
   );
   const [invoiceQuickFilter, setInvoiceQuickFilter] = useState<'all' | 'unpaid' | 'overdue'>('all');
   const [estimateQuickFilter, setEstimateQuickFilter] = useState<'all' | 'draft' | 'sent' | 'accepted' | 'declined'>('all');
+  const [expandedEstimateActionsId, setExpandedEstimateActionsId] = useState<string | null>(null);
 
   const HOME_KPI_PERIOD_KEY = `moniezi_home_kpi_period_${STORAGE_NAMESPACE}`;
   type HomeKpiPeriod = 'ytd' | 'mtd' | '30d' | 'all';
@@ -1807,7 +1809,7 @@ export default function App() {
       return;
     }
     if (!LICENSE_API_BASE) {
-      setLicenseError('This build has no licence server address. VITE_LICENSE_API_BASE was empty when it was built.');
+      setLicenseError('This build has no license server address. VITE_LICENSE_API_BASE was empty when it was built.');
       return;
     }
 
@@ -6292,40 +6294,41 @@ const demoMileageTrips: MileageTrip[] = [
 
     if (sortedTrips.length === 0) {
       return (
-        <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 p-6 text-center text-sm font-semibold text-slate-500 dark:text-slate-400">
-          {emptyLabel}
+        <div className="px-5 py-10 text-center">
+          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300">
+            <Car size={20} strokeWidth={1.7} />
+          </div>
+          <div className="mt-3 text-sm font-bold text-slate-700 dark:text-slate-200">{emptyLabel}</div>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Add a trip when you drive for business.</p>
         </div>
       );
     }
 
     return (
-      <div className="space-y-3">
+      <div className="divide-y divide-slate-200 dark:divide-slate-800">
         {sortedTrips.map(trip => {
           const displayDate = trip.date ? new Date(`${trip.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No date';
+          const miles = Number(trip.miles || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
           return (
             <button
               key={trip.id}
               type="button"
               onClick={() => openMileageEditDrawer(trip)}
-              className="w-full text-left rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800/80 active:scale-[0.99] transition-all"
+              className="group flex w-full items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-slate-50 active:bg-slate-100 dark:hover:bg-slate-900/70 dark:active:bg-slate-900"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-sm font-extrabold text-slate-900 dark:text-white truncate">{trip.purpose || 'Mileage trip'}</div>
-                  <div className="mt-1 text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">{displayDate}</div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[15px] font-bold text-slate-900 dark:text-white">{trip.purpose || 'Mileage trip'}</div>
+                <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+                  <span className="shrink-0">{displayDate}</span>
+                  {trip.client ? <><span aria-hidden="true">•</span><span className="truncate">{trip.client}</span></> : null}
                 </div>
-                <div className="shrink-0 text-right">
-                  <div className="text-base font-black text-slate-900 dark:text-white">{Number(trip.miles || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
-                  <div className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400">Miles</div>
-                </div>
+                {trip.notes ? <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">{trip.notes}</div> : null}
               </div>
-              {(trip.client || trip.notes) && (
-                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
-                  {trip.client ? <div className="truncate"><span className="font-extrabold text-slate-700 dark:text-slate-200">Client:</span> {trip.client}</div> : null}
-                  {trip.notes ? <div className="truncate"><span className="font-extrabold text-slate-700 dark:text-slate-200">Notes:</span> {trip.notes}</div> : null}
-                </div>
-              )}
-              <div className="mt-3 text-[10px] font-extrabold uppercase tracking-widest text-blue-600 dark:text-blue-400">Tap to edit</div>
+              <div className="shrink-0 text-right">
+                <div className="text-base font-extrabold tabular-nums text-slate-900 dark:text-white">{miles}</div>
+                <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">miles</div>
+              </div>
+              <ChevronRight size={18} className="shrink-0 text-slate-400 transition-transform group-active:translate-x-0.5 dark:text-slate-500" strokeWidth={1.8} />
             </button>
           );
         })}
@@ -6554,6 +6557,7 @@ const demoMileageTrips: MileageTrip[] = [
       };
   const darkChromeNavInactiveStyle = useDarkChrome ? { color: '#e2e8f0' } : { color: navInactiveColor };
   const darkChromeNavActiveStyle = useDarkChrome ? { color: '#ffffff' } : undefined;
+  const isActivityPage = currentPage === Page.AllTransactions || currentPage === Page.Ledger;
 
   return (
     <>
@@ -7526,15 +7530,15 @@ html, body, #root {
       <PageErrorBoundary key={currentPage} onReset={() => setCurrentPage(Page.Dashboard)}>
 
         {(currentPage === Page.Dashboard) && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex items-center justify-between pl-2">
+          <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                <div className="p-2 sm:p-2.5 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 flex-shrink-0">
-                  <LayoutGrid size={20} className="sm:w-6 sm:h-6" strokeWidth={1.5} />
+                <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 flex-shrink-0">
+                  <LayoutGrid size={22} strokeWidth={1.7} />
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950 dark:text-white font-brand">Overview</h2>
               </div>
-              <button onClick={handleOpenQuickAdd} className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-blue-500 transition-all flex-shrink-0" aria-label="Add new record"><Plus size={20} className="sm:w-6 sm:h-6" strokeWidth={2.5} /></button>
+              <button onClick={handleOpenQuickAdd} className="w-11 h-11 sm:w-12 sm:h-12 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-md shadow-blue-600/20 hover:bg-blue-500 transition-all active:scale-95 flex-shrink-0" aria-label="Add new record"><Plus size={21} strokeWidth={2.5} /></button>
             </div>
 
             <div className="bg-white dark:bg-gradient-to-br dark:from-blue-800 dark:to-indigo-950 p-6 sm:p-8 rounded-xl shadow-xl dark:shadow-none border border-slate-200 dark:border-white/10 relative overflow-hidden group">
@@ -7543,7 +7547,7 @@ html, body, #root {
               <div className="flex flex-col gap-4 mb-4">
                 {/* Header - Larger Typography */}
                 <div className="relative z-10">
-                  <h2 className="text-base sm:text-lg font-extrabold tracking-wide uppercase font-brand mb-1" style={{ color: 'var(--text-primary)' }}>
+                  <h2 className="text-base sm:text-lg font-extrabold tracking-tight font-brand mb-1" style={{ color: 'var(--text-primary)' }}>
                     Net Profit <span className="text-blue-600 dark:text-blue-300">({homeTotals.label})</span>
                   </h2>
                   <p className="text-sm sm:text-base font-semibold tracking-wide" style={{ color: 'var(--text-secondary)' }}>{homeTotals.rangeText}</p>
@@ -7820,8 +7824,8 @@ html, body, #root {
             
             <div>
               <div className="flex items-center justify-between mb-4 pl-2">
-                <h3 className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest font-brand">Recent Activity</h3>
-                <button onClick={() => setCurrentPage(Page.AllTransactions)} className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors uppercase">See all</button>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white font-brand">Recent activity</h3>
+                <button onClick={() => setCurrentPage(Page.AllTransactions)} className="min-h-11 px-2 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors">See all</button>
               </div>
               <div className="space-y-3">
                 {transactions.length === 0 ? <EmptyState icon={<ClipboardList size={24} />} title="No activity yet" subtitle="Your latest transactions will appear here once you start recording." action={handleOpenQuickAdd} actionLabel="Add Transaction" /> :
@@ -7867,14 +7871,14 @@ html, body, #root {
             {/* Scan Receipt Section */}
             <div>
               <div className="flex items-center justify-between mb-4 pl-2">
-                <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-200 uppercase tracking-[0.10em] font-brand">Receipts</h3>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white font-brand">Receipts</h3>
               </div>
               <div className="flex overflow-x-auto gap-3 pb-4 pt-1 px-1 -mx-1 custom-scrollbar snap-x">
-                <button onClick={() => { setScanMode('receiptOnly'); scanInputRef.current?.click(); }} className="flex-shrink-0 w-24 h-24 bg-slate-200 dark:bg-slate-800 rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors border border-dashed border-slate-400 dark:border-slate-600 active:scale-95 snap-start">
-                   <div className="bg-white dark:bg-slate-900 p-2.5 rounded-full shadow-sm text-slate-900 dark:text-white">
+                <button onClick={() => { setScanMode('receiptOnly'); scanInputRef.current?.click(); }} className="flex-shrink-0 w-24 h-24 bg-amber-50 dark:bg-amber-500/10 rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-amber-100 dark:hover:bg-amber-500/15 transition-colors border border-dashed border-amber-300 dark:border-amber-700/50 active:scale-95 snap-start">
+                   <div className="bg-white dark:bg-slate-900 p-2.5 rounded-full shadow-sm text-amber-700 dark:text-amber-300">
                      <Camera size={20} />
                    </div>
-                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Scan</span>
+                   <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">Scan</span>
                 </button>
                 {/*
                   EXPENSE shortcut:
@@ -7882,11 +7886,11 @@ html, body, #root {
                   Per UX request, tapping Expense should open the Add Expense form first,
                   where the user can optionally link/scan a receipt from within the form.
                 */}
-                <button onClick={() => { handleOpenFAB('expense'); }} className="flex-shrink-0 w-24 h-24 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-emerald-100 dark:hover:bg-emerald-500/15 transition-colors border border-emerald-200 dark:border-emerald-700/40 active:scale-95 snap-start">
-                   <div className="bg-white dark:bg-slate-900 p-2.5 rounded-full shadow-sm text-emerald-700 dark:text-emerald-300">
+                <button onClick={() => { handleOpenFAB('expense'); }} className="flex-shrink-0 w-24 h-24 bg-red-50 dark:bg-red-500/10 rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-red-100 dark:hover:bg-red-500/15 transition-colors border border-red-200 dark:border-red-700/40 active:scale-95 snap-start">
+                   <div className="bg-white dark:bg-slate-900 p-2.5 rounded-full shadow-sm text-red-700 dark:text-red-300">
                      <PlusCircle size={20} />
                    </div>
-                   <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Expense</span>
+                   <span className="text-[10px] font-bold uppercase tracking-wider text-red-700 dark:text-red-300">Expense</span>
                 </button>
                 {receipts.map(r => (
                    <div key={r.id} onClick={() => {
@@ -7912,59 +7916,77 @@ html, body, #root {
         )}
 
         {(currentPage === Page.Income || currentPage === Page.Expenses || (currentPage === Page.AllTransactions || currentPage === Page.Ledger)) && (
-           <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
-             <div className="flex items-center justify-between mb-2 pl-2">
+           <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-right-4">
+             <div className="flex items-center justify-between gap-3">
                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                      <div className="flex items-center gap-2 sm:gap-3">
-                       <div className={`p-2 sm:p-2.5 rounded-lg flex-shrink-0 ${currentPage === Page.Income ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : currentPage === Page.Expenses ? 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-500' : 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'}`}>{currentPage === Page.Income ? <TrendingUp size={20} className="sm:w-6 sm:h-6" strokeWidth={1.5}/> : currentPage === Page.Expenses ? <TrendingDown size={20} className="sm:w-6 sm:h-6" strokeWidth={1.5}/> : <History size={20} className="sm:w-6 sm:h-6" strokeWidth={1.5} />}</div>
-                       <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950 dark:text-white font-brand">{currentPage === Page.Income ? 'Income' : currentPage === Page.Expenses ? 'Expenses' : 'Transactions'}</h2>
+                       <div className={`p-2.5 rounded-xl flex-shrink-0 ${currentPage === Page.Income ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : currentPage === Page.Expenses ? 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-500' : 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'}`}>{currentPage === Page.Income ? <TrendingUp size={22} strokeWidth={1.7}/> : currentPage === Page.Expenses ? <TrendingDown size={22} strokeWidth={1.7}/> : <History size={22} strokeWidth={1.7} />}</div>
+                       <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950 dark:text-white font-brand">{currentPage === Page.Income ? 'Income' : currentPage === Page.Expenses ? 'Expenses' : 'Activity'}</h2>
                      </div>
                  </div>
                  {(currentPage === Page.Income || currentPage === Page.Expenses || (currentPage === Page.AllTransactions || currentPage === Page.Ledger)) && (
-                    <button onClick={handleContextualHeaderAdd} className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-blue-500 transition-all flex-shrink-0"><Plus size={20} className="sm:w-6 sm:h-6" strokeWidth={2.5} /></button>
+                    <button onClick={handleContextualHeaderAdd} className="w-11 h-11 sm:w-12 sm:h-12 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-md shadow-blue-600/20 hover:bg-blue-500 transition-all active:scale-95 flex-shrink-0"><Plus size={21} strokeWidth={2.5} /></button>
                  )}
              </div>
 
-             {/* Search sits above the period stepper because it overrides it —
-                 a search looks across every year, not the selected month. */}
-             <div className="relative mb-3">
-               <Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-               <input
-                 type="text"
-                 inputMode="search"
-                 value={ledgerSearch}
-                 onChange={e => setLedgerSearch(e.target.value)}
-                 placeholder="Search description, category, client or amount"
-                 className="w-full rounded-lg border border-slate-200 bg-white py-3 pl-10 pr-10 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
-               />
-               {ledgerSearch && (
-                 <button
-                   type="button"
-                   onClick={() => setLedgerSearch('')}
-                   aria-label="Clear search"
-                   className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-                 >
-                   <X size={16} />
-                 </button>
+             {/* Primary Activity controls: search first, then record type, then time period.
+                 Search still bypasses the date period exactly as before. */}
+             <div className="space-y-4">
+               <div className="relative">
+                 <Search size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                 <input
+                   type="text"
+                   inputMode="search"
+                   value={ledgerSearch}
+                   onChange={e => setLedgerSearch(e.target.value)}
+                   placeholder="Search description, category, client or amount"
+                   className={isActivityPage ? 'w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-10 pr-10 text-sm text-slate-900 outline-none transition-shadow focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-800 dark:bg-slate-900 dark:text-white dark:focus:border-blue-500' : 'w-full rounded-lg border border-slate-200 bg-white py-3 pl-10 pr-10 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-800 dark:bg-slate-900 dark:text-white'}
+                 />
+                 {ledgerSearch && (
+                   <button
+                     type="button"
+                     onClick={() => setLedgerSearch('')}
+                     aria-label="Clear search"
+                     className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                   >
+                     <X size={16} />
+                   </button>
+                 )}
+               </div>
+
+               {ledgerSearch.trim() && (
+                 <div className={isActivityPage ? 'flex items-center justify-between gap-3 px-1' : 'flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 dark:border-blue-900/50 dark:bg-blue-900/20'}>
+                   <span className={isActivityPage ? 'text-xs font-semibold text-blue-700 dark:text-blue-300' : 'text-xs font-bold text-blue-800 dark:text-blue-200'}>
+                     {filteredLedgerItems.length} {filteredLedgerItems.length === 1 ? 'match' : 'matches'} across all dates
+                   </span>
+                   <button
+                     type="button"
+                     onClick={() => setLedgerSearch('')}
+                     className="text-xs font-bold uppercase tracking-wider text-blue-700 hover:text-blue-900 dark:text-blue-300 dark:hover:text-blue-100"
+                   >
+                     Clear
+                   </button>
+                 </div>
+               )}
+
+               {(currentPage === Page.AllTransactions || currentPage === Page.Ledger) && (
+                 <div className="grid grid-cols-4 gap-1.5 rounded-xl bg-slate-200/80 p-1.5 dark:bg-slate-900">
+                   {(['all', 'income', 'expense', 'invoice'] as const).map(f => (
+                     <button
+                       key={f}
+                       onClick={() => setLedgerFilter(f)}
+                       className={`min-h-11 min-w-0 rounded-lg px-1 py-2.5 text-[11px] font-bold uppercase tracking-wide transition-all sm:text-xs ${ledgerFilter === f ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'}`}
+                     >
+                       {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
+                     </button>
+                   ))}
+                 </div>
+               )}
+
+               {!ledgerSearch.trim() && (
+                 <PeriodSelector period={filterPeriod} setPeriod={setFilterPeriod} refDate={referenceDate} setRefDate={setReferenceDate} className="mb-0" />
                )}
              </div>
-
-             {ledgerSearch.trim() ? (
-               <div className="mb-4 flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 dark:border-blue-900/50 dark:bg-blue-900/20">
-                 <span className="text-xs font-bold text-blue-800 dark:text-blue-200">
-                   {filteredLedgerItems.length} {filteredLedgerItems.length === 1 ? 'match' : 'matches'} across all dates
-                 </span>
-                 <button
-                   type="button"
-                   onClick={() => setLedgerSearch('')}
-                   className="text-xs font-bold uppercase tracking-wider text-blue-700 hover:text-blue-900 dark:text-blue-300 dark:hover:text-blue-100"
-                 >
-                   Clear
-                 </button>
-               </div>
-             ) : (
-               <PeriodSelector period={filterPeriod} setPeriod={setFilterPeriod} refDate={referenceDate} setRefDate={setReferenceDate} />
-             )}
 
              {(currentPage === Page.Expenses || currentPage === Page.AllTransactions || currentPage === Page.Ledger) && (() => {
                // Receipts + review status are occasional refinements, not the main
@@ -8024,22 +8046,27 @@ html, body, #root {
                );
              })()}
 
-        {(currentPage === Page.AllTransactions || currentPage === Page.Ledger) && (
-               <div className="flex bg-slate-200 dark:bg-slate-900 p-1 rounded-lg mb-4">
-                  {(['all', 'income', 'expense', 'invoice'] as const).map(f => (
-                    <button key={f} onClick={() => setLedgerFilter(f)} className={`flex-1 py-2 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${ledgerFilter === f ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-200'}`}>{f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}</button>
-                  ))}
-               </div>
+             {filterPeriod !== 'all' && !ledgerSearch.trim() && (
+                isActivityPage ? (
+                  <div className="grid grid-cols-2 divide-x divide-slate-200 rounded-xl border border-slate-200 bg-slate-50/70 px-2 py-3.5 dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900/70">
+                     <div className="px-3">
+                       <div className="text-[11px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">Cash In</div>
+                       <div className="mt-1 text-base font-bold tracking-tight text-slate-950 dark:text-white sm:text-lg">{formatCurrency.format(periodTotals.inc)}</div>
+                     </div>
+                     <div className="px-3">
+                       <div className="text-[11px] font-bold uppercase tracking-wide text-red-600 dark:text-red-400">Cash Out</div>
+                       <div className="mt-1 text-base font-bold tracking-tight text-slate-950 dark:text-white sm:text-lg">{formatCurrency.format(periodTotals.exp)}</div>
+                     </div>
+                  </div>
+                ) : (
+                  <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 mb-6 flex items-center justify-between shadow-sm">
+                     <div className="text-center flex-1 border-r border-slate-200 dark:border-slate-800"><div className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Cash In</div><div className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency.format(periodTotals.inc)}</div></div>
+                     <div className="text-center flex-1"><div className="text-xs font-bold text-red-600 uppercase tracking-wider mb-1">Cash Out</div><div className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency.format(periodTotals.exp)}</div></div>
+                  </div>
+                )
              )}
 
-             {filterPeriod !== 'all' && (
-                <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 mb-6 flex items-center justify-between shadow-sm">
-                   <div className="text-center flex-1 border-r border-slate-200 dark:border-slate-800"><div className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Cash In</div><div className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency.format(periodTotals.inc)}</div></div>
-                   <div className="text-center flex-1"><div className="text-xs font-bold text-red-600 uppercase tracking-wider mb-1">Cash Out</div><div className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency.format(periodTotals.exp)}</div></div>
-                </div>
-             )}
-
-             <div className="space-y-4">
+             <div className={(currentPage === Page.AllTransactions || currentPage === Page.Ledger) ? "overflow-hidden rounded-2xl border border-slate-200 bg-white divide-y divide-slate-200 dark:border-slate-800 dark:bg-slate-900 dark:divide-slate-800" : "space-y-4"}>
                {((currentPage === Page.AllTransactions || currentPage === Page.Ledger) ? filteredLedgerItems : currentPage === Page.Income ? filteredTransactions.filter(t => t.type === 'income') : filteredExpenseItems).length === 0 ? (
                   <EmptyState icon={currentPage === Page.Income ? <Wallet size={32} /> : currentPage === Page.Expenses ? <Receipt size={32} /> : <History size={32} />} title="No Items Found" subtitle="No activity found for the selected period." action={handleContextualHeaderAdd} actionLabel="Add Transaction" />
                ) : (
@@ -8082,6 +8109,68 @@ html, body, #root {
                     );
                   }
                   
+                  // Activity is a scan-first history. Keep rows spacious and readable,
+                  // while secondary actions stay in the existing record editor opened on tap.
+                  if (isActivityPage) {
+                    const title = isInvoice ? (item.client || 'Invoice') : (item.name || item.client || (isIncome ? 'Income' : 'Expense'));
+                    const secondary = isInvoice
+                      ? [item.number ? `Invoice ${item.number}` : 'Invoice', item.date].filter(Boolean).join(' · ')
+                      : [item.date, item.category].filter(Boolean).join(' · ');
+                    const description = isInvoice ? item.description : item.notes;
+                    const isExpense = !isInvoice && !isIncome;
+
+                    return (
+                      <button
+                        type="button"
+                        key={item.listId || item.id}
+                        onClick={() => handleEditItem(item)}
+                        className="w-full px-4 py-5 text-left transition-colors hover:bg-slate-50 active:bg-slate-100 dark:hover:bg-slate-800/55 dark:active:bg-slate-800 sm:px-5"
+                        aria-label={`Open ${isInvoice ? 'invoice' : isIncome ? 'income' : 'expense'} ${title}`}
+                      >
+                        <div className="flex items-start gap-3.5">
+                          <div className={`mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
+                            <Icon size={19} strokeWidth={1.7} />
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0 flex-1">
+                                <div className="truncate text-[15px] font-bold leading-5 text-slate-950 dark:text-white sm:text-base">{title}</div>
+                                <div className="mt-1.5 text-xs font-medium leading-5 text-slate-500 dark:text-slate-400">{secondary}</div>
+                              </div>
+                              <div className={`flex-shrink-0 whitespace-nowrap text-base font-bold tracking-tight sm:text-lg ${amountColor}`}>
+                                {isIncome ? '+' : ''}{formatCurrency.format(item.amount)}
+                              </div>
+                            </div>
+
+                            {description && (
+                              <div className="mt-2 line-clamp-2 text-sm leading-5 text-slate-600 dark:text-slate-300">{description}</div>
+                            )}
+
+                            {(isInvoice || isExpense) && (
+                              <div className="mt-3 flex flex-wrap items-center gap-2">
+                                {isInvoice && invoiceStatusBadge}
+                                {isInvoice && item.due && (
+                                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Due {item.due}</span>
+                                )}
+                                {isExpense && (
+                                  <>
+                                    <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${item.receiptId ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>
+                                      {item.receiptId ? 'Receipt' : 'No receipt'}
+                                    </span>
+                                    <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${(item as any).reviewedAt ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300'}`}>
+                                      {(item as any).reviewedAt ? 'Reviewed' : 'New'}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  }
+
                   // If it's an invoice, use the detailed invoice card layout
                   if (isInvoice) {
                     const inv = item as Invoice;
@@ -8170,13 +8259,13 @@ html, body, #root {
         )}
 
         {(currentPage === Page.Invoices) && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 min-w-0 max-w-full">
+          <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-right-4 min-w-0 max-w-full">
             <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                <div className="p-2 sm:p-2.5 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 flex-shrink-0">
-                  <FileText size={20} className="sm:w-6 sm:h-6" strokeWidth={1.5} />
+                <div className={`p-2.5 rounded-xl flex-shrink-0 ${billingDocType === 'estimate' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300' : 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'}`}>
+                  <FileText size={22} strokeWidth={1.7} />
                 </div>
-                <div className="flex flex-col gap-2 sm:gap-3 min-w-0 w-full sm:w-auto">
+                <div className="flex flex-col gap-3 sm:gap-4 min-w-0 w-full sm:w-auto">
                   <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950 dark:text-white font-brand">{billingDocType === 'estimate' ? 'Estimates' : 'Invoices'}</h2>
                   {/* Redesigned Invoices/Estimates Segmented Tabs */}
                   <div className="grid grid-cols-2 w-full sm:w-fit bg-slate-200/80 dark:bg-slate-900 p-1.5 rounded-xl border border-slate-300/50 dark:border-slate-700/50 shadow-sm">
@@ -8205,30 +8294,30 @@ html, body, #root {
                   </div>
                 </div>
               </div>
-              <button onClick={() => handleOpenFAB('billing', billingDocType === 'estimate' ? 'estimate' : 'invoice')} className="self-end sm:self-auto w-10 h-10 sm:w-12 sm:h-12 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-blue-500 transition-all flex-shrink-0"><Plus size={20} className="sm:w-6 sm:h-6" strokeWidth={2.5} /></button>
+              <button onClick={() => handleOpenFAB('billing', billingDocType === 'estimate' ? 'estimate' : 'invoice')} className={`self-end sm:self-auto w-11 h-11 sm:w-12 sm:h-12 text-white rounded-full flex items-center justify-center shadow-md transition-all active:scale-95 flex-shrink-0 ${billingDocType === 'estimate' ? 'bg-indigo-600 shadow-indigo-600/20 hover:bg-indigo-500' : 'bg-blue-600 shadow-blue-600/20 hover:bg-blue-500'}`} aria-label={billingDocType === 'estimate' ? 'Add estimate' : 'Add invoice'}><Plus size={21} strokeWidth={2.5} /></button>
             </div>
-            <PeriodSelector period={filterPeriod} setPeriod={setFilterPeriod} refDate={referenceDate} setRefDate={setReferenceDate} options={['monthly', 'yearly', 'all']} />
+            <PeriodSelector period={filterPeriod} setPeriod={setFilterPeriod} refDate={referenceDate} setRefDate={setReferenceDate} options={['monthly', 'yearly', 'all']} className="mb-0" />
 
             {billingDocType === 'invoice' && (<>
             <div className="flex gap-2 flex-wrap">
               <button
                 type="button"
                 onClick={() => setInvoiceQuickFilter('all')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border transition-colors ${invoiceQuickFilter === 'all' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800 dark:hover:bg-slate-800'}`}
+                className={`min-h-11 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-colors ${invoiceQuickFilter === 'all' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800 dark:hover:bg-slate-800'}`}
               >
                 All ({invoiceQuickCounts.all})
               </button>
               <button
                 type="button"
                 onClick={() => setInvoiceQuickFilter('unpaid')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border transition-colors ${invoiceQuickFilter === 'unpaid' ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800 dark:hover:bg-slate-800'}`}
+                className={`min-h-11 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-colors ${invoiceQuickFilter === 'unpaid' ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800 dark:hover:bg-slate-800'}`}
               >
                 Unpaid ({invoiceQuickCounts.unpaid})
               </button>
               <button
                 type="button"
                 onClick={() => setInvoiceQuickFilter('overdue')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border transition-colors ${invoiceQuickFilter === 'overdue' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800 dark:hover:bg-slate-800'}`}
+                className={`min-h-11 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-colors ${invoiceQuickFilter === 'overdue' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800 dark:hover:bg-slate-800'}`}
               >
                 Overdue ({invoiceQuickCounts.overdue})
               </button>
@@ -8308,16 +8397,18 @@ html, body, #root {
             {billingDocType === 'estimate' && (
               <>
                 <div className="flex gap-2 flex-wrap">
-                  <button type="button" onClick={() => setEstimateQuickFilter('all')} className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border transition-colors ${estimateQuickFilter === 'all' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800 dark:hover:bg-slate-800'}`}>All ({estimateQuickCounts.all})</button>
-                  <button type="button" onClick={() => setEstimateQuickFilter('draft')} className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border transition-colors ${estimateQuickFilter === 'draft' ? 'bg-slate-700 text-white border-slate-700' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800 dark:hover:bg-slate-800'}`}>Draft ({estimateQuickCounts.draft})</button>
-                  <button type="button" onClick={() => setEstimateQuickFilter('sent')} className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border transition-colors ${estimateQuickFilter === 'sent' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800 dark:hover:bg-slate-800'}`}>Sent ({estimateQuickCounts.sent})</button>
-                  <button type="button" onClick={() => setEstimateQuickFilter('accepted')} className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border transition-colors ${estimateQuickFilter === 'accepted' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800 dark:hover:bg-slate-800'}`}>Accepted ({estimateQuickCounts.accepted})</button>
-                  <button type="button" onClick={() => setEstimateQuickFilter('declined')} className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border transition-colors ${estimateQuickFilter === 'declined' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800 dark:hover:bg-slate-800'}`}>Declined ({estimateQuickCounts.declined})</button>
+                  <button type="button" onClick={() => setEstimateQuickFilter('all')} className={`min-h-11 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-colors ${estimateQuickFilter === 'all' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800 dark:hover:bg-slate-800'}`}>All ({estimateQuickCounts.all})</button>
+                  <button type="button" onClick={() => setEstimateQuickFilter('draft')} className={`min-h-11 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-colors ${estimateQuickFilter === 'draft' ? 'bg-slate-700 text-white border-slate-700' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800 dark:hover:bg-slate-800'}`}>Draft ({estimateQuickCounts.draft})</button>
+                  <button type="button" onClick={() => setEstimateQuickFilter('sent')} className={`min-h-11 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-colors ${estimateQuickFilter === 'sent' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800 dark:hover:bg-slate-800'}`}>Sent ({estimateQuickCounts.sent})</button>
+                  <button type="button" onClick={() => setEstimateQuickFilter('accepted')} className={`min-h-11 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-colors ${estimateQuickFilter === 'accepted' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800 dark:hover:bg-slate-800'}`}>Accepted ({estimateQuickCounts.accepted})</button>
+                  <button type="button" onClick={() => setEstimateQuickFilter('declined')} className={`min-h-11 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-colors ${estimateQuickFilter === 'declined' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800 dark:hover:bg-slate-800'}`}>Declined ({estimateQuickCounts.declined})</button>
                 </div>
 
-                <div className="space-y-4">
+                <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
                   {displayedEstimates.length === 0 ? (
-                    <EmptyState icon={<FileText size={32} />} title="No Estimates Found" subtitle={filterPeriod === 'all' ? "Create professional estimates (quotes) and export to PDF." : "No estimates found for the selected period."} action={() => handleOpenFAB('billing', 'estimate')} actionLabel="Create Estimate" />
+                    <div className="p-4 sm:p-6">
+                      <EmptyState icon={<FileText size={32} />} title="No Estimates Found" subtitle={filterPeriod === 'all' ? "Create professional estimates (quotes) and export to PDF." : "No estimates found for the selected period."} action={() => handleOpenFAB('billing', 'estimate')} actionLabel="Create Estimate" />
+                    </div>
                   ) : (
                     displayedEstimates
                       .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -8326,8 +8417,6 @@ html, body, #root {
                         const statusLabel = est.status === 'accepted' ? 'Accepted' : est.status === 'declined' ? 'Declined' : est.status === 'sent' ? 'Sent' : est.status === 'void' ? 'Void' : 'Draft';
                         const statusClass = est.status === 'accepted' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300' : est.status === 'declined' ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300' : est.status === 'sent' ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300' : est.status === 'void' ? 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
                         const isVoid = est.status === 'void';
-                        
-                        // Follow-up status calculation
                         const today = new Date().toISOString().split('T')[0];
                         const isFollowUpOverdue = est.status === 'sent' && est.followUpDate && est.followUpDate <= today;
                         const isFollowUpSoon = est.status === 'sent' && est.followUpDate && !isFollowUpOverdue && (() => {
@@ -8336,124 +8425,89 @@ html, body, #root {
                           threeDays.setDate(threeDays.getDate() + 3);
                           return followUp <= threeDays;
                         })();
-                        const daysSinceSent = est.sentAt ? Math.floor((new Date().getTime() - new Date(est.sentAt).getTime()) / (1000 * 60 * 60 * 24)) : null;
-                        
+                        const actionsOpen = expandedEstimateActionsId === est.id;
+
                         return (
-                          <div key={est.id} className={`bg-white dark:bg-slate-900 p-6 rounded-lg border border-slate-200 dark:border-slate-800 group hover:border-blue-500/30 hover:shadow-lg transition-all shadow-md cursor-pointer ${isExpired && est.status !== 'accepted' && !isVoid ? 'border-l-4 border-l-amber-500' : ''} ${est.status === 'accepted' ? 'border-l-4 border-l-emerald-500' : ''} ${isFollowUpOverdue ? 'border-l-4 border-l-orange-500' : ''} ${isVoid ? 'opacity-60' : ''}`} onClick={() => handleEditItem({ dataType: 'estimate', original: est })}>
-                            <div className="flex items-start gap-4 mb-4">
-                              <div className={`w-12 h-12 rounded-md flex items-center justify-center flex-shrink-0 ${est.status === 'accepted' ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : est.status === 'sent' ? 'bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
-                                {est.status === 'accepted' ? <CheckCircle size={20} strokeWidth={1.5} /> : <FileText size={20} strokeWidth={1.5} />}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                  <div className="font-bold text-slate-900 dark:text-white text-lg">{est.client}</div>
-                                  {est.number && <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded font-mono font-bold">{est.number}</span>}
-                                  {isFollowUpOverdue && <span className="text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 px-2 py-0.5 rounded font-bold flex items-center gap-1"><Clock3 size={12} /> Follow-up due</span>}
+                          <div
+                            key={est.id}
+                            className={`${isVoid ? 'opacity-60' : ''} ${isFollowUpOverdue ? 'border-l-4 border-l-orange-500' : est.status === 'accepted' ? 'border-l-4 border-l-emerald-500' : isExpired && est.status !== 'accepted' && !isVoid ? 'border-l-4 border-l-amber-500' : ''}`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => handleEditItem({ dataType: 'estimate', original: est })}
+                              className="w-full text-left px-4 py-4 sm:px-5 sm:py-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
+                              aria-label={`Open estimate ${est.number || ''} for ${est.client}`.trim()}
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className="font-bold text-base sm:text-lg text-slate-950 dark:text-white truncate">{est.client}</span>
+                                    {est.number && <span className="flex-shrink-0 text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400">{est.number}</span>}
+                                  </div>
+                                  {(est.projectTitle || est.description) && <div className="mt-1 text-sm text-slate-600 dark:text-slate-300 line-clamp-2">{est.projectTitle || est.description}</div>}
                                 </div>
-                                <div className="text-sm font-medium text-slate-600 dark:text-slate-300">{est.description}</div>
-                                <div className="text-xs text-slate-600 dark:text-slate-300 mt-1">
-                                  {est.date}{est.validUntil ? ` • Valid until ${est.validUntil}` : ''}
-                                  {est.status === 'sent' && daysSinceSent !== null && <span className="ml-2 text-blue-600 dark:text-blue-400">• Sent {daysSinceSent}d ago</span>}
-                                  {est.followUpCount !== undefined && est.followUpCount > 0 && <span className="ml-2 text-purple-600 dark:text-purple-400">• {est.followUpCount} follow-up{est.followUpCount > 1 ? 's' : ''}</span>}
+                                <div className="flex-shrink-0 text-right">
+                                  <div className="text-lg sm:text-xl font-bold tracking-tight text-slate-950 dark:text-white">{formatCurrency.format(est.amount)}</div>
+                                  <span className={`mt-1.5 inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${statusClass}`}>{statusLabel}</span>
                                 </div>
                               </div>
+
+                              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                                <span>{est.date}</span>
+                                {est.validUntil && <span className={isExpired && est.status !== 'accepted' && !isVoid ? 'text-amber-600 dark:text-amber-400 font-semibold' : ''}>{isExpired && est.status !== 'accepted' && !isVoid ? 'Expired' : 'Valid until'} {est.validUntil}</span>}
+                              </div>
+
+                              {est.status === 'sent' && (isFollowUpOverdue || isFollowUpSoon) && (
+                                <div className={`mt-3 flex items-center gap-2 text-sm font-semibold ${isFollowUpOverdue ? 'text-orange-700 dark:text-orange-300' : 'text-blue-700 dark:text-blue-300'}`}>
+                                  <Clock3 size={15} className="flex-shrink-0" />
+                                  <span>{isFollowUpOverdue ? `Follow-up due ${est.followUpDate}` : `Follow-up ${est.followUpDate}`}</span>
+                                </div>
+                              )}
+                            </button>
+
+                            <div className="px-4 pb-3 sm:px-5 sm:pb-4 flex items-center justify-between gap-3">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handlePrintEstimate(est); }}
+                                className="min-h-11 inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                              >
+                                <Download size={17} strokeWidth={1.7} /> PDF
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setExpandedEstimateActionsId(actionsOpen ? null : est.id); }}
+                                className="min-h-11 inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors"
+                                aria-expanded={actionsOpen}
+                              >
+                                Manage {actionsOpen ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
+                              </button>
                             </div>
 
-                            {/* Follow-up Alert Banner for Sent Estimates */}
-                            {est.status === 'sent' && (isFollowUpOverdue || isFollowUpSoon) && (
-                              <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 p-3 rounded-lg mb-4 ${isFollowUpOverdue ? 'bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/30' : 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30'}`}>
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <Clock3 size={16} className={`flex-shrink-0 ${isFollowUpOverdue ? 'text-orange-600 dark:text-orange-400' : 'text-blue-600 dark:text-blue-400'}`} />
-                                  <span className={`text-sm font-bold ${isFollowUpOverdue ? 'text-orange-800 dark:text-orange-300' : 'text-blue-800 dark:text-blue-300'}`}>
-                                    {isFollowUpOverdue ? `Follow-up was due ${est.followUpDate}` : `Follow-up: ${est.followUpDate}`}
-                                  </span>
-                                </div>
-                                <div className="flex gap-2 flex-shrink-0">
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); recordFollowUp(est, 7); }}
-                                    className="px-3 py-1.5 rounded text-xs font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all border border-slate-200 dark:border-slate-700"
-                                  >
-                                    Done +7d
-                                  </button>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); snoozeFollowUp(est, 3); }}
-                                    className="px-3 py-1.5 rounded text-xs font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all border border-slate-200 dark:border-slate-700"
-                                  >
-                                    +3d
-                                  </button>
+                            {actionsOpen && (
+                              <div className="px-4 pb-4 sm:px-5 sm:pb-5">
+                                <div className="pt-3 border-t border-slate-200 dark:border-slate-800 grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
+                                  {!isVoid && est.status === 'draft' && (
+                                    <button onClick={() => updateEstimateStatus(est, 'sent')} className="min-h-11 px-3 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"><Share2 size={16} /> Mark Sent</button>
+                                  )}
+                                  {!isVoid && est.status === 'sent' && (
+                                    <>
+                                      <button onClick={() => updateEstimateStatus(est, 'accepted')} className="min-h-11 px-3 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"><CheckCircle size={16} /> Accepted</button>
+                                      <button onClick={() => updateEstimateStatus(est, 'declined')} className="min-h-11 px-3 py-2 rounded-lg text-sm font-semibold bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors flex items-center justify-center gap-2"><X size={16} /> Declined</button>
+                                      <button onClick={() => recordFollowUp(est, 7)} className="min-h-11 px-3 py-2 rounded-lg text-sm font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"><Clock3 size={16} /> Follow-up</button>
+                                      {(isFollowUpOverdue || isFollowUpSoon) && <button onClick={() => snoozeFollowUp(est, 3)} className="min-h-11 px-3 py-2 rounded-lg text-sm font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Snooze 3d</button>}
+                                    </>
+                                  )}
+                                  {!isVoid && est.status === 'accepted' && (
+                                    <button onClick={() => convertEstimateToInvoice(est)} className="min-h-11 px-3 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"><ArrowRight size={16} /> Create Invoice</button>
+                                  )}
+                                  {!isVoid && est.status === 'declined' && (
+                                    <button onClick={() => duplicateEstimate(est)} className="min-h-11 px-3 py-2 rounded-lg text-sm font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"><Copy size={16} /> Revise & Resend</button>
+                                  )}
+                                  <button onClick={() => { setBillingDocType('estimate'); setActiveItem(est); setDrawerMode('edit_inv'); setIsDrawerOpen(true); }} className="min-h-11 px-3 py-2 rounded-lg text-sm font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"><Edit3 size={16} /> Edit</button>
+                                  <button onClick={() => deleteEstimate(est)} className="min-h-11 px-3 py-2 rounded-lg text-sm font-semibold bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors flex items-center justify-center gap-2"><Trash2 size={16} /> Delete</button>
                                 </div>
                               </div>
                             )}
-
-                            {/* Quick Status Actions - Context-Sensitive */}
-                            {!isVoid && (
-                              <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-                                {est.status === 'draft' && (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); updateEstimateStatus(est, 'sent'); }}
-                                    className="px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-blue-600 text-white hover:bg-blue-700 transition-all active:scale-95 flex items-center gap-1.5"
-                                  >
-                                    <Share2 size={14} /> Mark Sent
-                                  </button>
-                                )}
-                                {est.status === 'sent' && (
-                                  <>
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); updateEstimateStatus(est, 'accepted'); }}
-                                      className="px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-emerald-600 text-white hover:bg-emerald-700 transition-all active:scale-95 flex items-center gap-1.5"
-                                    >
-                                      <CheckCircle size={14} /> Won / Accepted
-                                    </button>
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); updateEstimateStatus(est, 'declined'); }}
-                                      className="px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-red-100 text-red-700 hover:bg-red-600 hover:text-white dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-600 dark:hover:text-white transition-all active:scale-95 flex items-center gap-1.5"
-                                    >
-                                      <X size={14} /> Lost / Declined
-                                    </button>
-                                    {!isFollowUpOverdue && !isFollowUpSoon && (
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); recordFollowUp(est, 7); }}
-                                        className="px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-purple-100 text-purple-700 hover:bg-purple-600 hover:text-white dark:bg-purple-900/30 dark:text-purple-400 dark:hover:bg-purple-600 dark:hover:text-white transition-all active:scale-95 flex items-center gap-1.5"
-                                      >
-                                        <Clock3 size={14} /> Log Follow-up
-                                      </button>
-                                    )}
-                                  </>
-                                )}
-                                {est.status === 'accepted' && (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); convertEstimateToInvoice(est); }}
-                                    className="px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-emerald-600 to-blue-600 text-white hover:from-emerald-700 hover:to-blue-700 transition-all active:scale-95 flex items-center gap-1.5 shadow-lg shadow-emerald-500/20"
-                                  >
-                                    <ArrowRight size={14} /> Create Invoice
-                                  </button>
-                                )}
-                                {est.status === 'declined' && (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); duplicateEstimate(est); }}
-                                    className="px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition-all active:scale-95 flex items-center gap-1.5"
-                                  >
-                                    <Copy size={14} /> Revise & Resend
-                                  </button>
-                                )}
-                              </div>
-                            )}
-
-                            <div className="flex items-end justify-between">
-                              <div>
-                                <label className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1 uppercase tracking-wide">Total</label>
-                                <div className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white mb-2">{formatCurrency.format(est.amount)}</div>
-                                <div className="flex flex-col gap-1">
-                                  <div className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 w-fit ${statusClass}`}>{statusLabel}</div>
-                                  {isExpired && est.status !== 'accepted' && !isVoid && <div className="text-xs font-medium text-amber-600 dark:text-amber-400">Expired</div>}
-                                </div>
-                              </div>
-                              <div className="flex gap-2">
-                                <button onClick={(e) => { e.stopPropagation(); handlePrintEstimate(est); }} title="Export PDF" className="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-600 hover:text-white transition-all active:scale-95"><Download size={20} strokeWidth={1.5} /></button>
-                                <button onClick={(e) => { e.stopPropagation(); setBillingDocType('estimate'); setActiveItem(est); setDrawerMode('edit_inv'); setIsDrawerOpen(true); }} title="Edit Estimate" className="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-900 hover:text-white dark:hover:bg-slate-700 transition-all active:scale-95"><Edit3 size={20} strokeWidth={1.5} /></button>
-                                <button onClick={(e) => { e.stopPropagation(); deleteEstimate(est); }} title="Delete Estimate" className="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-red-600 hover:text-white transition-all active:scale-95"><Trash2 size={20} strokeWidth={1.5} /></button>
-                              </div>
-                            </div>
                           </div>
                         );
                       })
@@ -8465,108 +8519,108 @@ html, body, #root {
         )}
 
         {currentPage === Page.Mileage && (
-          <div className="min-h-full flex flex-col space-y-8 animate-in fade-in slide-in-from-right-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="p-2 sm:p-2.5 rounded-lg bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300 flex-shrink-0">
-                <Car size={20} className="sm:w-6 sm:h-6" strokeWidth={1.5} />
+          <div className="min-h-full animate-in fade-in slide-in-from-right-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="p-2.5 rounded-xl bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300 flex-shrink-0">
+                    <Car size={22} strokeWidth={1.7} />
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950 dark:text-white font-brand">Mileage</h2>
+                </div>
+                {!isMileageKeyboardEditing && (
+                  <p className="mt-2 max-w-xl text-sm font-medium leading-6 text-slate-600 dark:text-slate-300">
+                    Log business trips and keep your mileage ready for tax time.
+                  </p>
+                )}
               </div>
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950 dark:text-white font-brand">Mileage</h2>
+              <button
+                type="button"
+                onClick={openMileageAddDrawer}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-teal-700 active:scale-[0.98]"
+              >
+                <Plus size={17} strokeWidth={2} />
+                <span>Add Trip</span>
+              </button>
             </div>
 
-            {!isMileageKeyboardEditing && (
-              <p className="text-slate-600 dark:text-slate-300 font-semibold mb-3">
-                Log trips daily and export IRS-ready mileage for tax time.
-              </p>
-            )}
-
-            <MobileFormShell
-              isEditing={false}
-              title="Mileage"
-              description="Track deductible trips and export clean CSV or spreadsheet files for your accountant."
-              toolbar={(
-                <div className="w-full lg:w-auto flex flex-col gap-2">
-                  <div className="w-full sm:w-[140px]">
-                    <label className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1 block">Tax Year</label>
-                    <select value={taxPrepYear} onChange={e => setTaxPrepYear(Number(e.target.value))} className="w-full px-3 py-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm font-bold">
-                      {[2026, 2025, 2024, 2023].map(y => (<option key={y} value={y}>{y}</option>))}
-                    </select>
-                  </div>
+            <div className="mt-6 flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 pb-5 dark:border-slate-800">
+              <div className="w-[118px]">
+                <label className="mb-1.5 block text-xs font-semibold text-slate-500 dark:text-slate-400">Tax year</label>
+                <select
+                  value={taxPrepYear}
+                  onChange={e => setTaxPrepYear(Number(e.target.value))}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-bold text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                >
+                  {[2026, 2025, 2024, 2023].map(y => (<option key={y} value={y}>{y}</option>))}
+                </select>
+              </div>
+              <div>
+                <div className="mb-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Export</div>
+                <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={openMileageAddDrawer}
-                    className="w-full text-center px-4 py-3 rounded-lg bg-emerald-600 text-white font-extrabold uppercase tracking-widest text-xs hover:bg-emerald-700 active:scale-95 transition-all"
+                    onClick={handleExportMileageSpreadsheet}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 active:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                   >
-                    Add Trip
+                    <Download size={15} strokeWidth={1.8} /> Excel
                   </button>
+                  <button
+                    type="button"
+                    onClick={handleExportMileageCSV}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 active:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                  >
+                    CSV
+                  </button>
+                </div>
+              </div>
+            </div>
 
-                  {/* Same shape as the Mileage card in Tax Prep, so the two read
-                      as one feature reached from two places rather than two
-                      similarly-named features. */}
-                  <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/40">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[15px] font-bold text-slate-900 dark:text-white">Export these trips</div>
-                        <p className="mt-0.5 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
-                          Every trip logged in {taxPrepYear} — date, miles, purpose and deduction.
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 gap-2">
-                        <button
-                          onClick={handleExportMileageSpreadsheet}
-                          className="rounded-lg bg-blue-600 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-blue-700"
-                        >
-                          Excel
-                        </button>
-                        <button
-                          onClick={handleExportMileageCSV}
-                          className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                        >
-                          CSV
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              form={(
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4">
-                    <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Trips</div>
-                    <div className="mt-2 text-2xl font-black text-slate-900 dark:text-white">{mileageForTaxYear.length}</div>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4">
-                    <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Miles</div>
-                    <div className="mt-2 text-2xl font-black text-slate-900 dark:text-white">{mileageTotalMilesForTaxYear.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4">
-                    <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Estimated Deduction</div>
-                    <div className="mt-2 text-2xl font-black text-slate-900 dark:text-white">{formatCurrency.format(mileageDeductionForTaxYear)}</div>
-                  </div>
-                </div>
-              )}
-              secondaryContent={renderMileageTripList()}
-            />
+            <div className="mt-5 grid grid-cols-3 divide-x divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+              <div className="min-w-0 px-3 py-4 sm:px-4">
+                <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Trips</div>
+                <div className="mt-1 truncate text-xl font-extrabold tabular-nums text-slate-900 dark:text-white">{mileageForTaxYear.length}</div>
+              </div>
+              <div className="min-w-0 px-3 py-4 sm:px-4">
+                <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Miles</div>
+                <div className="mt-1 truncate text-xl font-extrabold tabular-nums text-slate-900 dark:text-white">{mileageTotalMilesForTaxYear.toLocaleString(undefined, { maximumFractionDigits: 1 })}</div>
+              </div>
+              <div className="min-w-0 px-3 py-4 sm:px-4">
+                <div className="text-xs font-semibold leading-4 text-slate-500 dark:text-slate-400">Est. deduction</div>
+                <div className="mt-1 truncate text-xl font-extrabold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(mileageDeductionForTaxYear)}</div>
+              </div>
+            </div>
+
+            <section className="mt-7">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Trips</h3>
+                <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">{mileageForTaxYear.length} in {taxPrepYear}</span>
+              </div>
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+                {renderMileageTripList()}
+              </div>
+            </section>
           </div>
         )}
 
         {currentPage === Page.Reports && (
-           <div className="space-y-8 animate-in fade-in slide-in-from-right-4">
+           <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-right-4">
               <div className="flex items-center gap-2 sm:gap-3">
-                <div className="p-2 sm:p-2.5 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 flex-shrink-0">
-                  <BarChart3 size={20} className="sm:w-6 sm:h-6" strokeWidth={1.5} />
+                <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 flex-shrink-0">
+                  <BarChart3 size={22} strokeWidth={1.7} />
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950 dark:text-white font-brand">Reports</h2>
               </div>
               
               
-              <p className="text-slate-600 dark:text-slate-300 font-semibold mb-3">
+              <p className="text-slate-600 dark:text-slate-300 font-semibold leading-6">
                 Documents to hand over, and tools to work out what you owe.
               </p>
 
               {/* Two groups, because these are two different jobs: documents you
                   hand to an accountant, and tools you use to work out what you owe.
                   Four identical tabs implied they were the same kind of thing. */}
-              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-3 shadow-sm mb-4">
+              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-3 sm:p-4 shadow-sm">
                 <div className="mb-2 px-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
                   Share with your accountant
                 </div>
@@ -10105,68 +10159,76 @@ html, body, #root {
 
         {/* ==================== CLIENTS PAGE ==================== */}
         {currentPage === Page.Clients && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 pb-24">
+          <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-right-4 pb-24">
             {/* Header */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                <div className="p-2 sm:p-2.5 rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400 flex-shrink-0">
-                  <Users size={20} className="sm:w-6 sm:h-6" strokeWidth={1.5} />
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400 flex-shrink-0">
+                  <Users size={22} strokeWidth={1.7} />
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950 dark:text-white font-brand">Clients</h2>
               </div>
-              <button 
-                onClick={() => { 
-                  setEditingClient({ status: 'lead' }); 
-                  setIsClientModalOpen(true); 
-                }} 
-                className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-blue-500 transition-all active:scale-95 flex-shrink-0"
+              <button
+                onClick={() => {
+                  setEditingClient({ status: 'lead' });
+                  setIsClientModalOpen(true);
+                }}
+                className="w-11 h-11 sm:w-12 sm:h-12 bg-purple-600 text-white rounded-full flex items-center justify-center shadow-md shadow-purple-600/20 hover:bg-purple-500 transition-all active:scale-95 flex-shrink-0"
+                aria-label="Add client"
+                title="Add client"
               >
-                <Plus size={20} className="sm:w-6 sm:h-6" strokeWidth={2.5} />
+                <Plus size={21} strokeWidth={2.5} />
               </button>
             </div>
 
-            {/* Filter Tabs */}
-            <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg border border-slate-200 dark:border-slate-800 overflow-x-auto custom-scrollbar">
-              {(['all', 'lead', 'client', 'inactive'] as const).map(f => (
-                <button
-                  key={f}
-                  onClick={() => setClientFilter(f)}
-                  className={`flex-1 min-w-[80px] py-2.5 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${
-                    clientFilter === f 
-                      ? 'bg-blue-600 text-white shadow-sm' 
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-200'
-                  }`}
-                >
-                  {f === 'all' ? `All (${clients.length})` : `${f.charAt(0).toUpperCase() + f.slice(1)} (${clients.filter(c => c.status === f).length})`}
-                </button>
-              ))}
-            </div>
-
-            {/* Search Bar */}
+            {/* Search comes first: finding a person/company is the primary task. */}
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-400" size={18} />
               <input
                 type="text"
-                placeholder="Search clients by name, company, or email..."
+                placeholder="Search clients..."
                 value={clientSearch}
                 onChange={e => setClientSearch(e.target.value)}
-                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl pl-12 pr-4 py-4 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl pl-12 pr-4 py-4 font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-400 dark:focus:border-purple-500 shadow-sm"
               />
             </div>
 
+            {/* Fixed status filters: all four choices remain visible on mobile. */}
+            <div className="grid grid-cols-4 gap-1.5 bg-slate-100 dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
+              {(['all', 'lead', 'client', 'inactive'] as const).map(f => {
+                const count = f === 'all' ? clients.length : clients.filter(c => c.status === f).length;
+                const label = f === 'all' ? 'All' : f === 'lead' ? 'Leads' : f === 'client' ? 'Clients' : 'Inactive';
+                return (
+                  <button
+                    key={f}
+                    onClick={() => setClientFilter(f)}
+                    className={`min-h-[52px] min-w-0 px-1.5 py-2.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all leading-tight ${
+                      clientFilter === f
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white'
+                    }`}
+                    aria-pressed={clientFilter === f}
+                  >
+                    <span className="block truncate">{label}</span>
+                    <span className={`block mt-0.5 text-[10px] font-semibold ${clientFilter === f ? 'text-blue-100' : 'text-slate-400 dark:text-slate-500'}`}>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+
             {/* Clients List */}
-            <div className="space-y-3">
+            <div className="pt-1 space-y-4">
               {(() => {
                 const filtered = clients
                   .filter(c => clientFilter === 'all' || c.status === clientFilter)
                   .filter(c => {
-                    if (!clientSearch.trim()) return true;
-                    const search = clientSearch.toLowerCase();
-                    return (
-                      c.name.toLowerCase().includes(search) ||
-                      (c.company || '').toLowerCase().includes(search) ||
-                      (c.email || '').toLowerCase().includes(search)
-                    );
+                    const query = clientSearch.trim().toLowerCase();
+                    if (!query) return true;
+                    const searchable = [c.name, c.company, c.email, c.phone, c.address, c.notes]
+                      .filter(Boolean)
+                      .join(' ')
+                      .toLowerCase();
+                    return searchable.includes(query);
                   })
                   .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
@@ -10175,12 +10237,14 @@ html, body, #root {
                     <EmptyState
                       icon={<Users size={32} />}
                       title="No Clients Found"
-                      subtitle={clientFilter === 'all' 
-                        ? "Start by adding your first lead or client." 
-                        : `No ${clientFilter}s found. Try adjusting your filters.`}
-                      action={() => { 
-                        setEditingClient({ status: 'lead' }); 
-                        setIsClientModalOpen(true); 
+                      subtitle={clientSearch.trim()
+                        ? `No clients match “${clientSearch.trim()}”.`
+                        : clientFilter === 'all'
+                          ? 'Start by adding your first lead or client.'
+                          : `No ${clientFilter === 'lead' ? 'leads' : clientFilter === 'client' ? 'clients' : 'inactive clients'} found.`}
+                      action={() => {
+                        setEditingClient({ status: 'lead' });
+                        setIsClientModalOpen(true);
                       }}
                       actionLabel="Add Client"
                     />
@@ -10189,98 +10253,75 @@ html, body, #root {
 
                 return filtered.map(client => {
                   const statusColors: Record<ClientStatus, string> = {
-                    lead: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
-                    client: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
+                    lead: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+                    client: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
                     inactive: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
                   };
 
-                  // Calculate client lifetime value
-                  const clientRevenue = invoices
-                    .filter(inv => inv.clientId === client.id && inv.status === 'paid')
+                  const outstandingBalance = invoices
+                    .filter(inv => inv.clientId === client.id && inv.status === 'unpaid')
                     .reduce((sum, inv) => sum + inv.amount, 0);
 
-                  const clientInvoiceCount = invoices.filter(inv => inv.clientId === client.id).length;
-                  const clientEstimateCount = estimates.filter(est => est.clientId === client.id).length;
-
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={client.id}
                       onClick={() => {
                         setEditingClient(client);
                         setIsClientModalOpen(true);
                       }}
-                      className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-blue-500/30 hover:shadow-lg transition-all cursor-pointer shadow-sm"
+                      className="w-full text-left bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 px-5 py-5 sm:px-6 sm:py-6 hover:border-purple-400/60 dark:hover:border-purple-500/50 hover:shadow-md transition-all active:scale-[0.995]"
                     >
-                      {/* Top Row: Icon + Name + Status Badge */}
-                      <div className="flex items-start gap-4 mb-3">
-                        <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center flex-shrink-0">
-                          <User size={20} strokeWidth={2} />
+                      <div className="flex items-start gap-4">
+                        <div className="w-11 h-11 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <User size={19} strokeWidth={2} />
                         </div>
+
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <h3 className="text-lg font-bold text-slate-900 dark:text-white truncate">
-                              {client.name}
-                            </h3>
-                            <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase ${statusColors[client.status]}`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <h3 className="text-base sm:text-lg font-bold text-slate-950 dark:text-white leading-snug break-words">
+                                {client.name}
+                              </h3>
+                              {client.company && (
+                                <p className="mt-1 text-sm font-medium text-slate-600 dark:text-slate-300 break-words">
+                                  {client.company}
+                                </p>
+                              )}
+                            </div>
+                            <span className={`px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wide flex-shrink-0 ${statusColors[client.status]}`}>
                               {client.status}
                             </span>
                           </div>
-                          {client.company && (
-                            <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                              {client.company}
-                            </p>
-                          )}
-                        </div>
-                      </div>
 
-                      {/* Contact Info */}
-                      {(client.email || client.phone) && (
-                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600 dark:text-slate-300 mb-3">
-                          {client.email && (
-                            <div className="flex items-center gap-2">
-                              <span className="text-slate-400">✉</span>
-                              <span className="truncate">{client.email}</span>
+                          {(client.email || client.phone) && (
+                            <div className="mt-4 space-y-1.5 text-sm text-slate-600 dark:text-slate-300">
+                              {client.email && <div className="break-all">{client.email}</div>}
+                              {client.phone && <div>{client.phone}</div>}
                             </div>
                           )}
-                          {client.phone && (
-                            <div className="flex items-center gap-2">
-                              <span className="text-slate-400">☎</span>
-                              {client.phone}
-                            </div>
-                          )}
-                        </div>
-                      )}
 
-                      {/* Notes Preview */}
-                      {client.notes && (
-                        <div className="text-sm text-slate-600 dark:text-slate-300 italic line-clamp-2 mb-3">
-                          {client.notes}
+                          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-4 min-h-[28px]">
+                            {outstandingBalance > 0 ? (
+                              <span className="text-sm font-bold text-amber-700 dark:text-amber-300">
+                                Outstanding {formatCurrency.format(outstandingBalance)}
+                              </span>
+                            ) : (
+                              <span className="text-sm text-slate-500 dark:text-slate-400">
+                                {client.status === 'lead' ? 'Potential client' : client.status === 'inactive' ? 'Inactive' : 'Client record'}
+                              </span>
+                            )}
+                            <ChevronRight size={19} className="text-slate-400 dark:text-slate-500 flex-shrink-0" />
+                          </div>
                         </div>
-                      )}
-
-                      {/* Stats Row */}
-                      <div className="flex items-center gap-4 text-xs text-slate-600 dark:text-slate-300 pt-3 border-t border-slate-100 dark:border-slate-800">
-                        {clientRevenue > 0 && (
-                          <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                            LTV: {formatCurrency.format(clientRevenue)}
-                          </span>
-                        )}
-                        {clientInvoiceCount > 0 && (
-                          <span>{clientInvoiceCount} invoice{clientInvoiceCount !== 1 ? 's' : ''}</span>
-                        )}
-                        {clientEstimateCount > 0 && (
-                          <span>{clientEstimateCount} estimate{clientEstimateCount !== 1 ? 's' : ''}</span>
-                        )}
-                        <span className="ml-auto">Updated: {new Date(client.updatedAt).toLocaleDateString()}</span>
                       </div>
-                    </div>
+                    </button>
                   );
                 });
               })()}
             </div>
           </div>
         )}
-
 
         {/* ==================== COMPANY EQUITY PAGE ==================== */}
         {currentPage === Page.CompanyEquity && (
@@ -10294,22 +10335,22 @@ html, body, #root {
         )}
 
         {currentPage === Page.Settings && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 pb-24">
+          <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-right-4 pb-24">
             {/* Settings Header */}
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="p-2 sm:p-2.5 rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 flex-shrink-0">
-                <Settings size={20} className="sm:w-6 sm:h-6" strokeWidth={1.5} />
+              <div className="p-2.5 rounded-xl bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 flex-shrink-0">
+                <Settings size={22} strokeWidth={1.7} />
               </div>
               <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950 dark:text-white font-brand">Settings</h2>
               <div className="ml-auto text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">MONIEZI v{CUSTOMER_VERSION}</div>
             </div>
 
             {/* Tab Navigation */}
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-2 shadow-sm">
-              <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-2.5 shadow-sm">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-2.5">
                 <button
                   onClick={() => setSettingsTab('backup')}
-                  className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-3 md:px-4 py-3 rounded-lg font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
+                  className={`flex min-h-[68px] md:min-h-0 flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 px-3 md:px-4 py-3 rounded-xl font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
                     settingsTab === 'backup'
                       ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
                       : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
@@ -10321,7 +10362,7 @@ html, body, #root {
 
                 <button
                   onClick={() => setSettingsTab('update')}
-                  className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-3 md:px-4 py-3 rounded-lg font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
+                  className={`flex min-h-[68px] md:min-h-0 flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 px-3 md:px-4 py-3 rounded-xl font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
                     settingsTab === 'update'
                       ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
                       : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
@@ -10333,7 +10374,7 @@ html, body, #root {
                 
                 <button
                   onClick={() => setSettingsTab('branding')}
-                  className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-3 md:px-4 py-3 rounded-lg font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
+                  className={`flex min-h-[68px] md:min-h-0 flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 px-3 md:px-4 py-3 rounded-xl font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
                     settingsTab === 'branding'
                       ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
                       : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
@@ -10345,7 +10386,7 @@ html, body, #root {
                 
                 <button
                   onClick={() => setSettingsTab('tax')}
-                  className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-3 md:px-4 py-3 rounded-lg font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
+                  className={`flex min-h-[68px] md:min-h-0 flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 px-3 md:px-4 py-3 rounded-xl font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
                     settingsTab === 'tax'
                       ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30'
                       : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
@@ -10357,7 +10398,7 @@ html, body, #root {
                 
                 <button
                   onClick={() => setSettingsTab('data')}
-                  className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-3 md:px-4 py-3 rounded-lg font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
+                  className={`flex min-h-[68px] md:min-h-0 flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 px-3 md:px-4 py-3 rounded-xl font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
                     settingsTab === 'data'
                       ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
                       : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
@@ -10369,7 +10410,7 @@ html, body, #root {
                 {LICENSING_ENABLED && (
                 <button
                   onClick={() => setSettingsTab('license')}
-                  className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-3 md:px-4 py-3 rounded-lg font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
+                  className={`flex min-h-[68px] md:min-h-0 flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 px-3 md:px-4 py-3 rounded-xl font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
                     settingsTab === 'license'
                       ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30'
                       : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
@@ -10381,7 +10422,7 @@ html, body, #root {
                 )}
                 <button
                   onClick={() => setSettingsTab('offline')}
-                  className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-3 md:px-4 py-3 rounded-lg font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
+                  className={`flex min-h-[68px] md:min-h-0 flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 px-3 md:px-4 py-3 rounded-xl font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
                     settingsTab === 'offline'
                       ? 'bg-sky-600 text-white shadow-lg shadow-sky-600/30'
                       : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
@@ -10398,7 +10439,7 @@ html, body, #root {
               
               {/* App Update / Refresh Build Tab */}
               {settingsTab === 'update' && (
-                <div className="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg animate-in fade-in slide-in-from-bottom-4">
+                <div className="bg-white dark:bg-slate-900 p-5 sm:p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg animate-in fade-in slide-in-from-bottom-4">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
                       <RotateCcw size={20} strokeWidth={2} />
@@ -10467,7 +10508,7 @@ html, body, #root {
 
               {/* Offline Setup Tab */}
               {settingsTab === 'offline' && (
-                <div className="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg animate-in fade-in slide-in-from-bottom-4">
+                <div className="bg-white dark:bg-slate-900 p-5 sm:p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg animate-in fade-in slide-in-from-bottom-4">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 rounded-lg bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 flex items-center justify-center">
                       <HelpCircle size={20} strokeWidth={2} />
@@ -10490,7 +10531,7 @@ html, body, #root {
 
               {/* Backup & Restore Tab */}
               {settingsTab === 'backup' && (
-                <div className="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg animate-in fade-in slide-in-from-bottom-4">
+                <div className="bg-white dark:bg-slate-900 p-5 sm:p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg animate-in fade-in slide-in-from-bottom-4">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
                       <Shield size={20} strokeWidth={2} />
@@ -10536,7 +10577,7 @@ html, body, #root {
               {/* Branding & Customization Tab */}
               {settingsTab === 'branding' && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                  <div className="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg">
+                  <div className="bg-white dark:bg-slate-900 p-5 sm:p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center">
                         <Palette size={20} strokeWidth={2} />
@@ -10587,7 +10628,7 @@ html, body, #root {
               
               {/* Tax Configuration Tab */}
               {settingsTab === 'tax' && (
-                <div className="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg animate-in fade-in slide-in-from-bottom-4">
+                <div className="bg-white dark:bg-slate-900 p-5 sm:p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg animate-in fade-in slide-in-from-bottom-4">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                       <Calculator size={20} strokeWidth={2} />
@@ -10706,7 +10747,7 @@ html, body, #root {
 
               {/* Data Management Tab */}
               {settingsTab === 'data' && (
-                <div className="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg animate-in fade-in slide-in-from-bottom-4">
+                <div className="bg-white dark:bg-slate-900 p-5 sm:p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg animate-in fade-in slide-in-from-bottom-4">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center">
                       <Trash2 size={20} strokeWidth={2} />
@@ -10743,7 +10784,7 @@ html, body, #root {
               {/* License Tab */}
               {LICENSING_ENABLED && settingsTab === 'license' && (
 
-                <div className="bg-white dark:bg-slate-900 p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg animate-in fade-in slide-in-from-bottom-4">
+                <div className="bg-white dark:bg-slate-900 p-5 sm:p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg animate-in fade-in slide-in-from-bottom-4">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                       <Key size={20} strokeWidth={2} />
@@ -10991,7 +11032,7 @@ html, body, #root {
                 </div>
 
                 <div className="text-xs text-slate-500 dark:text-slate-400">
-                  Tip: MONIEZI works offline. Your records stay on your device and are never uploaded. About four times a year the app re-checks your licence — that sends only your licence key and an anonymous device id, nothing else.
+                  Tip: MONIEZI works offline. Your records stay on your device and are never uploaded. About four times a year the app re-checks your license — that sends only your license key and an anonymous device id, nothing else.
                 </div>
               </div>
             </div>
@@ -11083,11 +11124,11 @@ html, body, #root {
                 onClick={() => { setCurrentPage(Page.Clients); setShowMainMenu(false); }}
                 className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-500/10 dark:text-emerald-300">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-700/40 dark:bg-purple-500/10 dark:text-purple-300">
                   <Users size={18} />
                 </span>
                 <span className="min-w-0">
-                  Customers
+                  Clients
                   <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Contacts and job history</span>
                 </span>
               </button>
@@ -11096,7 +11137,7 @@ html, body, #root {
                 onClick={() => { setBillingDocType('estimate'); setCurrentPage(Page.Invoices); setShowMainMenu(false); }}
                 className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-500/10 dark:text-emerald-300">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-700/40 dark:bg-indigo-500/10 dark:text-indigo-300">
                   <ClipboardList size={18} />
                 </span>
                 <span className="min-w-0">
@@ -11118,7 +11159,7 @@ html, body, #root {
                     onClick={() => { handleRemoveSampleData(); setShowMainMenu(false); }}
                     className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-500/10 dark:text-emerald-300">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-red-200 bg-red-50 text-red-700 dark:border-red-700/40 dark:bg-red-500/10 dark:text-red-300">
                       <Trash2 size={18} />
                     </span>
                     <span className="min-w-0">
@@ -11131,7 +11172,7 @@ html, body, #root {
                     onClick={handleLoadSampleData}
                     className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-500/10 dark:text-emerald-300">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-700/40 dark:bg-amber-500/10 dark:text-amber-300">
                       <PlayCircle size={18} />
                     </span>
                     <span className="min-w-0">
@@ -11153,12 +11194,12 @@ html, body, #root {
                 onClick={() => { setCurrentPage(Page.Settings); setShowMainMenu(false); }}
                 className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-500/10 dark:text-emerald-300">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
                   <Settings size={18} />
                 </span>
                 <span className="min-w-0">
                   Settings
-                  <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Business details, backup, licence</span>
+                  <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Business details, backup, license</span>
                 </span>
               </button>
 
@@ -11168,7 +11209,7 @@ html, body, #root {
                   onClick={() => setShowMainMenu(false)}
                   className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-500/10 dark:text-emerald-300">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-700/40 dark:bg-blue-500/10 dark:text-blue-300">
                     <HelpCircle size={18} />
                   </span>
                   <span className="min-w-0">
@@ -11605,16 +11646,16 @@ html, body, #root {
                   <div className={theme === 'dark' ? 'qa-tile-desc text-indigo-100' : 'qa-tile-desc text-indigo-900'}>Draft a proposal or quote.</div>
                 </div>
               </button>
-              <button onClick={() => handleQuickAddSelection('mileage')} className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-4 text-left transition-all active:scale-[0.98] hover:bg-slate-100 shadow-sm dark:border-slate-600 dark:bg-slate-800/95 dark:hover:bg-slate-800">
+              <button onClick={() => handleQuickAddSelection('mileage')} className="rounded-xl border border-teal-300 bg-teal-50 px-4 py-4 text-left transition-all active:scale-[0.98] hover:bg-teal-100 shadow-sm dark:border-teal-700/50 dark:bg-teal-500/10 dark:hover:bg-teal-500/15">
                 <div className="qa-tile-copy">
-                  <div className={theme === 'dark' ? 'qa-tile-title text-white' : 'qa-tile-title text-slate-950'}>Mileage</div>
-                  <div className={theme === 'dark' ? 'qa-tile-desc text-slate-50' : 'qa-tile-desc text-slate-900'}>Log a business trip.</div>
+                  <div className={theme === 'dark' ? 'qa-tile-title text-teal-100' : 'qa-tile-title text-teal-950'}>Mileage</div>
+                  <div className={theme === 'dark' ? 'qa-tile-desc text-teal-100' : 'qa-tile-desc text-teal-900'}>Log a business trip.</div>
                 </div>
               </button>
-              <button onClick={() => handleQuickAddSelection('client')} className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-4 text-left transition-all active:scale-[0.98] hover:bg-slate-100 shadow-sm dark:border-slate-600 dark:bg-slate-800/95 dark:hover:bg-slate-800">
+              <button onClick={() => handleQuickAddSelection('client')} className="rounded-xl border border-purple-300 bg-purple-50 px-4 py-4 text-left transition-all active:scale-[0.98] hover:bg-purple-100 shadow-sm dark:border-purple-700/50 dark:bg-purple-500/10 dark:hover:bg-purple-500/15">
                 <div className="qa-tile-copy">
-                  <div className={theme === 'dark' ? 'qa-tile-title text-white' : 'qa-tile-title text-slate-950'}>Add Client</div>
-                  <div className={theme === 'dark' ? 'qa-tile-desc text-slate-50' : 'qa-tile-desc text-slate-900'}>Create a new client profile.</div>
+                  <div className={theme === 'dark' ? 'qa-tile-title text-purple-100' : 'qa-tile-title text-purple-950'}>Add Client</div>
+                  <div className={theme === 'dark' ? 'qa-tile-desc text-purple-100' : 'qa-tile-desc text-purple-900'}>Create a new client profile.</div>
                 </div>
               </button>
             </div>
@@ -11628,7 +11669,7 @@ html, body, #root {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <div className="text-lg font-extrabold text-slate-900 dark:text-white">{editingClient.id ? 'Edit Client' : 'New Client'}</div>
-                <div className="text-xs text-slate-500">Leads and customers are tied to invoices/estimates.</div>
+                <div className="text-xs text-slate-500">Leads and clients are tied to invoices/estimates.</div>
               </div>
               <button onClick={() => { setIsClientModalOpen(false); setEditingClient({ status: 'lead' }); }} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"><X size={18} /></button>
             </div>

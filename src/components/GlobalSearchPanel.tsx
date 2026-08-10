@@ -43,18 +43,18 @@ const toneClasses: Record<GlobalSearchTone, { icon: string; badge: string; label
     label: 'Estimate',
   },
   client: {
-    icon: 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300',
-    badge: 'bg-sky-100 text-sky-800 dark:bg-sky-500/15 dark:text-sky-200',
+    icon: 'bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300',
+    badge: 'bg-purple-100 text-purple-800 dark:bg-purple-500/15 dark:text-purple-200',
     label: 'Client',
   },
   mileage: {
-    icon: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
-    badge: 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200',
+    icon: 'bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300',
+    badge: 'bg-teal-100 text-teal-800 dark:bg-teal-500/15 dark:text-teal-200',
     label: 'Mileage',
   },
   receipt: {
-    icon: 'bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300',
-    badge: 'bg-teal-100 text-teal-800 dark:bg-teal-500/15 dark:text-teal-200',
+    icon: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+    badge: 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200',
     label: 'Receipt',
   },
 };
