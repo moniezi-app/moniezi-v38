@@ -1035,6 +1035,7 @@ export default function App() {
   const mainScrollRef = useRef<HTMLDivElement>(null);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
   const [isKeyboardEditing, setIsKeyboardEditing] = useState(false);
+  const [isActivitySearchFocused, setIsActivitySearchFocused] = useState(false);
 
   useKeyboardEditingState({ onEditingChange: setIsKeyboardEditing });
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<any>(null);
@@ -6558,6 +6559,13 @@ const demoMileageTrips: MileageTrip[] = [
   const darkChromeNavInactiveStyle = useDarkChrome ? { color: '#e2e8f0' } : { color: navInactiveColor };
   const darkChromeNavActiveStyle = useDarkChrome ? { color: '#ffffff' } : undefined;
   const isActivityPage = currentPage === Page.AllTransactions || currentPage === Page.Ledger;
+  const shouldHideBottomNav = isKeyboardEditing || (isActivityPage && isActivitySearchFocused);
+
+  useEffect(() => {
+    if (!isActivityPage && isActivitySearchFocused) {
+      setIsActivitySearchFocused(false);
+    }
+  }, [isActivityPage, isActivitySearchFocused]);
 
   return (
     <>
@@ -7435,7 +7443,7 @@ html, body, #root {
         />
       )}
 
-      <div key={`main-scroll-${currentPage}`} ref={mainScrollRef} className="main-scroll-lock flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 md:px-8 pt-5 sm:pt-6 md:pt-7 no-print custom-scrollbar" style={{ paddingBottom: isKeyboardEditing ? 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' : 'calc(11rem + env(safe-area-inset-bottom, 0px))' }} role="main">
+      <div key={`main-scroll-${currentPage}`} ref={mainScrollRef} className="main-scroll-lock flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 md:px-8 pt-5 sm:pt-6 md:pt-7 no-print custom-scrollbar" style={{ paddingBottom: shouldHideBottomNav ? 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' : 'calc(11rem + env(safe-area-inset-bottom, 0px))' }} role="main">
 
       {/* Sample-data banner. Always visible while example records are loaded, so
           nobody mistakes them for real figures and the exit is always one tap. */}
@@ -7939,6 +7947,8 @@ html, body, #root {
                    inputMode="search"
                    value={ledgerSearch}
                    onChange={e => setLedgerSearch(e.target.value)}
+                   onFocus={() => { if (isActivityPage) setIsActivitySearchFocused(true); }}
+                   onBlur={() => { if (isActivityPage) setIsActivitySearchFocused(false); }}
                    placeholder="Search description, category, client or amount"
                    className={isActivityPage ? 'w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-10 pr-10 text-sm text-slate-900 outline-none transition-shadow focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-800 dark:bg-slate-900 dark:text-white dark:focus:border-blue-500' : 'w-full rounded-lg border border-slate-200 bg-white py-3 pl-10 pr-10 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-800 dark:bg-slate-900 dark:text-white'}
                  />
@@ -8349,7 +8359,7 @@ html, body, #root {
                   const isRecurring = inv.recurrence && inv.recurrence.active;
                   const isVoid = inv.status === 'void';
                   return (
-                  <div key={inv.id} className={`bg-white dark:bg-slate-900 p-6 rounded-lg border border-slate-100 dark:border-slate-800/70 group hover:border-blue-500/20 hover:shadow-md transition-all shadow-sm cursor-pointer ${isOverdue && !isVoid ? 'border-l-4 border-l-red-500' : ''} ${isVoid ? 'opacity-75 grayscale-[0.5] border-l-4 border-l-slate-400' : ''}`} onClick={() => handleEditItem({ dataType: 'invoice', original: inv })}>
+                  <div key={inv.id} className={`bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-300 dark:border-slate-700 group hover:border-blue-400 hover:shadow-lg transition-all shadow-sm cursor-pointer ${isOverdue && !isVoid ? 'border-l-4 border-l-red-500' : ''} ${isVoid ? 'opacity-75 grayscale-[0.5] border-l-4 border-l-slate-400' : ''}`} onClick={() => handleEditItem({ dataType: 'invoice', original: inv })}>
                     {/* Top Section: Icon, Name, Description */}
                     <div className="flex items-start gap-4 mb-4">
                       <div className={`w-12 h-12 bg-slate-100 dark:bg-blue-500/10 text-slate-600 dark:text-blue-400 rounded-md flex items-center justify-center flex-shrink-0 ${isVoid ? 'bg-slate-200 dark:bg-slate-800 text-slate-400' : ''}`}>{isVoid ? <Ban size={20} strokeWidth={1.5} /> : isRecurring ? <Repeat size={20} strokeWidth={1.5} className="text-blue-500" /> : <FileText size={20} strokeWidth={1.5} />}</div>
@@ -8406,7 +8416,9 @@ html, body, #root {
 
                 <div className="space-y-4">
                   {displayedEstimates.length === 0 ? (
-                    <EmptyState icon={<FileText size={32} />} title="No Estimates Found" subtitle={filterPeriod === 'all' ? "Create professional estimates (quotes) and export to PDF." : "No estimates found for the selected period."} action={() => handleOpenFAB('billing', 'estimate')} actionLabel="Create Estimate" />
+                    <div className="rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 sm:p-6 shadow-sm">
+                      <EmptyState icon={<FileText size={32} />} title="No Estimates Found" subtitle={filterPeriod === 'all' ? "Create professional estimates (quotes) and export to PDF." : "No estimates found for the selected period."} action={() => handleOpenFAB('billing', 'estimate')} actionLabel="Create Estimate" />
+                    </div>
                   ) : (
                     displayedEstimates
                       .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -8428,12 +8440,12 @@ html, body, #root {
                         return (
                           <div
                             key={est.id}
-                            className={`overflow-hidden rounded-lg border border-slate-100 dark:border-slate-800/70 bg-white dark:bg-slate-900 shadow-sm hover:border-blue-500/20 hover:shadow-md transition-all ${isVoid ? 'opacity-60' : ''} ${isFollowUpOverdue ? 'border-l-4 border-l-orange-500' : est.status === 'accepted' ? 'border-l-4 border-l-emerald-500' : isExpired && !isVoid ? 'border-l-4 border-l-amber-500' : ''}`}
+                            className={`rounded-2xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 ${isVoid ? 'opacity-60' : ''} ${isFollowUpOverdue ? 'border-l-4 border-l-orange-500' : est.status === 'accepted' ? 'border-l-4 border-l-emerald-500' : isExpired && !isVoid ? 'border-l-4 border-l-amber-500' : ''}`}
                           >
                             <button
                               type="button"
                               onClick={() => handleEditItem({ dataType: 'estimate', original: est })}
-                              className="w-full text-left px-4 py-4 sm:px-5 sm:py-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
+                              className="w-full rounded-t-2xl text-left px-4 py-4 sm:px-5 sm:py-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
                               aria-label={`Open estimate ${est.number || ''} for ${est.client}`.trim()}
                             >
                               <div className="flex items-start justify-between gap-3">
@@ -8463,7 +8475,7 @@ html, body, #root {
                               )}
                             </button>
 
-                            <div className="px-4 pb-3 sm:px-5 sm:pb-4 flex items-center justify-between gap-3">
+                            <div className="px-4 pb-3 sm:px-5 sm:pb-4 flex items-center justify-between gap-3 border-t border-slate-200 dark:border-slate-800">
                               <button
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); handlePrintEstimate(est); }}
@@ -8483,7 +8495,7 @@ html, body, #root {
 
                             {actionsOpen && (
                               <div className="px-4 pb-4 sm:px-5 sm:pb-5">
-                                <div className="pt-3 border-t border-slate-200 dark:border-slate-800 grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
+                                <div className="pt-3 grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
                                   {!isVoid && est.status === 'draft' && (
                                     <button onClick={() => updateEstimateStatus(est, 'sent')} className="min-h-11 px-3 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"><Share2 size={16} /> Mark Sent</button>
                                   )}
@@ -10931,7 +10943,7 @@ html, body, #root {
       </div>
 
       {/* Scroll to Top Button - rendered via Portal to escape overflow-hidden container */}
-      {showScrollToTop && !isKeyboardEditing && createPortal(
+      {showScrollToTop && !shouldHideBottomNav && createPortal(
         <button
           onClick={scrollToTop}
           className="no-print w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 active:scale-90 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg shadow-slate-900/10 dark:shadow-black/30 hover:shadow-xl hover:scale-105"
@@ -11038,7 +11050,7 @@ html, body, #root {
         </div>
       )}
 
-      <div className={`dark-chrome no-print fixed bottom-0 left-0 right-0 z-[55] pb-safe transition-opacity duration-150 ${isKeyboardEditing ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+      <div className={`dark-chrome no-print fixed bottom-0 left-0 right-0 z-[55] pb-safe transition-opacity duration-150 ${shouldHideBottomNav ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
         <div className={`${useDarkChrome ? 'bg-slate-950 border-t border-slate-800/50' : 'bg-white/95 dark:bg-slate-950/95 border-t border-slate-200 dark:border-slate-800/50'} ${useDarkChrome ? '' : 'backdrop-blur-xl'} px-1 pt-2 pb-3`}>
           <div className="max-w-xl mx-auto flex justify-between items-end relative">
             {/* Home */}
