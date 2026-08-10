@@ -118,7 +118,7 @@ body.modal-open {
 
   .moniezi-drawer-panel {
     height: auto;
-    border-radius: 0.75rem;
+    border-radius: 0.5rem;
     border: 1px solid rgba(148, 163, 184, 0.35);
   }
 }

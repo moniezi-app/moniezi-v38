@@ -10,6 +10,8 @@ Release date: 2026-08-10
 - Invoice and estimate edit forms now use stronger visual hierarchy and clearer borders: section cards are more visible, headings are separated from fields, and input/select borders are easier to see.
 - The main Menu now has proper top spacing below its header, stronger section headings, and visible dividers between Your Business, Trying MONIEZI, App, and the version/privacy note.
 
+- App-wide corner radii now use a more compact proportional hierarchy while preserving rounded shapes; intentional circles and pill controls remain fully rounded.
+
 ## Notes
 
 Business logic, storage, licensing, PDFs, calculations, exports, and the broader v38 behavior remain unchanged. This release is focused on card clarity, Activity search keyboard behavior, and invoice/estimate form visual refinement.

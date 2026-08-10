@@ -6398,11 +6398,11 @@ const demoMileageTrips: MileageTrip[] = [
         <div className="relative w-full max-w-md">
           {/* Logo and Welcome */}
           <div className="text-center mb-8">
-            <div className="w-28 h-28 mx-auto mb-6 rounded-[28px] bg-gradient-to-br from-blue-500 to-indigo-600 p-[10px] shadow-2xl shadow-blue-500/30 ring-1 ring-white/10 transform-gpu hover:scale-105 transition-transform cursor-pointer select-none">
+            <div className="w-28 h-28 mx-auto mb-6 rounded-[16px] bg-gradient-to-br from-blue-500 to-indigo-600 p-[10px] shadow-2xl shadow-blue-500/30 ring-1 ring-white/10 transform-gpu hover:scale-105 transition-transform cursor-pointer select-none">
               <img
                 src={`${import.meta.env.BASE_URL}icons/icon-192.png`}
                 alt="MONIEZI icon"
-                className="w-full h-full rounded-[22px] object-cover pointer-events-none"
+                className="w-full h-full rounded-[12px] object-cover pointer-events-none"
                 draggable={false}
               />
             </div>
@@ -6775,7 +6775,7 @@ html, body, #root {
         return (
           <div className="fixed inset-0 z-[95] flex items-center justify-center overflow-y-auto bg-slate-950/80 px-4 py-8 backdrop-blur-sm animate-in fade-in duration-200 modal-overlay">
             <div className="w-full max-w-md">
-            <div className={`rounded-[26px] border backdrop-blur-xl overflow-hidden ${theme === 'dark' ? 'border-sky-300/35 bg-gradient-to-br from-slate-800/98 via-slate-800/96 to-blue-950/92 shadow-[0_18px_48px_rgba(2,6,23,0.52)] ring-1 ring-white/8' : 'border-sky-300/65 bg-gradient-to-br from-slate-50/98 via-white/98 to-sky-50/96 shadow-[0_18px_48px_rgba(15,23,42,0.16)] ring-1 ring-sky-200/70'}`}>
+            <div className={`rounded-[15px] border backdrop-blur-xl overflow-hidden ${theme === 'dark' ? 'border-sky-300/35 bg-gradient-to-br from-slate-800/98 via-slate-800/96 to-blue-950/92 shadow-[0_18px_48px_rgba(2,6,23,0.52)] ring-1 ring-white/8' : 'border-sky-300/65 bg-gradient-to-br from-slate-50/98 via-white/98 to-sky-50/96 shadow-[0_18px_48px_rgba(15,23,42,0.16)] ring-1 ring-sky-200/70'}`}>
               <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_right,rgba(96,165,250,0.20),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(125,211,252,0.10),transparent_32%)]" />
               <div className="relative px-6 py-7">
                 <div className={`mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-3xl border shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${theme === 'dark' ? 'bg-gradient-to-br from-sky-500/20 to-blue-600/10 border-sky-300/25' : 'bg-gradient-to-br from-sky-100 to-blue-50 border-sky-200/90 shadow-[0_8px_20px_rgba(59,130,246,0.12)]'}`}>
@@ -6822,7 +6822,7 @@ html, body, #root {
         const isLight = theme !== 'dark';
         return (
           <div className={`fixed inset-0 z-[110] flex items-end justify-center p-3 sm:p-4 animate-in fade-in duration-200 modal-overlay ${isLight ? 'bg-slate-900/28 backdrop-blur-[3px]' : 'bg-slate-950/92'}`}>
-            <div className={`w-full max-w-md rounded-[26px] overflow-hidden ${isLight ? 'border border-sky-300/65 bg-gradient-to-br from-slate-50/98 via-white/98 to-sky-50/96 text-slate-900 shadow-[0_24px_64px_rgba(15,23,42,0.20)] ring-1 ring-sky-200/70' : 'border border-sky-300/18 bg-slate-900 text-white shadow-[0_24px_64px_rgba(2,6,23,0.72)] ring-1 ring-white/6'}`}>
+            <div className={`w-full max-w-md rounded-[15px] overflow-hidden ${isLight ? 'border border-sky-300/65 bg-gradient-to-br from-slate-50/98 via-white/98 to-sky-50/96 text-slate-900 shadow-[0_24px_64px_rgba(15,23,42,0.20)] ring-1 ring-sky-200/70' : 'border border-sky-300/18 bg-slate-900 text-white shadow-[0_24px_64px_rgba(2,6,23,0.72)] ring-1 ring-white/6'}`}>
               <div className={`px-4 py-4 border-b flex items-center justify-between gap-3 ${isLight ? 'border-slate-200 bg-transparent' : 'border-white/10 bg-slate-900'}`}>
                 <div>
                   <div className={`text-[16px] font-bold leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>Install MONIEZI on iPhone</div>
@@ -7464,7 +7464,7 @@ html, body, #root {
           through: dark glass panel, one bright amber action, and a quiet link
           for the alternative. The orange is the button, not the whole card. */}
       {isAppEmpty && !isDemoData && !installGateActive && currentPage === Page.Dashboard && (
-        <div className={`relative mb-6 overflow-hidden rounded-[26px] border backdrop-blur-xl ${theme === 'dark'
+        <div className={`relative mb-6 overflow-hidden rounded-[15px] border backdrop-blur-xl ${theme === 'dark'
           ? 'border-sky-300/35 bg-gradient-to-br from-slate-800/98 via-slate-800/96 to-blue-950/92 shadow-[0_18px_48px_rgba(2,6,23,0.52)] ring-1 ring-white/8'
           : 'border-sky-300/65 bg-gradient-to-br from-slate-50/98 via-white/98 to-sky-50/96 shadow-[0_18px_48px_rgba(15,23,42,0.16)] ring-1 ring-sky-200/70'}`}>
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(96,165,250,0.20),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(125,211,252,0.10),transparent_32%)]" />
@@ -9792,7 +9792,7 @@ html, body, #root {
 
               {/* PDF Content */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
-                <div id="pro-pl-pdf-content" className="moniezi-report-font bg-slate-50 text-slate-900 rounded-[24px] shadow-lg mx-auto overflow-hidden border border-slate-200" style={{ fontFamily: 'var(--moniezi-report-font)', width: '760px', maxWidth: '100%' }}>
+                <div id="pro-pl-pdf-content" className="moniezi-report-font bg-slate-50 text-slate-900 rounded-[14px] shadow-lg mx-auto overflow-hidden border border-slate-200" style={{ fontFamily: 'var(--moniezi-report-font)', width: '760px', maxWidth: '100%' }}>
                   <div className="bg-slate-950 text-white px-6 sm:px-8 pt-7 pb-6">
                     <div className="flex items-start justify-between gap-6">
                       <div className="min-w-0 flex-1">
