@@ -18,3 +18,9 @@ Release date: 2026-08-10
 ## Notes
 
 Business logic, storage, licensing, PDFs, calculations, exports, and the broader v38 behavior remain unchanged. This release is focused on mobile readability, card clarity, keyboard-safe Activity search, invoice/estimate form usability, menu structure, compact corner radii, and app-controlled selectors.
+
+## Invoice / Estimate header alignment refinement
+
+- The document icon and Invoices/Estimates title now share one aligned header row.
+- The add button sits on that same header row.
+- The Invoices / Estimates segmented control now uses its own full-width row below the title instead of being indented under the title text.

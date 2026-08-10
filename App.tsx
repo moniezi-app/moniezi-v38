@@ -8260,41 +8260,42 @@ html, body, #root {
 
         {(currentPage === Page.Invoices) && (
           <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-right-4 min-w-0 max-w-full">
-            <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
-              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                <div className={`p-2.5 rounded-xl flex-shrink-0 ${billingDocType === 'estimate' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300' : 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'}`}>
-                  <FileText size={22} strokeWidth={1.7} />
-                </div>
-                <div className="flex flex-col gap-3 sm:gap-4 min-w-0 w-full sm:w-auto">
-                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950 dark:text-white font-brand">{billingDocType === 'estimate' ? 'Estimates' : 'Invoices'}</h2>
-                  {/* Redesigned Invoices/Estimates Segmented Tabs */}
-                  <div className="grid grid-cols-2 w-full sm:w-fit bg-slate-200/80 dark:bg-slate-900 p-1.5 rounded-xl border border-slate-300/50 dark:border-slate-700/50 shadow-sm">
-                    <button 
-                      onClick={() => { setBillingDocType('invoice'); setInvoiceQuickFilter('all'); }} 
-                      className={`w-full px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-bold uppercase tracking-wide transition-all ${
-                        billingDocType === 'invoice' 
-                          ? 'bg-blue-600 text-white shadow-md ring-1 ring-blue-500/30 dark:ring-blue-400/30' 
-                          : 'hover:text-slate-900 dark:hover:text-slate-200'
-                      }`}
-                      style={{ color: billingDocType === 'invoice' ? undefined : 'var(--tab-inactive)' }}
-                    >
-                      Invoices
-                    </button>
-                    <button 
-                      onClick={() => { setBillingDocType('estimate'); setEstimateQuickFilter('all'); }} 
-                      className={`w-full px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-bold uppercase tracking-wide transition-all ${
-                        billingDocType === 'estimate' 
-                          ? 'bg-blue-600 text-white shadow-md ring-1 ring-blue-500/30 dark:ring-blue-400/30' 
-                          : 'hover:text-slate-900 dark:hover:text-slate-200'
-                      }`}
-                      style={{ color: billingDocType === 'estimate' ? undefined : 'var(--tab-inactive)' }}
-                    >
-                      Estimates
-                    </button>
+            <div className="space-y-3 sm:space-y-4 min-w-0">
+              <div className="flex items-center justify-between gap-3 min-w-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`p-2.5 rounded-xl flex-shrink-0 ${billingDocType === 'estimate' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300' : 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'}`}>
+                    <FileText size={22} strokeWidth={1.7} />
                   </div>
+                  <h2 className="min-w-0 text-2xl sm:text-3xl font-bold tracking-tight text-slate-950 dark:text-white font-brand">{billingDocType === 'estimate' ? 'Estimates' : 'Invoices'}</h2>
                 </div>
+                <button onClick={() => handleOpenFAB('billing', billingDocType === 'estimate' ? 'estimate' : 'invoice')} className={`w-11 h-11 sm:w-12 sm:h-12 text-white rounded-full flex items-center justify-center shadow-md transition-all active:scale-95 flex-shrink-0 ${billingDocType === 'estimate' ? 'bg-indigo-600 shadow-indigo-600/20 hover:bg-indigo-500' : 'bg-blue-600 shadow-blue-600/20 hover:bg-blue-500'}`} aria-label={billingDocType === 'estimate' ? 'Add estimate' : 'Add invoice'}><Plus size={21} strokeWidth={2.5} /></button>
               </div>
-              <button onClick={() => handleOpenFAB('billing', billingDocType === 'estimate' ? 'estimate' : 'invoice')} className={`self-end sm:self-auto w-11 h-11 sm:w-12 sm:h-12 text-white rounded-full flex items-center justify-center shadow-md transition-all active:scale-95 flex-shrink-0 ${billingDocType === 'estimate' ? 'bg-indigo-600 shadow-indigo-600/20 hover:bg-indigo-500' : 'bg-blue-600 shadow-blue-600/20 hover:bg-blue-500'}`} aria-label={billingDocType === 'estimate' ? 'Add estimate' : 'Add invoice'}><Plus size={21} strokeWidth={2.5} /></button>
+
+              {/* Invoices/Estimates selector belongs to its own full-width row. */}
+              <div className="grid grid-cols-2 w-full bg-slate-200/80 dark:bg-slate-900 p-1.5 rounded-xl border border-slate-300/50 dark:border-slate-700/50 shadow-sm">
+                <button 
+                  onClick={() => { setBillingDocType('invoice'); setInvoiceQuickFilter('all'); }} 
+                  className={`w-full px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-bold uppercase tracking-wide transition-all ${
+                    billingDocType === 'invoice' 
+                      ? 'bg-blue-600 text-white shadow-md ring-1 ring-blue-500/30 dark:ring-blue-400/30' 
+                      : 'hover:text-slate-900 dark:hover:text-slate-200'
+                  }`}
+                  style={{ color: billingDocType === 'invoice' ? undefined : 'var(--tab-inactive)' }}
+                >
+                  Invoices
+                </button>
+                <button 
+                  onClick={() => { setBillingDocType('estimate'); setEstimateQuickFilter('all'); }} 
+                  className={`w-full px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg text-sm sm:text-base font-bold uppercase tracking-wide transition-all ${
+                    billingDocType === 'estimate' 
+                      ? 'bg-blue-600 text-white shadow-md ring-1 ring-blue-500/30 dark:ring-blue-400/30' 
+                      : 'hover:text-slate-900 dark:hover:text-slate-200'
+                  }`}
+                  style={{ color: billingDocType === 'estimate' ? undefined : 'var(--tab-inactive)' }}
+                >
+                  Estimates
+                </button>
+              </div>
             </div>
             <PeriodSelector period={filterPeriod} setPeriod={setFilterPeriod} refDate={referenceDate} setRefDate={setReferenceDate} options={['monthly', 'yearly', 'all']} className="mb-0" />
 
