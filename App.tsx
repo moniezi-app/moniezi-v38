@@ -802,8 +802,8 @@ class PageErrorBoundary extends React.Component<
   }
 }
 
-const CUSTOMER_VERSION = "38.0.11"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
-setReportAppVersion("38.0.11");
+const CUSTOMER_VERSION = "38.0.12"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
+setReportAppVersion("38.0.12");
 const LICENSE_STORAGE_KEY = `moniezi_license_v1_${STORAGE_NAMESPACE}`;
 const DEVICE_ID_STORAGE_KEY = `moniezi_device_id_v1_${STORAGE_NAMESPACE}`;
 const LICENSE_TOKEN_SALT = "moniezi_v35_offline_binding";
@@ -8349,7 +8349,7 @@ html, body, #root {
                   const isRecurring = inv.recurrence && inv.recurrence.active;
                   const isVoid = inv.status === 'void';
                   return (
-                  <div key={inv.id} className={`bg-white dark:bg-slate-900 p-6 rounded-lg border border-slate-200 dark:border-slate-800 group hover:border-blue-500/30 hover:shadow-lg transition-all shadow-md cursor-pointer ${isOverdue && !isVoid ? 'border-l-4 border-l-red-500' : ''} ${isVoid ? 'opacity-75 grayscale-[0.5] border-l-4 border-l-slate-400' : ''}`} onClick={() => handleEditItem({ dataType: 'invoice', original: inv })}>
+                  <div key={inv.id} className={`bg-white dark:bg-slate-900 p-6 rounded-lg border border-slate-100 dark:border-slate-800/70 group hover:border-blue-500/20 hover:shadow-md transition-all shadow-sm cursor-pointer ${isOverdue && !isVoid ? 'border-l-4 border-l-red-500' : ''} ${isVoid ? 'opacity-75 grayscale-[0.5] border-l-4 border-l-slate-400' : ''}`} onClick={() => handleEditItem({ dataType: 'invoice', original: inv })}>
                     {/* Top Section: Icon, Name, Description */}
                     <div className="flex items-start gap-4 mb-4">
                       <div className={`w-12 h-12 bg-slate-100 dark:bg-blue-500/10 text-slate-600 dark:text-blue-400 rounded-md flex items-center justify-center flex-shrink-0 ${isVoid ? 'bg-slate-200 dark:bg-slate-800 text-slate-400' : ''}`}>{isVoid ? <Ban size={20} strokeWidth={1.5} /> : isRecurring ? <Repeat size={20} strokeWidth={1.5} className="text-blue-500" /> : <FileText size={20} strokeWidth={1.5} />}</div>
@@ -8404,11 +8404,9 @@ html, body, #root {
                   <button type="button" onClick={() => setEstimateQuickFilter('declined')} className={`min-h-11 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-colors ${estimateQuickFilter === 'declined' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800 dark:hover:bg-slate-800'}`}>Declined ({estimateQuickCounts.declined})</button>
                 </div>
 
-                <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
+                <div className="space-y-4">
                   {displayedEstimates.length === 0 ? (
-                    <div className="p-4 sm:p-6">
-                      <EmptyState icon={<FileText size={32} />} title="No Estimates Found" subtitle={filterPeriod === 'all' ? "Create professional estimates (quotes) and export to PDF." : "No estimates found for the selected period."} action={() => handleOpenFAB('billing', 'estimate')} actionLabel="Create Estimate" />
-                    </div>
+                    <EmptyState icon={<FileText size={32} />} title="No Estimates Found" subtitle={filterPeriod === 'all' ? "Create professional estimates (quotes) and export to PDF." : "No estimates found for the selected period."} action={() => handleOpenFAB('billing', 'estimate')} actionLabel="Create Estimate" />
                   ) : (
                     displayedEstimates
                       .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -8430,7 +8428,7 @@ html, body, #root {
                         return (
                           <div
                             key={est.id}
-                            className={`${isVoid ? 'opacity-60' : ''} ${isFollowUpOverdue ? 'border-l-4 border-l-orange-500' : est.status === 'accepted' ? 'border-l-4 border-l-emerald-500' : isExpired && !isVoid ? 'border-l-4 border-l-amber-500' : ''}`}
+                            className={`overflow-hidden rounded-lg border border-slate-100 dark:border-slate-800/70 bg-white dark:bg-slate-900 shadow-sm hover:border-blue-500/20 hover:shadow-md transition-all ${isVoid ? 'opacity-60' : ''} ${isFollowUpOverdue ? 'border-l-4 border-l-orange-500' : est.status === 'accepted' ? 'border-l-4 border-l-emerald-500' : isExpired && !isVoid ? 'border-l-4 border-l-amber-500' : ''}`}
                           >
                             <button
                               type="button"
