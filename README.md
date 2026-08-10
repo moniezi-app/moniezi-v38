@@ -7,12 +7,14 @@ Release date: 2026-08-10
 - Estimates use clearly separated individual cards instead of one continuous divided list container.
 - Invoice cards and estimate cards use stronger, more visible borders so each record is easy to distinguish.
 - Activity search on mobile hides the fixed bottom navigation while the search field is focused, preventing the navigation bar from covering the search area when the on-screen keyboard opens.
-- Invoice and estimate edit forms now use stronger visual hierarchy and clearer borders: section cards are more visible, headings are separated from fields, and input/select borders are easier to see.
-- The main Menu now has proper top spacing below its header, stronger section headings, and visible dividers between Your Business, Trying MONIEZI, App, and the version/privacy note.
-
-- App-wide corner radii now use a more compact proportional hierarchy while preserving rounded shapes; intentional circles and pill controls remain fully rounded.
-- Native HTML dropdowns were replaced with a reusable MONIEZI-controlled selector throughout the app, including Activity period, tax/report controls, client/receipt selectors, and Company Equity controls. Open selector menus now use app-controlled 14 px option text, compact rows, MONIEZI dark/light styling, and consistent rounded corners instead of Android/Chrome native popup typography.
+- Invoice and estimate edit forms use stronger visual hierarchy and clearer borders: section cards are more visible, headings are separated from fields, and input/select borders are easier to see.
+- The main Menu has proper top spacing below its header, stronger section headings, and visible dividers between Your Business, Trying MONIEZI, App, and the version/privacy note.
+- App-wide corner radii use a more compact proportional hierarchy while preserving rounded shapes; intentional circles and pill controls remain fully rounded.
+- Native HTML dropdowns were replaced with a reusable MONIEZI-controlled selector throughout the app. Open selector menus use app-controlled 14 px option text, compact rows, MONIEZI dark/light styling, and consistent rounded corners instead of Android/Chrome native popup typography.
+- Expense Review Status uses a mobile-first vertical layout so the explanation gets full width and NEW / REVIEWED sits below it.
+- Mobile usability pass: follow-up alert actions, Mileage header/actions, Receipt Reminder settings, Company Equity record actions, invoice period totals, mileage totals, and estimate-card amount/status layouts now stack safely on narrow screens instead of squeezing text into narrow columns.
+- Transaction category selection no longer uses a fixed-height nested scrolling area; the main editor scroll now owns the scrolling flow.
 
 ## Notes
 
-Business logic, storage, licensing, PDFs, calculations, exports, and the broader v38 behavior remain unchanged. This release is focused on card clarity, Activity search keyboard behavior, invoice/estimate form visual refinement, menu usability, compact corner radii, and app-controlled selectors.
+Business logic, storage, licensing, PDFs, calculations, exports, and the broader v38 behavior remain unchanged. This release is focused on mobile readability, card clarity, keyboard-safe Activity search, invoice/estimate form usability, menu structure, compact corner radii, and app-controlled selectors.

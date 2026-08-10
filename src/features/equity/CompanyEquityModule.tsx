@@ -1068,13 +1068,13 @@ export function CompanyEquityModule({ equity, onChange, currencySymbol, defaultB
             </div>
             <div className="space-y-2">
               {state.shareClasses.map(c => (
-                <div key={c.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 flex items-center justify-between gap-3">
-                  <div>
+                <div key={c.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0 flex-1">
                     <div className="font-black text-slate-950 dark:!text-white">{c.name}</div>
                     <div className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{formatShares(c.authorizedShares)} authorized • par {money(c.parValue, currencySymbol)}</div>
                     {c.description && <div className="text-sm text-slate-600 dark:text-slate-300 mt-1">{c.description}</div>}
                   </div>
-                  <div className="flex gap-1"><button onClick={() => editShareClass(c)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><Edit3 size={16}/></button><button onClick={() => deleteShareClass(c.id)} className="p-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"><Trash2 size={16}/></button></div>
+                  <div className="flex gap-1 self-start sm:self-auto"><button onClick={() => editShareClass(c)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><Edit3 size={16}/></button><button onClick={() => deleteShareClass(c.id)} className="p-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"><Trash2 size={16}/></button></div>
                 </div>
               ))}
             </div>
@@ -1098,13 +1098,13 @@ export function CompanyEquityModule({ equity, onChange, currencySymbol, defaultB
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             {state.stakeholders.length === 0 ? <div className="rounded-xl bg-slate-50 dark:bg-slate-900 p-4 text-sm font-semibold text-slate-500 dark:text-slate-400">No stakeholders yet. Add at least one stakeholder before recording shares.</div> : state.stakeholders.map(s => (
-              <div key={s.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-4 flex items-start justify-between gap-3">
-                <div>
+              <div key={s.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-4 flex flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 flex-1">
                   <div className="font-black text-slate-950 dark:!text-white">{s.name}</div>
                   <div className="mt-1 flex flex-wrap items-center gap-2"><span className={statusPillClass('slate')}>{s.type}</span>{s.email && <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{s.email}</span>}</div>
                   {s.notes && <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{s.notes}</p>}
                 </div>
-                <div className="flex gap-1"><button onClick={() => editStakeholder(s)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><Edit3 size={16}/></button><button onClick={() => deleteStakeholder(s.id)} className="p-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"><Trash2 size={16}/></button></div>
+                <div className="flex gap-1 self-start sm:self-auto"><button onClick={() => editStakeholder(s)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><Edit3 size={16}/></button><button onClick={() => deleteStakeholder(s.id)} className="p-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"><Trash2 size={16}/></button></div>
               </div>
             ))}
           </div>
@@ -1295,14 +1295,14 @@ export function CompanyEquityModule({ equity, onChange, currencySymbol, defaultB
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             {state.reservations.length === 0 ? <div className="rounded-xl bg-slate-50 dark:bg-slate-900 p-4 text-sm font-semibold text-slate-500 dark:text-slate-400">No reservations yet.</div> : state.reservations.map(r => (
-              <div key={r.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-4 flex items-start justify-between gap-3">
-                <div>
+              <div key={r.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-4 flex flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 flex-1">
                   <div className="font-black text-slate-950 dark:!text-white">{r.investorName} • {money(r.desiredAmount, currencySymbol)}</div>
                   <div className="mt-1 flex flex-wrap items-center gap-2"><span className={statusPillClass(reservationTone(r.status))}>{r.status}</span><span className={statusPillClass('slate')}>{formatInstrument(r.instrumentType)}</span>{r.email && <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{r.email}</span>}</div>
                   <div className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-2">{r.date}{r.followUpDate ? ` • follow up ${r.followUpDate}` : ''}{r.entityName ? ` • ${r.entityName}` : ''}</div>
                   {r.notes && <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{r.notes}</p>}
                 </div>
-                <div className="flex gap-1"><button onClick={() => editReservation(r)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><Edit3 size={16}/></button><button onClick={() => deleteReservation(r.id)} className="p-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"><Trash2 size={16}/></button></div>
+                <div className="flex gap-1 self-start sm:self-auto"><button onClick={() => editReservation(r)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><Edit3 size={16}/></button><button onClick={() => deleteReservation(r.id)} className="p-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"><Trash2 size={16}/></button></div>
               </div>
             ))}
           </div>
@@ -1325,7 +1325,7 @@ export function CompanyEquityModule({ equity, onChange, currencySymbol, defaultB
             <div className="md:col-span-2"><Field label="Notes"><input className={fieldClass} value={safeDraft.notes || ''} onChange={e => setSafeDraft(p => ({ ...p, notes: e.target.value }))} placeholder="Internal notes" /></Field></div>
             <div className="flex items-end"><button onClick={saveSafe} className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 !text-white font-extrabold px-4 py-3 flex items-center justify-center gap-2"><Plus size={16}/>{editingSafeId ? 'Update SAFE' : 'Add SAFE'}</button></div>
           </div>
-          <div className="space-y-2">{state.safes.length === 0 ? <div className="rounded-xl bg-slate-50 dark:bg-slate-900 p-4 text-sm font-semibold text-slate-500 dark:text-slate-400">No SAFE records yet.</div> : state.safes.map(s => <div key={s.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 flex items-center justify-between gap-3"><div><div className="font-black text-slate-950 dark:!text-white">{s.investorName} • {money(s.amount, currencySymbol)}</div><div className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{s.date} • {s.type || 'unknown'} • {s.status}{s.valuationCap ? ` • Cap ${money(s.valuationCap, currencySymbol)}` : ''}</div>{s.notes && <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">{s.notes}</p>}</div><div className="flex gap-1"><button onClick={() => { setEditingSafeId(s.id); setSafeDraft(s); }} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><Edit3 size={16}/></button><button onClick={() => deleteSafe(s.id)} className="p-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"><Trash2 size={16}/></button></div></div>)}</div>
+          <div className="space-y-2">{state.safes.length === 0 ? <div className="rounded-xl bg-slate-50 dark:bg-slate-900 p-4 text-sm font-semibold text-slate-500 dark:text-slate-400">No SAFE records yet.</div> : state.safes.map(s => <div key={s.id} className="rounded-xl border border-slate-200 dark:border-slate-800 p-3 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0 flex-1"><div className="font-black text-slate-950 dark:!text-white">{s.investorName} • {money(s.amount, currencySymbol)}</div><div className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{s.date} • {s.type || 'unknown'} • {s.status}{s.valuationCap ? ` • Cap ${money(s.valuationCap, currencySymbol)}` : ''}</div>{s.notes && <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">{s.notes}</p>}</div><div className="flex gap-1 self-start sm:self-auto"><button onClick={() => { setEditingSafeId(s.id); setSafeDraft(s); }} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"><Edit3 size={16}/></button><button onClick={() => deleteSafe(s.id)} className="p-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"><Trash2 size={16}/></button></div></div>)}</div>
         </section>
       )}
     </div>

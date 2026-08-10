@@ -6261,7 +6261,7 @@ const demoMileageTrips: MileageTrip[] = [
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-400" size={16} />
             <input type="text" placeholder="Search or add category..." value={categorySearch} onChange={e => setCategorySearch(e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-3 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500 text-slate-900 dark:text-white" />
          </div>
-         <div className="max-h-48 overflow-y-auto custom-scrollbar p-1">
+         <div className="p-1">
             {!categorySearch && recentCategories.length > 0 && (
                 <div className="mb-4">
                     <label className="text-xs font-bold text-slate-400 dark:text-slate-300 uppercase tracking-wider mb-2 block">Recent</label>
@@ -7753,7 +7753,7 @@ html, body, #root {
                     {pipelineStats.overdueFollowUps.slice(0, 3).map((est: Estimate) => (
                       <div 
                         key={est.id} 
-                        className="flex items-center justify-between gap-3 p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/30 cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-all"
+                        className="flex flex-col items-stretch gap-3 p-3 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800/30 cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-all sm:flex-row sm:items-center sm:justify-between"
                         onClick={(e) => {
                           e.stopPropagation();
                           setBillingDocType('estimate');
@@ -7769,7 +7769,7 @@ html, body, #root {
                             <span>{est.followUpDate || 'now'}</span>
                           </div>
                         </div>
-                        <div className="flex gap-2 flex-shrink-0">
+                        <div className="flex gap-2 self-start sm:self-auto sm:flex-shrink-0">
                           <button
                             onClick={(e) => { e.stopPropagation(); recordFollowUp(est, 7); }}
                             className="px-3 py-2 rounded-md text-xs font-bold bg-white dark:bg-slate-800 text-orange-700 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-slate-700 transition-all border border-orange-200/50 dark:border-orange-800/50"
@@ -8325,18 +8325,18 @@ html, body, #root {
 
              {filterPeriod !== 'all' && (
                 <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 mb-6 shadow-sm">
-                   <div className="grid grid-cols-3 gap-2">
-                     <div className="text-center py-2">
-                       <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Paid</div>
-                       <div className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">{formatCurrency.format(invoicePeriodTotals.paid)}</div>
+                   <div className="grid grid-cols-1 divide-y divide-slate-200 dark:divide-slate-700 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                     <div className="flex items-center justify-between gap-4 py-2.5 sm:block sm:px-2 sm:py-2 sm:text-center">
+                       <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider sm:mb-1">Paid</div>
+                       <div className="text-base font-bold text-slate-900 dark:text-white tabular-nums text-right sm:text-center break-words">{formatCurrency.format(invoicePeriodTotals.paid)}</div>
                      </div>
-                     <div className="text-center py-2 border-x border-slate-200 dark:border-slate-700">
-                       <div className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1">Due Soon</div>
-                       <div className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">{formatCurrency.format(invoicePeriodTotals.unpaid - invoicePeriodTotals.overdue)}</div>
+                     <div className="flex items-center justify-between gap-4 py-2.5 sm:block sm:px-2 sm:py-2 sm:text-center">
+                       <div className="text-[10px] font-bold text-amber-600 uppercase tracking-wider sm:mb-1">Due Soon</div>
+                       <div className="text-base font-bold text-slate-900 dark:text-white tabular-nums text-right sm:text-center break-words">{formatCurrency.format(invoicePeriodTotals.unpaid - invoicePeriodTotals.overdue)}</div>
                      </div>
-                     <div className="text-center py-2">
-                       <div className="text-[10px] font-bold text-red-600 uppercase tracking-wider mb-1">Overdue</div>
-                       <div className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">{formatCurrency.format(invoicePeriodTotals.overdue)}</div>
+                     <div className="flex items-center justify-between gap-4 py-2.5 sm:block sm:px-2 sm:py-2 sm:text-center">
+                       <div className="text-[10px] font-bold text-red-600 uppercase tracking-wider sm:mb-1">Overdue</div>
+                       <div className="text-base font-bold text-slate-900 dark:text-white tabular-nums text-right sm:text-center break-words">{formatCurrency.format(invoicePeriodTotals.overdue)}</div>
                      </div>
                    </div>
                 </div>
@@ -8438,17 +8438,17 @@ html, body, #root {
                               className="w-full rounded-t-2xl text-left px-4 py-4 sm:px-5 sm:py-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
                               aria-label={`Open estimate ${est.number || ''} for ${est.client}`.trim()}
                             >
-                              <div className="flex items-start justify-between gap-3">
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                 <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <span className="font-bold text-base sm:text-lg text-slate-950 dark:text-white truncate">{est.client}</span>
+                                  <div className="flex items-start gap-2 min-w-0 flex-wrap">
+                                    <span className="font-bold text-base sm:text-lg text-slate-950 dark:text-white break-words">{est.client}</span>
                                     {est.number && <span className="flex-shrink-0 text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400">{est.number}</span>}
                                   </div>
                                   {(est.projectTitle || est.description) && <div className="mt-1 text-sm text-slate-600 dark:text-slate-300 line-clamp-2">{est.projectTitle || est.description}</div>}
                                 </div>
-                                <div className="flex-shrink-0 text-right">
-                                  <div className="text-lg sm:text-xl font-bold tracking-tight text-slate-950 dark:text-white">{formatCurrency.format(est.amount)}</div>
-                                  <span className={`mt-1.5 inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide ${statusClass}`}>{statusLabel}</span>
+                                <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:flex-shrink-0 sm:block sm:text-right">
+                                  <div className="text-lg sm:text-xl font-bold tracking-tight text-slate-950 dark:text-white tabular-nums">{formatCurrency.format(est.amount)}</div>
+                                  <span className={`inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide sm:mt-1.5 ${statusClass}`}>{statusLabel}</span>
                                 </div>
                               </div>
 
@@ -8520,8 +8520,8 @@ html, body, #root {
 
         {currentPage === Page.Mileage && (
           <div className="min-h-full animate-in fade-in slide-in-from-right-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
+            <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 sm:gap-3">
                   <div className="p-2.5 rounded-xl bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300 flex-shrink-0">
                     <Car size={22} strokeWidth={1.7} />
@@ -8537,7 +8537,7 @@ html, body, #root {
               <button
                 type="button"
                 onClick={openMileageAddDrawer}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-teal-700 active:scale-[0.98]"
+                className="inline-flex self-start shrink-0 items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-teal-700 active:scale-[0.98] sm:self-auto"
               >
                 <Plus size={17} strokeWidth={2} />
                 <span>Add Trip</span>
@@ -8576,18 +8576,18 @@ html, body, #root {
               </div>
             </div>
 
-            <div className="mt-5 grid grid-cols-3 divide-x divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
-              <div className="min-w-0 px-3 py-4 sm:px-4">
+            <div className="mt-5 grid grid-cols-1 divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+              <div className="flex min-w-0 items-center justify-between gap-4 px-4 py-3.5 sm:block sm:py-4">
                 <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Trips</div>
-                <div className="mt-1 truncate text-xl font-extrabold tabular-nums text-slate-900 dark:text-white">{mileageForTaxYear.length}</div>
+                <div className="text-xl font-extrabold tabular-nums text-slate-900 dark:text-white sm:mt-1">{mileageForTaxYear.length}</div>
               </div>
-              <div className="min-w-0 px-3 py-4 sm:px-4">
+              <div className="flex min-w-0 items-center justify-between gap-4 px-4 py-3.5 sm:block sm:py-4">
                 <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Miles</div>
-                <div className="mt-1 truncate text-xl font-extrabold tabular-nums text-slate-900 dark:text-white">{mileageTotalMilesForTaxYear.toLocaleString(undefined, { maximumFractionDigits: 1 })}</div>
+                <div className="text-xl font-extrabold tabular-nums text-slate-900 dark:text-white text-right sm:mt-1 sm:text-left break-words">{mileageTotalMilesForTaxYear.toLocaleString(undefined, { maximumFractionDigits: 1 })}</div>
               </div>
-              <div className="min-w-0 px-3 py-4 sm:px-4">
+              <div className="flex min-w-0 items-center justify-between gap-4 px-4 py-3.5 sm:block sm:py-4">
                 <div className="text-xs font-semibold leading-4 text-slate-500 dark:text-slate-400">Est. deduction</div>
-                <div className="mt-1 truncate text-xl font-extrabold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(mileageDeductionForTaxYear)}</div>
+                <div className="text-xl font-extrabold tabular-nums text-slate-900 dark:text-white text-right sm:mt-1 sm:text-left break-words">{formatCurrency.format(mileageDeductionForTaxYear)}</div>
               </div>
             </div>
 
@@ -10728,15 +10728,17 @@ html, body, #root {
                      <div className="h-px bg-slate-200 dark:bg-slate-800" />
 
                      <div className="w-full text-left">
-                       <div className="flex items-start justify-between gap-4">
+                       <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                          <div className="min-w-0 flex-1">
                            <div className="text-lg font-bold text-slate-900 dark:text-white leading-snug">Receipt reminder</div>
+                           <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Helps you remember to save receipts when recording business expenses.</p>
+                           <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Keeps receipts organized for bookkeeping, reimbursements, and tax records.</p>
                          </div>
                          <button
                            type="button"
                            aria-pressed={settings.receiptReminderEnabled ?? true}
                            onClick={() => setSettings(s => ({ ...s, receiptReminderEnabled: !(s.receiptReminderEnabled ?? true) }))}
-                           className={`mt-0.5 shrink-0 relative inline-flex h-12 w-36 items-center rounded-full border transition-all ${ (settings.receiptReminderEnabled ?? true)
+                           className={`shrink-0 relative inline-flex h-12 w-36 items-center rounded-full border transition-all sm:mt-0.5 ${ (settings.receiptReminderEnabled ?? true)
                              ? 'bg-emerald-500 border-emerald-400 shadow-[0_10px_30px_rgba(16,185,129,0.22)]'
                              : 'bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700' }`}
                          >
@@ -10746,8 +10748,6 @@ html, body, #root {
                            </span>
                          </button>
                        </div>
-                       <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">Helps you remember to save receipts when recording business expenses.</p>
-                       <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Keeps receipts organized for bookkeeping, reimbursements, and tax records.</p>
                      </div>
                    </div>
                  </div>
