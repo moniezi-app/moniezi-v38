@@ -653,18 +653,18 @@ const StatCard: React.FC<{
 
 const DateInput = ({ label, value, onChange }: { label: string, value: string, onChange: (val: string) => void }) => (
   <div className="group">
-    <label className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-2 block pl-1 group-focus-within:text-blue-600 dark:group-focus-within:text-white transition-colors">
+    <label className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-2.5 block pl-1 group-focus-within:text-blue-600 dark:group-focus-within:text-white transition-colors">
       {label}
     </label>
     <div className="relative">
-      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 pointer-events-none">
+      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 pointer-events-none">
         <Calendar size={18} />
       </div>
       <input 
         type="date" 
         value={value} 
         onChange={e => onChange(e.target.value)} 
-        className="w-full bg-transparent border border-slate-300 dark:border-slate-700 rounded-lg pl-12 pr-5 py-4 font-medium text-lg text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/20 transition-all" 
+        className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl pl-12 pr-5 py-4 font-semibold text-base text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-sm" 
       />
     </div>
   </div>
@@ -11323,57 +11323,61 @@ html, body, #root {
                     </div>
               ) : undefined}
               utilityPanel={drawerMode === 'edit_inv' && activeItem.id ? (
-                    <div className="bg-slate-100 dark:bg-slate-800/50 p-2 rounded-lg mb-4 border border-slate-200 dark:border-slate-700">
+                    <div className="bg-slate-100 dark:bg-slate-900/70 p-3 rounded-xl mb-5 border border-slate-300 dark:border-slate-700 shadow-sm">
                         <div className="grid grid-cols-3 gap-2 mb-2">
-                            <button type="button" onClick={billingDocType === 'estimate' ? handleDirectExportEstimatePDF : handleDirectExportPDF} disabled={billingDocType === 'estimate' ? isGeneratingEstimatePdf : isGeneratingPdf} className={`py-2.5 flex flex-col items-center justify-center gap-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm transition-all ${(billingDocType === 'estimate' ? isGeneratingEstimatePdf : isGeneratingPdf) ? 'opacity-70 cursor-wait' : ''}`}>{(billingDocType === 'estimate' ? isGeneratingEstimatePdf : isGeneratingPdf) ? <Loader2 size={18} className="animate-spin text-blue-600" /> : <Download size={18} />}<span className="text-[10px] font-bold uppercase tracking-wider">{(billingDocType === 'estimate' ? isGeneratingEstimatePdf : isGeneratingPdf) ? 'Generating...' : 'Export PDF'}</span></button>
-                            <button type="button" onClick={() => (billingDocType === 'estimate' ? duplicateEstimate(activeItem as any) : duplicateInvoice(activeItem as Invoice))} className="py-2.5 flex flex-col items-center justify-center gap-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 shadow-sm transition-all"><Copy size={18} /><span className="text-[10px] font-bold uppercase tracking-wider">Duplicate</span></button>
-                            <button type="button" onClick={() => (billingDocType === 'estimate' ? null : openBatchDuplicate(activeItem as Invoice))} disabled={billingDocType === 'estimate'} className={`py-2.5 flex flex-col items-center justify-center gap-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 shadow-sm transition-all ${billingDocType === 'estimate' ? 'opacity-50 cursor-not-allowed' : ''}`}><Repeat size={18} /><span className="text-[10px] font-bold uppercase tracking-wider">Batch</span></button>
+                            <button type="button" onClick={billingDocType === 'estimate' ? handleDirectExportEstimatePDF : handleDirectExportPDF} disabled={billingDocType === 'estimate' ? isGeneratingEstimatePdf : isGeneratingPdf} className={`py-2.5 flex flex-col items-center justify-center gap-1 rounded-lg bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm transition-all ${(billingDocType === 'estimate' ? isGeneratingEstimatePdf : isGeneratingPdf) ? 'opacity-70 cursor-wait' : ''}`}>{(billingDocType === 'estimate' ? isGeneratingEstimatePdf : isGeneratingPdf) ? <Loader2 size={18} className="animate-spin text-blue-600" /> : <Download size={18} />}<span className="text-[10px] font-bold uppercase tracking-wider">{(billingDocType === 'estimate' ? isGeneratingEstimatePdf : isGeneratingPdf) ? 'Generating...' : 'Export PDF'}</span></button>
+                            <button type="button" onClick={() => (billingDocType === 'estimate' ? duplicateEstimate(activeItem as any) : duplicateInvoice(activeItem as Invoice))} className="py-2.5 flex flex-col items-center justify-center gap-1 rounded-lg bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 shadow-sm transition-all"><Copy size={18} /><span className="text-[10px] font-bold uppercase tracking-wider">Duplicate</span></button>
+                            <button type="button" onClick={() => (billingDocType === 'estimate' ? null : openBatchDuplicate(activeItem as Invoice))} disabled={billingDocType === 'estimate'} className={`py-2.5 flex flex-col items-center justify-center gap-1 rounded-lg bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 shadow-sm transition-all ${billingDocType === 'estimate' ? 'opacity-50 cursor-not-allowed' : ''}`}><Repeat size={18} /><span className="text-[10px] font-bold uppercase tracking-wider">Batch</span></button>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             {billingDocType !== 'estimate' ? (
-                              <button type="button" onClick={() => toggleInvoicePaidStatus(activeItem)} disabled={activeItem.status === 'void'} className={`py-2.5 flex flex-col items-center justify-center gap-1 rounded-md border shadow-sm transition-all ${activeItem.status === 'void' ? 'opacity-50 cursor-not-allowed bg-slate-200 dark:bg-slate-800 text-slate-500' : activeItem.status === 'paid' ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400 hover:bg-orange-100' : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100'}`}>{activeItem.status === 'paid' ? <X size={18} /> : <CheckCircle size={18} />}<span className="text-[10px] font-bold uppercase tracking-wider">{activeItem.status === 'paid' ? 'Mark Unpaid' : 'Mark Paid'}</span></button>
+                              <button type="button" onClick={() => toggleInvoicePaidStatus(activeItem)} disabled={activeItem.status === 'void'} className={`py-2.5 flex flex-col items-center justify-center gap-1 rounded-lg border shadow-sm transition-all ${activeItem.status === 'void' ? 'opacity-50 cursor-not-allowed bg-slate-200 dark:bg-slate-800 text-slate-500 border-slate-300 dark:border-slate-700' : activeItem.status === 'paid' ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-400 hover:bg-orange-100' : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100'}`}>{activeItem.status === 'paid' ? <X size={18} /> : <CheckCircle size={18} />}<span className="text-[10px] font-bold uppercase tracking-wider">{activeItem.status === 'paid' ? 'Mark Unpaid' : 'Mark Paid'}</span></button>
                             ) : (
-                              <div className="py-2.5 flex flex-col items-center justify-center gap-1 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-500">
+                              <div className="py-2.5 flex flex-col items-center justify-center gap-1 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700">
                                 <span className="text-[10px] font-bold uppercase tracking-wider">No payment status</span>
                               </div>
                             )}
-                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); billingDocType === 'estimate' ? deleteEstimate(activeItem as any) : setInvoiceToDelete(activeItem.id!); }} className="py-2.5 flex flex-col items-center justify-center gap-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 shadow-sm transition-all"><Trash2 size={18} /><span className="text-[10px] font-bold uppercase tracking-wider">Delete</span></button>
+                            <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); billingDocType === 'estimate' ? deleteEstimate(activeItem as any) : setInvoiceToDelete(activeItem.id!); }} className="py-2.5 flex flex-col items-center justify-center gap-1 rounded-lg bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 shadow-sm transition-all"><Trash2 size={18} /><span className="text-[10px] font-bold uppercase tracking-wider">Delete</span></button>
                         </div>
                     </div>
               ) : undefined}
               formContent={activeTab === 'billing' ? (
                    <div className="space-y-4">
-                      <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg border border-slate-100 dark:border-slate-800">
-                          <h4 className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-3">Client Details</h4>
-                          <div className="space-y-3">
+                      <div className="bg-slate-100 dark:bg-slate-900/70 p-5 rounded-xl border border-slate-300 dark:border-slate-700 shadow-sm">
+                          <div className="mb-4 border-b border-slate-300 dark:border-slate-700 pb-3">
+                            <h4 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">Client Details</h4>
+                          </div>
+                          <div className="space-y-3.5">
                               <div>
-                                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1 block pl-1 uppercase tracking-wider">Select Client</label>
-                                <select value={(activeItem as any).clientId || ''} onChange={e => { const id = e.target.value; setActiveItem(p => ({ ...p, clientId: id || undefined })); if (id) fillDocFromClient(id); }} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-3 py-3 font-bold text-sm outline-none focus:ring-1 focus:ring-blue-500">
+                                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-2.5 block pl-1 uppercase tracking-wider">Select Client</label>
+                                <select value={(activeItem as any).clientId || ''} onChange={e => { const id = e.target.value; setActiveItem(p => ({ ...p, clientId: id || undefined })); if (id) fillDocFromClient(id); }} className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3.5 font-bold text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm">
                                   <option value="">New / Not selected</option>
                                   {clients.map(c => (<option key={c.id} value={c.id}>{c.name}{c.company ? ` — ${c.company}` : ''}{c.status === 'lead' ? ' (Lead)' : ''}</option>))}
                                 </select>
                               </div>
-                              <input type="text" value={activeItem.client || ''} onChange={e => setActiveItem(prev => ({ ...prev, client: e.target.value }))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-3 py-3 font-bold text-base outline-none focus:ring-1 focus:ring-blue-500" placeholder="Client Name (Required)" />
-                              <input type="text" value={activeItem.clientCompany || ''} onChange={e => setActiveItem(prev => ({ ...prev, clientCompany: e.target.value }))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500" placeholder="Company Name (Optional)" />
-                              <input type="email" value={activeItem.clientEmail || ''} onChange={e => setActiveItem(prev => ({ ...prev, clientEmail: e.target.value }))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500" placeholder="Client Email (Optional)" />
-                              <input type="text" value={activeItem.clientAddress || ''} onChange={e => setActiveItem(prev => ({ ...prev, clientAddress: e.target.value }))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500" placeholder="Client Address (Optional)" />
+                              <input type="text" value={activeItem.client || ''} onChange={e => setActiveItem(prev => ({ ...prev, client: e.target.value }))} className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3.5 font-bold text-base text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm" placeholder="Client Name (Required)" />
+                              <input type="text" value={activeItem.clientCompany || ''} onChange={e => setActiveItem(prev => ({ ...prev, clientCompany: e.target.value }))} className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm" placeholder="Company Name (Optional)" />
+                              <input type="email" value={activeItem.clientEmail || ''} onChange={e => setActiveItem(prev => ({ ...prev, clientEmail: e.target.value }))} className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm" placeholder="Client Email (Optional)" />
+                              <input type="text" value={activeItem.clientAddress || ''} onChange={e => setActiveItem(prev => ({ ...prev, clientAddress: e.target.value }))} className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm" placeholder="Client Address (Optional)" />
                           </div>
                       </div>
 
                       {/* ESTIMATE-SPECIFIC FIELDS */}
                       {billingDocType === 'estimate' && (
-                        <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg border border-purple-100 dark:border-purple-800/30">
-                          <h4 className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                            <FileText size={14} /> Proposal Details
-                          </h4>
-                          <div className="space-y-3">
+                        <div className="bg-purple-50 dark:bg-purple-950/20 p-5 rounded-xl border border-purple-200 dark:border-purple-800/40 shadow-sm">
+                          <div className="mb-4 border-b border-purple-200 dark:border-purple-800/40 pb-3">
+                            <h4 className="text-sm font-extrabold text-purple-700 dark:text-purple-300 uppercase tracking-wider flex items-center gap-2">
+                              <FileText size={14} /> Proposal Details
+                            </h4>
+                          </div>
+                          <div className="space-y-3.5">
                             <div>
                               <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1 block pl-1 uppercase tracking-wider">Project Title</label>
                               <input 
                                 type="text" 
                                 value={(activeItem as any).projectTitle || ''} 
                                 onChange={e => setActiveItem(prev => ({ ...prev, projectTitle: e.target.value }))} 
-                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-3 py-3 font-bold text-base outline-none focus:ring-1 focus:ring-purple-500" 
+                                className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3.5 font-bold text-base text-slate-900 dark:text-white outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 shadow-sm" 
                                 placeholder="e.g., Website Redesign, Marketing Campaign" 
                               />
                             </div>
@@ -11382,7 +11386,7 @@ html, body, #root {
                               <textarea 
                                 value={(activeItem as any).scopeOfWork || ''} 
                                 onChange={e => setActiveItem(prev => ({ ...prev, scopeOfWork: e.target.value }))} 
-                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-purple-500 min-h-[80px]" 
+                                className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 min-h-[88px] shadow-sm" 
                                 placeholder="Describe what's included in this proposal..." 
                               />
                             </div>
@@ -11393,7 +11397,7 @@ html, body, #root {
                                   type="text" 
                                   value={(activeItem as any).timeline || ''} 
                                   onChange={e => setActiveItem(prev => ({ ...prev, timeline: e.target.value }))} 
-                                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-purple-500" 
+                                  className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 shadow-sm" 
                                   placeholder="e.g., 2-3 weeks" 
                                 />
                               </div>
@@ -11403,7 +11407,7 @@ html, body, #root {
                                   type="text" 
                                   value={(activeItem as any).poNumber || ''} 
                                   onChange={e => setActiveItem(prev => ({ ...prev, poNumber: e.target.value }))} 
-                                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-purple-500" 
+                                  className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 shadow-sm" 
                                   placeholder="Client ref / PO #" 
                                 />
                               </div>
@@ -11413,45 +11417,50 @@ html, body, #root {
                       )}
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><DateInput label="Date" value={activeItem.date || ''} onChange={v => setActiveItem(prev => ({ ...prev, date: v }))} /><DateInput label={billingDocType === 'estimate' ? "Valid Until" : "Due Date"} value={(billingDocType === 'estimate' ? (activeItem.validUntil as any) : activeItem.due) || ''} onChange={v => setActiveItem(prev => billingDocType === 'estimate' ? ({ ...prev, validUntil: v }) : ({ ...prev, due: v }))} /></div>
-                      <div className="bg-slate-50 dark:bg-slate-900 p-1 rounded-lg border border-slate-100 dark:border-slate-800">
-                          <div className="flex items-center justify-between p-3 border-b border-slate-200 dark:border-slate-800"><h4 className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Line Items</h4><button onClick={addInvoiceItem} className="text-xs font-bold text-blue-600 flex items-center gap-1 hover:underline"><PlusCircle size={14}/> Add Item</button></div>
-                          <div className="p-2 space-y-2">{(activeItem.items || []).map((item, idx) => (<div key={item.id} className="mobile-billing-line-item flex gap-2 items-start animate-in fade-in slide-in-from-left-2"><div className="mobile-billing-line-item-fields min-w-0 flex-1 space-y-2"><input type="text" value={item.description} onChange={(e) => updateInvoiceItem(item.id, 'description', e.target.value)} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500" placeholder="Description" /><div className="mobile-billing-line-item-meta flex gap-2"><div className="mobile-billing-line-item-qty relative w-20"><span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 text-xs">Qty</span><input type="number" value={item.quantity || ''} onChange={(e) => updateInvoiceItem(item.id, 'quantity', Number(e.target.value))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded pl-8 pr-2 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500 text-center" placeholder="0"/></div><div className="mobile-billing-line-item-rate relative flex-1"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 text-xs">$</span><input type="number" value={item.rate || ''} onChange={(e) => updateInvoiceItem(item.id, 'rate', Number(e.target.value))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded pl-6 pr-2 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500" placeholder="0.00" /></div></div></div><div className="mobile-billing-line-item-remove pt-2"><button onClick={() => removeInvoiceItem(item.id)} className="text-slate-400 hover:text-red-500 p-1"><MinusCircle size={18} /></button></div></div>))}{(activeItem.items || []).length === 0 && <div className="text-center py-4 text-xs text-slate-400 italic">No items added. Add at least one item.</div>}</div>
-                          <div className="p-3 bg-slate-100 dark:bg-slate-900/50 rounded-b-lg space-y-2">
+                      <div className="bg-slate-100 dark:bg-slate-900/70 p-2 rounded-xl border border-slate-300 dark:border-slate-700 shadow-sm">
+                          <div className="flex items-center justify-between p-3.5 border-b border-slate-300 dark:border-slate-700"><h4 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">Line Items</h4><button onClick={addInvoiceItem} className="text-xs font-bold text-blue-600 flex items-center gap-1 hover:underline"><PlusCircle size={14}/> Add Item</button></div>
+                          <div className="p-2 space-y-2">{(activeItem.items || []).map((item, idx) => (<div key={item.id} className="mobile-billing-line-item flex gap-2 items-start animate-in fade-in slide-in-from-left-2"><div className="mobile-billing-line-item-fields min-w-0 flex-1 space-y-2"><input type="text" value={item.description} onChange={(e) => updateInvoiceItem(item.id, 'description', e.target.value)} className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm" placeholder="Description" /><div className="mobile-billing-line-item-meta flex gap-2"><div className="mobile-billing-line-item-qty relative w-20"><span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 text-xs">Qty</span><input type="number" value={item.quantity || ''} onChange={(e) => updateInvoiceItem(item.id, 'quantity', Number(e.target.value))} className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl pl-8 pr-2 py-3 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-center shadow-sm" placeholder="0"/></div><div className="mobile-billing-line-item-rate relative flex-1"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 text-xs">$</span><input type="number" value={item.rate || ''} onChange={(e) => updateInvoiceItem(item.id, 'rate', Number(e.target.value))} className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl pl-7 pr-3 py-3 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm" placeholder="0.00" /></div></div></div><div className="mobile-billing-line-item-remove pt-2"><button onClick={() => removeInvoiceItem(item.id)} className="text-slate-400 hover:text-red-500 p-1"><MinusCircle size={18} /></button></div></div>))}{(activeItem.items || []).length === 0 && <div className="text-center py-4 text-xs text-slate-400 italic">No items added. Add at least one item.</div>}</div>
+                          <div className="p-4 bg-slate-50 dark:bg-slate-950/60 rounded-b-xl space-y-3 border-t border-slate-300 dark:border-slate-700">
                               <div className="flex justify-between text-xs text-slate-600 dark:text-slate-300"><span>Subtotal</span><span>{formatCurrency.format(activeInvoiceTotals.subtotal)}</span></div>
-                              <div className="mobile-billing-summary-row flex items-center justify-between gap-4"><label className="text-xs text-slate-600 dark:text-slate-300">Discount</label><div className="mobile-billing-summary-input relative w-24 shrink-0"><span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 text-xs">$</span><input type="number" value={activeItem.discount || ''} onChange={e => setActiveItem(p => ({...p, discount: Number(e.target.value)}))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded py-1 pl-5 pr-1 text-xs text-right outline-none" placeholder="0" /></div></div>
-                              <div className="mobile-billing-summary-row flex items-center justify-between gap-4"><label className="text-xs text-slate-600 dark:text-slate-300">Tax Rate</label><div className="mobile-billing-summary-input relative w-24 shrink-0"><input type="number" value={activeItem.taxRate || ''} onChange={e => setActiveItem(p => ({...p, taxRate: Number(e.target.value)}))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded py-1 pl-1 pr-5 text-xs text-right outline-none" placeholder="0" /><span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 text-xs">%</span></div></div>
-                              {billingDocType !== 'estimate' && <div className="mobile-billing-summary-row flex items-center justify-between gap-4"><label className="text-xs text-slate-600 dark:text-slate-300">Shipping</label><div className="mobile-billing-summary-input relative w-24 shrink-0"><span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 text-xs">$</span><input type="number" value={activeItem.shipping || ''} onChange={e => setActiveItem(p => ({...p, shipping: Number(e.target.value)}))} className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded py-1 pl-5 pr-1 text-xs text-right outline-none" placeholder="0" /></div></div>}
+                              <div className="mobile-billing-summary-row flex items-center justify-between gap-4"><label className="text-xs text-slate-600 dark:text-slate-300">Discount</label><div className="mobile-billing-summary-input relative w-24 shrink-0"><span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 text-xs">$</span><input type="number" value={activeItem.discount || ''} onChange={e => setActiveItem(p => ({...p, discount: Number(e.target.value)}))} className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg py-2 pl-6 pr-2 text-xs text-right text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm" placeholder="0" /></div></div>
+                              <div className="mobile-billing-summary-row flex items-center justify-between gap-4"><label className="text-xs text-slate-600 dark:text-slate-300">Tax Rate</label><div className="mobile-billing-summary-input relative w-24 shrink-0"><input type="number" value={activeItem.taxRate || ''} onChange={e => setActiveItem(p => ({...p, taxRate: Number(e.target.value)}))} className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg py-2 pl-2 pr-6 text-xs text-right text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm" placeholder="0" /><span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 text-xs">%</span></div></div>
+                              {billingDocType !== 'estimate' && <div className="mobile-billing-summary-row flex items-center justify-between gap-4"><label className="text-xs text-slate-600 dark:text-slate-300">Shipping</label><div className="mobile-billing-summary-input relative w-24 shrink-0"><span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 text-xs">$</span><input type="number" value={activeItem.shipping || ''} onChange={e => setActiveItem(p => ({...p, shipping: Number(e.target.value)}))} className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg py-2 pl-6 pr-2 text-xs text-right text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm" placeholder="0" /></div></div>}
                               <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"><span>{billingDocType === 'estimate' ? 'Estimated Total' : 'Total Due'}</span><span>{formatCurrency.format(activeInvoiceTotals.total)}</span></div>
                           </div>
                       </div>
 
                       {/* ESTIMATE-SPECIFIC: Exclusions */}
                       {billingDocType === 'estimate' && (
-                        <div>
-                          <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 block pl-1 uppercase tracking-wider">Exclusions (Not Included)</label>
+                        <div className="bg-slate-100 dark:bg-slate-900/70 p-5 rounded-xl border border-slate-300 dark:border-slate-700 shadow-sm">
+                          <div className="mb-4 border-b border-slate-300 dark:border-slate-700 pb-3">
+                            <label className="text-sm font-extrabold text-slate-900 dark:text-white block uppercase tracking-wider">Exclusions (Not Included)</label>
+                          </div>
                           <textarea 
                             value={(activeItem as any).exclusions || ''} 
                             onChange={e => setActiveItem(prev => ({ ...prev, exclusions: e.target.value }))} 
-                            className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500 min-h-[60px]" 
+                            className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 min-h-[96px] shadow-sm" 
                             placeholder="List items NOT included in this estimate (e.g., hosting, stock photos, third-party fees)..." 
                           />
                         </div>
                       )}
 
-                      <div className="space-y-4">
-                          <div><label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 block pl-1 uppercase tracking-wider">Internal Category</label>{renderCategoryChips(activeItem.category, (cat) => setActiveItem(prev => ({ ...prev, category: cat })))}</div>
-                          <div><label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 block pl-1 uppercase tracking-wider">{billingDocType === 'estimate' ? 'Notes to Client' : 'Notes / Memo'}</label><textarea value={activeItem.notes || ''} onChange={e => setActiveItem(prev => ({ ...prev, notes: e.target.value }))} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-50 min-h-[60px]" placeholder={billingDocType === 'estimate' ? "Additional information for your client..." : "Thank you for your business..."} /></div>
-                          <div><label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 block pl-1 uppercase tracking-wider">{billingDocType === 'estimate' ? 'Terms & Conditions' : 'Payment Terms'}</label><textarea value={activeItem.terms || ''} onChange={e => setActiveItem(prev => ({ ...prev, terms: e.target.value }))} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500 min-h-[60px]" placeholder={billingDocType === 'estimate' ? "This estimate is valid for 30 days. 50% deposit required to begin work..." : "Net 30. Late fees apply..."} /></div>
+                      <div className="bg-slate-100 dark:bg-slate-900/70 p-5 rounded-xl border border-slate-300 dark:border-slate-700 shadow-sm space-y-4">
+                          <div className="border-b border-slate-300 dark:border-slate-700 pb-3">
+                            <h4 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">Additional Details</h4>
+                          </div>
+                          <div><label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-2 block pl-1 uppercase tracking-wider">Internal Category</label>{renderCategoryChips(activeItem.category, (cat) => setActiveItem(prev => ({ ...prev, category: cat })))}</div>
+                          <div><label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 block pl-1 uppercase tracking-wider">{billingDocType === 'estimate' ? 'Notes to Client' : 'Notes / Memo'}</label><textarea value={activeItem.notes || ''} onChange={e => setActiveItem(prev => ({ ...prev, notes: e.target.value }))} className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 min-h-[96px] shadow-sm" placeholder={billingDocType === 'estimate' ? "Additional information for your client..." : "Thank you for your business..."} /></div>
+                          <div><label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 block pl-1 uppercase tracking-wider">{billingDocType === 'estimate' ? 'Terms & Conditions' : 'Payment Terms'}</label><textarea value={activeItem.terms || ''} onChange={e => setActiveItem(prev => ({ ...prev, terms: e.target.value }))} className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 min-h-[96px] shadow-sm" placeholder={billingDocType === 'estimate' ? "This estimate is valid for 30 days. 50% deposit required to begin work..." : "Net 30. Late fees apply..."} /></div>
                           
                           {/* ESTIMATE-SPECIFIC: Acceptance Terms */}
                           {billingDocType === 'estimate' && (
                             <div>
-                              <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 block pl-1 uppercase tracking-wider">How to Accept</label>
+                              <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-2.5 block pl-1 uppercase tracking-wider">How to Accept</label>
                               <input 
                                 type="text" 
                                 value={(activeItem as any).acceptanceTerms || ''} 
                                 onChange={e => setActiveItem(prev => ({ ...prev, acceptanceTerms: e.target.value }))} 
-                                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-500" 
+                                className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm" 
                                 placeholder="e.g., Reply 'Approved' to this email, Sign below, etc." 
                               />
                             </div>
@@ -11468,21 +11477,21 @@ html, body, #root {
                       {drawerMode === 'edit_tx' && activeItem.id && (
                         <div className="bg-slate-100 dark:bg-slate-800/50 p-2 rounded-lg mb-2 border border-slate-200 dark:border-slate-700">
                           <div className="grid grid-cols-3 gap-2 mb-2">
-                            <button type="button" onClick={() => duplicateTransaction(activeItem as Transaction)} className="py-2.5 flex flex-col items-center justify-center gap-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 shadow-sm transition-all">
+                            <button type="button" onClick={() => duplicateTransaction(activeItem as Transaction)} className="py-2.5 flex flex-col items-center justify-center gap-1 rounded-lg bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 shadow-sm transition-all">
                               <Copy size={18} />
                               <span className="text-[10px] font-bold uppercase tracking-wider">Duplicate</span>
                             </button>
-                            <button type="button" onClick={() => openBatchDuplicate(activeItem as Transaction)} className={`py-2.5 flex flex-col items-center justify-center gap-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 shadow-sm transition-all ${billingDocType === 'estimate' ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                            <button type="button" onClick={() => openBatchDuplicate(activeItem as Transaction)} className={`py-2.5 flex flex-col items-center justify-center gap-1 rounded-lg bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 shadow-sm transition-all ${billingDocType === 'estimate' ? 'opacity-50 cursor-not-allowed' : ''}`}>
                               <Repeat size={18} />
                               <span className="text-[10px] font-bold uppercase tracking-wider">Batch</span>
                             </button>
-                            <button type="button" onClick={() => openRecurringSetup(activeItem as Transaction)} className="py-2.5 flex flex-col items-center justify-center gap-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 shadow-sm transition-all">
+                            <button type="button" onClick={() => openRecurringSetup(activeItem as Transaction)} className="py-2.5 flex flex-col items-center justify-center gap-1 rounded-lg bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 shadow-sm transition-all">
                               <Calendar size={18} />
                               <span className="text-[10px] font-bold uppercase tracking-wider">Recurring</span>
                             </button>
                           </div>
                           <div className="grid grid-cols-1 gap-2">
-                            <button type="button" onClick={() => deleteTransaction(activeItem.id)} className="py-2.5 flex flex-col items-center justify-center gap-1 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 shadow-sm transition-all">
+                            <button type="button" onClick={() => deleteTransaction(activeItem.id)} className="py-2.5 flex flex-col items-center justify-center gap-1 rounded-lg bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 shadow-sm transition-all">
                               <Trash2 size={18} />
                               <span className="text-[10px] font-bold uppercase tracking-wider">Delete</span>
                             </button>
