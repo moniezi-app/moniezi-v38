@@ -170,6 +170,9 @@ export interface UserSettings {
   receiptReminderEnabled?: boolean;
   mileageRateCents?: number; // cents per mile (can be decimal, e.g. 72.5)
 
+  // Optional Features
+  companyEquityEnabled?: boolean;
+
   // Invoice Defaults
   defaultInvoiceTerms?: string;
   defaultInvoiceNotes?: string;

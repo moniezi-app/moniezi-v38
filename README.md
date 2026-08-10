@@ -24,3 +24,11 @@ Business logic, storage, licensing, PDFs, calculations, exports, and the broader
 - The document icon and Invoices/Estimates title now share one aligned header row.
 - The add button sits on that same header row.
 - The Invoices / Estimates segmented control now uses its own full-width row below the title instead of being indented under the title text.
+
+## Optional Company Equity access
+
+- Company Equity is now an optional feature and remains hidden by default.
+- Settings includes an Optional Features tab with a Company Equity enable/disable control.
+- When enabled, Company Equity appears in the Menu under an Advanced section.
+- Disabling the feature hides access but does not delete saved equity records.
+- Older installs and older backups default the feature to OFF unless the saved setting explicitly enables it.

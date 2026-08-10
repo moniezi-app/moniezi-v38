@@ -1176,7 +1176,8 @@ export default function App() {
     currencySymbol: '$',
     showLogoOnInvoice: true,
     logoAlignment: 'left',
-    brandColor: '#2563eb'
+    brandColor: '#2563eb',
+    companyEquityEnabled: false
   });
   const [customCategories, setCustomCategories] = useState<CustomCategories>({ income: [], expense: [], billing: [] });
   const [taxPayments, setTaxPayments] = useState<TaxPayment[]>([]);
@@ -1184,6 +1185,14 @@ export default function App() {
   const [isDemoData, setIsDemoData] = useState<boolean>(false);
   const [mileageTrips, setMileageTrips] = useState<MileageTrip[]>([]);
   const [companyEquity, setCompanyEquity] = useState<CompanyEquityState>(() => createDefaultCompanyEquityState());
+
+  useEffect(() => {
+    if (!dataLoaded) return;
+    if (currentPage !== Page.CompanyEquity) return;
+    if (settings.companyEquityEnabled) return;
+    setCurrentPage(Page.Dashboard, { replace: true });
+  }, [currentPage, dataLoaded, settings.companyEquityEnabled, setCurrentPage]);
+
   // Receipt image URLs (runtime-only). Stored images live in IndexedDB.
   const [receiptPreviewUrls, setReceiptPreviewUrls] = useState<Record<string, string>>({});
 
@@ -1313,7 +1322,7 @@ export default function App() {
   const [duplicationHistory, setDuplicationHistory] = useState<Record<string, {originalId: string, originalDate: string}>>({});
   
   // Settings Tab State
-  const [settingsTab, setSettingsTab] = useState<'backup' | 'update' | 'branding' | 'tax' | 'data' | 'license' | 'offline'>('backup');
+  const [settingsTab, setSettingsTab] = useState<'backup' | 'update' | 'branding' | 'features' | 'tax' | 'data' | 'license' | 'offline'>('backup');
   const [expenseReceiptFilter, setExpenseReceiptFilter] = useState<'all' | 'with_receipts' | 'without_receipts'>('all');
   const [expenseReviewFilter, setExpenseReviewFilter] = useState<'all' | 'new' | 'reviewed'>('all');
 
@@ -2079,6 +2088,7 @@ export default function App() {
           receiptThreshold: 0,
           receiptReminderEnabled: true,
           mileageRateCents: 72.5,
+          companyEquityEnabled: false,
           ...parsedSettings,
         });
       };
@@ -3851,7 +3861,7 @@ const demoMileageTrips: MileageTrip[] = [
       const t = calcDocTotals(e.items as any, e.discount || 0, e.taxRate || 0, e.shipping || 0);
       return { ...e, subtotal: t.subtotal, amount: t.total } as Estimate;
     }));
-    setSettings({ ...demo.settings, requireReceiptOverThreshold: false, receiptThreshold: 0, receiptReminderEnabled: true, mileageRateCents: 72.5 });
+    setSettings({ ...demo.settings, requireReceiptOverThreshold: false, receiptThreshold: 0, receiptReminderEnabled: true, mileageRateCents: 72.5, companyEquityEnabled: false });
     setTaxPayments([...(demo.taxPayments || [])] as TaxPayment[]);
     setSeedSuccess(true); showToast("Demo data loaded successfully!", "success"); setCurrentPage(Page.Dashboard); setTimeout(() => setSeedSuccess(false), 2000);
   };
@@ -3896,6 +3906,7 @@ const demoMileageTrips: MileageTrip[] = [
       receiptThreshold: 0,
       receiptReminderEnabled: true,
       mileageRateCents: 72.5,
+      companyEquityEnabled: false,
     });
 
     setSeedSuccess(false);
@@ -6184,7 +6195,7 @@ const demoMileageTrips: MileageTrip[] = [
       const cls = Array.isArray(newData.clients) ? newData.clients : [];
       const tax = Array.isArray(newData.taxPayments) ? newData.taxPayments : [];
       const rec = Array.isArray(newData.receipts) ? newData.receipts : [];
-      const set = { ...settings, ...(newData.settings || {}) };
+      const set = { ...settings, companyEquityEnabled: false, ...(newData.settings || {}) };
 
       const cats = {
         income: Array.isArray(newData.customCategories?.income) ? newData.customCategories.income : [],
@@ -10334,7 +10345,7 @@ html, body, #root {
         )}
 
         {/* ==================== COMPANY EQUITY PAGE ==================== */}
-        {currentPage === Page.CompanyEquity && (
+        {currentPage === Page.CompanyEquity && Boolean(settings.companyEquityEnabled) && (
           <CompanyEquityModule
             equity={companyEquity}
             onChange={setCompanyEquity}
@@ -10357,7 +10368,7 @@ html, body, #root {
 
             {/* Tab Navigation */}
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-2.5 shadow-sm">
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2.5">
                 <button
                   onClick={() => setSettingsTab('backup')}
                   className={`flex min-h-[68px] md:min-h-0 flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 px-3 md:px-4 py-3 rounded-xl font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
@@ -10394,6 +10405,18 @@ html, body, #root {
                   <span className="text-[10px] md:text-sm mt-0.5 md:mt-0">My Business</span>
                 </button>
                 
+                <button
+                  onClick={() => setSettingsTab('features')}
+                  className={`flex min-h-[68px] md:min-h-0 flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 px-3 md:px-4 py-3 rounded-xl font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
+                    settingsTab === 'features'
+                      ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/30'
+                      : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  <ToggleRight size={18} />
+                  <span className="text-[10px] md:text-sm mt-0.5 md:mt-0">Features</span>
+                </button>
+
                 <button
                   onClick={() => setSettingsTab('tax')}
                   className={`flex min-h-[68px] md:min-h-0 flex-col md:flex-row items-center justify-center gap-1.5 md:gap-2 px-3 md:px-4 py-3 rounded-xl font-bold text-xs md:text-sm uppercase tracking-wide transition-all ${
@@ -10755,6 +10778,50 @@ html, body, #root {
                 </div>
               )}
 
+              {/* Optional Features Tab */}
+              {settingsTab === 'features' && (
+                <div className="bg-white dark:bg-slate-900 p-5 sm:p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg animate-in fade-in slide-in-from-bottom-4">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-lg bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300 flex items-center justify-center">
+                      <ToggleRight size={20} strokeWidth={2} />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-slate-900 dark:text-white">Optional Features</h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">Keep MONIEZI simple by turning advanced tools on only when you need them.</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/60 p-5 sm:p-6">
+                    <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <Landmark size={19} className="text-cyan-700 dark:text-cyan-300" />
+                          <h4 className="text-lg font-extrabold text-slate-950 dark:text-white">Company Equity</h4>
+                        </div>
+                        <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Track ownership classes, people and entities, investor reservations, SAFEs, and issued equity records.</p>
+                        <p className="mt-2 text-xs leading-5 font-semibold text-slate-500 dark:text-slate-400">Off by default. Turning it off later only hides Company Equity from the Menu; your saved equity records remain on this device.</p>
+                      </div>
+                      <button
+                        type="button"
+                        aria-pressed={Boolean(settings.companyEquityEnabled)}
+                        onClick={() => {
+                          const next = !Boolean(settings.companyEquityEnabled);
+                          setSettings(s => ({ ...s, companyEquityEnabled: next }));
+                          showToast(next ? 'Company Equity enabled. It is now available in Menu.' : 'Company Equity hidden from Menu. Your equity records were kept.', 'success');
+                        }}
+                        className={`shrink-0 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-extrabold uppercase tracking-wider transition-all ${settings.companyEquityEnabled
+                          ? 'border-cyan-500 bg-cyan-600 text-white shadow-sm'
+                          : 'border-slate-300 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'
+                        }`}
+                      >
+                        {settings.companyEquityEnabled ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                        {settings.companyEquityEnabled ? 'Enabled' : 'Off'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Data Management Tab */}
               {settingsTab === 'data' && (
                 <div className="bg-white dark:bg-slate-900 p-5 sm:p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg animate-in fade-in slide-in-from-bottom-4">
@@ -10871,7 +10938,7 @@ html, body, #root {
           </div>
         )}
         {/* Safety net: never allow navigation to render a blank screen */}
-        {!([
+        {!((([
           Page.Dashboard,
           Page.Invoices,
           Page.Invoice,
@@ -10885,7 +10952,7 @@ html, body, #root {
           Page.CompanyEquity,
           Page.Settings,
           Page.InvoiceDoc,
-        ] as const).includes(currentPage) && (
+        ] as const).includes(currentPage)) && (currentPage !== Page.CompanyEquity || Boolean(settings.companyEquityEnabled))) && (
           <div className="px-4 sm:px-6 pt-6">
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <div className="text-sm font-semibold text-slate-900">Navigation error</div>
@@ -10929,10 +10996,12 @@ html, body, #root {
                 >
                   Reports
                 </button>
-                <button
-                  onClick={() => setCurrentPage(Page.CompanyEquity)}
-                  className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-900"
-                >Equity</button>
+                {settings.companyEquityEnabled && (
+                  <button
+                    onClick={() => setCurrentPage(Page.CompanyEquity)}
+                    className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-900"
+                  >Equity</button>
+                )}
               </div>
             </div>
           </div>
@@ -11195,6 +11264,28 @@ html, body, #root {
             </section>
           )}
 
+          {settings.companyEquityEnabled && (
+            <section className="border-t border-slate-300 dark:border-slate-700 py-6">
+              <div className="px-1 pb-3 text-xs font-extrabold uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">
+                Advanced
+              </div>
+              <div className="space-y-1">
+                <button
+                  onClick={() => { setCurrentPage(Page.CompanyEquity); setShowMainMenu(false); }}
+                  className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-700/40 dark:bg-cyan-500/10 dark:text-cyan-300">
+                    <Landmark size={18} />
+                  </span>
+                  <span className="min-w-0">
+                    Company Equity
+                    <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Ownership, investors, SAFEs, and equity records</span>
+                  </span>
+                </button>
+              </div>
+            </section>
+          )}
+
           <section className="border-t border-slate-300 dark:border-slate-700 py-6">
             <div className="px-1 pb-3 text-xs font-extrabold uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">
               App
@@ -11209,7 +11300,7 @@ html, body, #root {
                 </span>
                 <span className="min-w-0">
                   Settings
-                  <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Business details, backup, license</span>
+                  <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Business details, backup, features</span>
                 </span>
               </button>
 
