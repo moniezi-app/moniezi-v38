@@ -97,6 +97,7 @@ import { DEMO_RECEIPT_ASSETS } from './services/demoReceipts';
 import { loadAppState, saveAppState, clearAppState } from './services/appStore';
 import { AppDrawer } from './src/components/mobile/AppDrawer';
 import { GlobalSearchPanel } from './src/components/GlobalSearchPanel';
+import { MonieziSelect } from './src/components/MonieziSelect';
 import { buildGlobalSearchGroups, type GlobalSearchResult } from './src/features/search/globalSearch';
 import { TransactionEditorShell } from './src/features/transactions/TransactionEditorShell';
 import { useKeyboardEditingState } from './src/hooks/useKeyboardEditingState';
@@ -714,19 +715,14 @@ const PeriodSelector: React.FC<{
     <div className={`min-w-0 max-w-full ${className ?? 'mb-6'}`}> 
       <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm min-w-0 max-w-full">
 
-        <div className="relative shrink-0">
-          <select
-            value={period}
-            onChange={(e) => setPeriod(e.target.value as FilterPeriod)}
-            aria-label="Time period"
-            className="appearance-none bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-100 text-xs font-bold uppercase tracking-wider rounded-md pl-2.5 pr-6 py-1.5 border-0 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-          >
-            {choices.map(p => (
-              <option key={p} value={p}>{periodLabel(p)}</option>
-            ))}
-          </select>
-          <ChevronDown size={13} className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
-        </div>
+        <MonieziSelect
+          value={period}
+          onChange={(next) => setPeriod(next as FilterPeriod)}
+          ariaLabel="Time period"
+          options={choices.map(p => ({ value: p, label: periodLabel(p) }))}
+          menuMinWidth={190}
+          className="shrink-0 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-100 text-xs font-bold uppercase tracking-wider rounded-md pl-2.5 pr-2 py-1.5 border-0 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+        />
 
         {/* Both arrows are pinned. Previously they were grouped with the label and
             pushed right, so the left arrow slid about as the date text changed
@@ -8551,13 +8547,13 @@ html, body, #root {
             <div className="mt-6 flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 pb-5 dark:border-slate-800">
               <div className="w-[118px]">
                 <label className="mb-1.5 block text-xs font-semibold text-slate-500 dark:text-slate-400">Tax year</label>
-                <select
-                  value={taxPrepYear}
-                  onChange={e => setTaxPrepYear(Number(e.target.value))}
+                <MonieziSelect
+                  value={String(taxPrepYear)}
+                  onChange={next => setTaxPrepYear(Number(next))}
+                  ariaLabel="Tax year"
+                  options={[2026, 2025, 2024, 2023].map(y => ({ value: String(y), label: String(y) }))}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-bold text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                >
-                  {[2026, 2025, 2024, 2023].map(y => (<option key={y} value={y}>{y}</option>))}
-                </select>
+                />
               </div>
               <div>
                 <div className="mb-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">Export</div>
@@ -8770,14 +8766,16 @@ html, body, #root {
                       {plShowComparison ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
                       Prior Period
                     </button>
-                    <select
+                    <MonieziSelect
                       value={plAccountingBasis}
-                      onChange={(e) => setPlAccountingBasis(e.target.value as 'cash' | 'accrual')}
+                      onChange={next => setPlAccountingBasis(next as 'cash' | 'accrual')}
+                      ariaLabel="Accounting basis"
+                      options={[
+                        { value: 'cash', label: 'Cash Basis' },
+                        { value: 'accrual', label: 'Accrual Basis' },
+                      ]}
                       className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-xs font-bold"
-                    >
-                      <option value="cash">Cash Basis</option>
-                      <option value="accrual">Accrual Basis</option>
-                    </select>
+                    />
                   </div>
                 </div>
 
@@ -8897,12 +8895,16 @@ html, body, #root {
 
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Tax Year</span>
-                      <select value={taxPrepYear} onChange={e => setTaxPrepYear(Number(e.target.value))} className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-sm font-extrabold">
-                        {Array.from({ length: 6 }).map((_, i) => {
+                      <MonieziSelect
+                        value={String(taxPrepYear)}
+                        onChange={next => setTaxPrepYear(Number(next))}
+                        ariaLabel="Tax year"
+                        options={Array.from({ length: 6 }).map((_, i) => {
                           const y = new Date().getFullYear() - i;
-                          return <option key={y} value={y}>{y}</option>;
+                          return { value: String(y), label: String(y) };
                         })}
-                      </select>
+                        className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-sm font-extrabold"
+                      />
                     </div>
                   </div>
 
@@ -9091,16 +9093,18 @@ html, body, #root {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div>
                                             <label className="text-xs font-bold uppercase text-slate-600 dark:text-slate-300 mb-2 block">Filing Status</label>
-                                            <select 
-                                                value={plannerData.filingStatus} 
-                                                onChange={e => setPlannerData(p => ({...p, filingStatus: e.target.value as any}))}
+                                            <MonieziSelect
+                                                value={plannerData.filingStatus}
+                                                onChange={next => setPlannerData(p => ({...p, filingStatus: next as any}))}
+                                                ariaLabel="Filing status"
+                                                options={[
+                                                  { value: 'single', label: 'Single' },
+                                                  { value: 'joint', label: 'Married Filing Jointly' },
+                                                  { value: 'head', label: 'Head of Household' },
+                                                  { value: 'separate', label: 'Married Filing Separately' },
+                                                ]}
                                                 className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/20"
-                                            >
-                                                <option value="single">Single</option>
-                                                <option value="joint">Married Filing Jointly</option>
-                                                <option value="head">Head of Household</option>
-                                                <option value="separate">Married Filing Separately</option>
-                                            </select>
+                                            />
                                         </div>
                                         <div>
                                             <label className="text-xs font-bold uppercase text-slate-600 dark:text-slate-300 mb-2 block">Est. Income Tax Rate</label>
@@ -9224,16 +9228,18 @@ html, body, #root {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div>
                                             <label className="text-xs font-bold uppercase text-slate-600 dark:text-slate-300 mb-2 block">Filing Status</label>
-                                            <select 
-                                                value={plannerData.filingStatus} 
-                                                onChange={e => setPlannerData(p => ({...p, filingStatus: e.target.value as any}))}
+                                            <MonieziSelect
+                                                value={plannerData.filingStatus}
+                                                onChange={next => setPlannerData(p => ({...p, filingStatus: next as any}))}
+                                                ariaLabel="Filing status"
+                                                options={[
+                                                  { value: 'single', label: 'Single' },
+                                                  { value: 'joint', label: 'Married Filing Jointly' },
+                                                  { value: 'head', label: 'Head of Household' },
+                                                  { value: 'separate', label: 'Married Filing Separately' },
+                                                ]}
                                                 className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 font-medium text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/20"
-                                            >
-                                                <option value="single">Single</option>
-                                                <option value="joint">Married Filing Jointly</option>
-                                                <option value="head">Head of Household</option>
-                                                <option value="separate">Married Filing Separately</option>
-                                            </select>
+                                            />
                                         </div>
                                         <div>
                                             <label className="text-xs font-bold uppercase text-slate-600 dark:text-slate-300 mb-2 block">Est. Income Tax Rate</label>
@@ -9723,19 +9729,18 @@ html, body, #root {
                    {/* Filing Status Dropdown */}
                    <div className="mb-4">
                      <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-2 block uppercase tracking-wide">Filing Status</label>
-                     <select
+                     <MonieziSelect
                        value={settings.filingStatus}
-                       onChange={(e) => {
-                         const newStatus = e.target.value as FilingStatus;
-                         setSettings(prev => ({ ...prev, filingStatus: newStatus }));
-                       }}
+                       onChange={(next) => setSettings(prev => ({ ...prev, filingStatus: next as FilingStatus }))}
+                       ariaLabel="Filing status"
+                       options={[
+                         { value: 'single', label: 'Single' },
+                         { value: 'joint', label: 'Married Filing Jointly' },
+                         { value: 'separate', label: 'Married Filing Separately' },
+                         { value: 'head', label: 'Head of Household' },
+                       ]}
                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/20"
-                     >
-                       <option value="single">Single</option>
-                       <option value="joint">Married Filing Jointly</option>
-                       <option value="separate">Married Filing Separately</option>
-                       <option value="head">Head of Household</option>
-                     </select>
+                     />
                    </div>
                    
                    {/* Deduction Amount */}
@@ -10678,7 +10683,7 @@ html, body, #root {
                  
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                     <div><label className="text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300 mb-2 block">State Tax (Optional)</label><div className="relative"><input type="number" value={settings.stateTaxRate} onChange={e => setSettings(s => ({ ...s, stateTaxRate: Math.min(100, Math.max(0, Number(e.target.value))) }))} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-3 pr-10 font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"/><span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 font-bold">%</span></div></div>
-                    <div><label className="text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300 mb-2 block">Filing Status</label><select value={settings.filingStatus} onChange={e => setSettings(s => ({ ...s, filingStatus: e.target.value as FilingStatus }))} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-3 font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all appearance-none"><option value="single">Single</option><option value="joint">Married Filing Jointly</option><option value="separate">Married Filing Separately</option><option value="head">Head of Household</option></select></div>
+                    <div><label className="text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300 mb-2 block">Filing Status</label><MonieziSelect value={settings.filingStatus} onChange={next => setSettings(s => ({ ...s, filingStatus: next as FilingStatus }))} ariaLabel="Filing status" options={[{ value: 'single', label: 'Single' }, { value: 'joint', label: 'Married Filing Jointly' }, { value: 'separate', label: 'Married Filing Separately' }, { value: 'head', label: 'Head of Household' }]} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-3 font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all" /></div>
                  </div>
                  
                  <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800 rounded-lg p-6">
@@ -11350,10 +11355,17 @@ html, body, #root {
                           <div className="space-y-3.5">
                               <div>
                                 <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-2.5 block pl-1 uppercase tracking-wider">Select Client</label>
-                                <select value={(activeItem as any).clientId || ''} onChange={e => { const id = e.target.value; setActiveItem(p => ({ ...p, clientId: id || undefined })); if (id) fillDocFromClient(id); }} className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3.5 font-bold text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm">
-                                  <option value="">New / Not selected</option>
-                                  {clients.map(c => (<option key={c.id} value={c.id}>{c.name}{c.company ? ` — ${c.company}` : ''}{c.status === 'lead' ? ' (Lead)' : ''}</option>))}
-                                </select>
+                                <MonieziSelect
+                                  value={(activeItem as any).clientId || ''}
+                                  onChange={id => { setActiveItem(p => ({ ...p, clientId: id || undefined })); if (id) fillDocFromClient(id); }}
+                                  ariaLabel="Select client"
+                                  options={[
+                                    { value: '', label: 'New / Not selected' },
+                                    ...clients.map(c => ({ value: c.id, label: `${c.name}${c.company ? ` — ${c.company}` : ''}${c.status === 'lead' ? ' (Lead)' : ''}` })),
+                                  ]}
+                                  menuMinWidth={260}
+                                  className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3.5 font-bold text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm"
+                                />
                               </div>
                               <input type="text" value={activeItem.client || ''} onChange={e => setActiveItem(prev => ({ ...prev, client: e.target.value }))} className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3.5 font-bold text-base text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm" placeholder="Client Name (Required)" />
                               <input type="text" value={activeItem.clientCompany || ''} onChange={e => setActiveItem(prev => ({ ...prev, clientCompany: e.target.value }))} className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm" placeholder="Company Name (Optional)" />
@@ -11580,22 +11592,27 @@ html, body, #root {
 
                           {/* Attach / Scan controls */}
                           <div className="flex gap-2">
-                            <select value={(activeItem as any).receiptId || ''} onChange={e => {
-                              const rid = e.target.value || undefined;
-                              setActiveItem(prev => ({ ...prev, receiptId: rid }));
-                              if (rid) {
-                                const r = receipts.find(x => x.id === rid);
-                                const expName = String((activeItem as any).name || '').trim();
-                                if (expName && (!r?.note || !String(r.note).trim())) {
-                                  setReceipts(prev => prev.map(rr => rr.id === rid ? ({ ...rr, note: expName }) : rr));
+                            <MonieziSelect
+                              value={(activeItem as any).receiptId || ''}
+                              onChange={next => {
+                                const rid = next || undefined;
+                                setActiveItem(prev => ({ ...prev, receiptId: rid }));
+                                if (rid) {
+                                  const r = receipts.find(x => x.id === rid);
+                                  const expName = String((activeItem as any).name || '').trim();
+                                  if (expName && (!r?.note || !String(r.note).trim())) {
+                                    setReceipts(prev => prev.map(rr => rr.id === rid ? ({ ...rr, note: expName }) : rr));
+                                  }
                                 }
-                              }
-                            }} className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-0 rounded-lg px-4 py-3 font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500/20">
-                              <option value="">No receipt linked</option>
-                              {receipts.map(r => (
-                                <option key={r.id} value={r.id}>{`${r.date}${r.note ? ' — ' + r.note : ''} (${r.id.slice(-6)})`}</option>
-                              ))}
-                            </select>
+                              }}
+                              ariaLabel="Linked receipt"
+                              options={[
+                                { value: '', label: 'No receipt linked' },
+                                ...receipts.map(r => ({ value: r.id, label: `${r.date}${r.note ? ' — ' + r.note : ''} (${r.id.slice(-6)})` })),
+                              ]}
+                              menuMinWidth={260}
+                              className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-0 rounded-lg px-4 py-3 font-bold text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
+                            />
                             <button type="button" onClick={() => scanInputRef.current?.click()} className="px-4 py-3 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-extrabold text-sm uppercase tracking-wider hover:bg-slate-300 dark:hover:bg-slate-700 active:scale-95 transition-all">Scan</button>
                           </div>
 
@@ -11690,11 +11707,17 @@ html, body, #root {
             <div className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input value={editingClient.name || ''} onChange={e => setEditingClient(p => ({...p, name: e.target.value}))} placeholder="Client name" className="w-full px-3 py-3 rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-bold" />
-                <select value={(editingClient.status as any) || 'lead'} onChange={e => setEditingClient(p => ({...p, status: e.target.value as any}))} className="w-full px-3 py-3 rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-bold">
-                  <option value="lead">Lead</option>
-                  <option value="client">Client</option>
-                  <option value="inactive">Inactive</option>
-                </select>
+                <MonieziSelect
+                  value={(editingClient.status as any) || 'lead'}
+                  onChange={next => setEditingClient(p => ({...p, status: next as any}))}
+                  ariaLabel="Client status"
+                  options={[
+                    { value: 'lead', label: 'Lead' },
+                    { value: 'client', label: 'Client' },
+                    { value: 'inactive', label: 'Inactive' },
+                  ]}
+                  className="w-full px-3 py-3 rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-bold"
+                />
               </div>
               <input value={editingClient.company || ''} onChange={e => setEditingClient(p => ({...p, company: e.target.value}))} placeholder="Company (optional)" className="w-full px-3 py-3 rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-bold" />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

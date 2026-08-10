@@ -11,7 +11,8 @@ Release date: 2026-08-10
 - The main Menu now has proper top spacing below its header, stronger section headings, and visible dividers between Your Business, Trying MONIEZI, App, and the version/privacy note.
 
 - App-wide corner radii now use a more compact proportional hierarchy while preserving rounded shapes; intentional circles and pill controls remain fully rounded.
+- Native HTML dropdowns were replaced with a reusable MONIEZI-controlled selector throughout the app, including Activity period, tax/report controls, client/receipt selectors, and Company Equity controls. Open selector menus now use app-controlled 14 px option text, compact rows, MONIEZI dark/light styling, and consistent rounded corners instead of Android/Chrome native popup typography.
 
 ## Notes
 
-Business logic, storage, licensing, PDFs, calculations, exports, and the broader v38 behavior remain unchanged. This release is focused on card clarity, Activity search keyboard behavior, and invoice/estimate form visual refinement.
+Business logic, storage, licensing, PDFs, calculations, exports, and the broader v38 behavior remain unchanged. This release is focused on card clarity, Activity search keyboard behavior, invoice/estimate form visual refinement, menu usability, compact corner radii, and app-controlled selectors.
