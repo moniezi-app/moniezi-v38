@@ -107,6 +107,7 @@ import { createEmptyMileageDraft, normalizeMileageDraftMiles, toMileageTripPaylo
 import { CompanyEquityModule } from './src/features/equity/CompanyEquityModule';
 import { createDefaultCompanyEquityState, normalizeCompanyEquityState } from './src/features/equity/equityCore';
 import { buildJobProfitabilityRows, normalizeJobs } from './src/features/jobs/jobCore';
+import { buildMonthlyGoalProgress } from './src/features/goals/monthlyGoals';
 // --- Utility: UUID Generator ---
 const generateId = (prefix: string) => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -799,8 +800,8 @@ class PageErrorBoundary extends React.Component<
   }
 }
 
-const CUSTOMER_VERSION = "38.0.14"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
-setReportAppVersion("38.0.14");
+const CUSTOMER_VERSION = "38.0.15"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
+setReportAppVersion("38.0.15");
 const LICENSE_STORAGE_KEY = `moniezi_license_v1_${STORAGE_NAMESPACE}`;
 const DEVICE_ID_STORAGE_KEY = `moniezi_device_id_v1_${STORAGE_NAMESPACE}`;
 const LICENSE_TOKEN_SALT = "moniezi_v35_offline_binding";
@@ -1179,7 +1180,9 @@ export default function App() {
     showLogoOnInvoice: true,
     logoAlignment: 'left',
     brandColor: '#2563eb',
-    companyEquityEnabled: true
+    companyEquityEnabled: true,
+    monthlyRevenueGoal: 0,
+    monthlyProfitGoal: 0
   });
   const [customCategories, setCustomCategories] = useState<CustomCategories>({ income: [], expense: [], billing: [] });
   const [taxPayments, setTaxPayments] = useState<TaxPayment[]>([]);
@@ -1277,6 +1280,8 @@ export default function App() {
   const [drawerMode, setDrawerMode] = useState<'add' | 'edit_tx' | 'edit_inv' | 'tax_payments' | 'create_cat' | 'mileage'>('add');
   const [activeTab, setActiveTab] = useState<'income' | 'expense' | 'billing'>('income');
   const [showQuickAddMenu, setShowQuickAddMenu] = useState(false);
+  const [showGoalsEditor, setShowGoalsEditor] = useState(false);
+  const [goalDraft, setGoalDraft] = useState({ revenue: '', profit: '' });
   const [billingDocType, setBillingDocType] = useState<'invoice' | 'estimate'>('invoice');
   const [showMainMenu, setShowMainMenu] = useState(false);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
@@ -2101,6 +2106,8 @@ export default function App() {
           receiptReminderEnabled: true,
           mileageRateCents: 72.5,
           companyEquityEnabled: true,
+          monthlyRevenueGoal: 0,
+          monthlyProfitGoal: 0,
           ...parsedSettings,
         });
       };
@@ -3258,6 +3265,29 @@ export default function App() {
     setIsClientModalOpen(true);
   };
   
+  const openGoalsEditor = () => {
+    setGoalDraft({
+      revenue: settings.monthlyRevenueGoal && settings.monthlyRevenueGoal > 0 ? String(settings.monthlyRevenueGoal) : '',
+      profit: settings.monthlyProfitGoal && settings.monthlyProfitGoal > 0 ? String(settings.monthlyProfitGoal) : '',
+    });
+    setShowGoalsEditor(true);
+  };
+
+  const saveMonthlyGoals = () => {
+    const parseGoal = (value: string) => {
+      if (!String(value || '').trim()) return 0;
+      const amount = Number(value);
+      return Number.isFinite(amount) && amount > 0 ? amount : 0;
+    };
+    setSettings(prev => ({
+      ...prev,
+      monthlyRevenueGoal: parseGoal(goalDraft.revenue),
+      monthlyProfitGoal: parseGoal(goalDraft.profit),
+    }));
+    setShowGoalsEditor(false);
+    showToast('Monthly goals saved', 'success');
+  };
+
   const handleEditItem = (item: any) => {
       setCategorySearch('');
       
@@ -3936,6 +3966,8 @@ const demoMileageTrips: MileageTrip[] = [
       receiptReminderEnabled: true,
       mileageRateCents: 72.5,
       companyEquityEnabled: true,
+      monthlyRevenueGoal: 0,
+      monthlyProfitGoal: 0,
     });
 
     setSeedSuccess(false);
@@ -4135,7 +4167,7 @@ const demoMileageTrips: MileageTrip[] = [
     setActiveTab(original.type); // Set correct tab (income/expense)
     setDrawerMode('add'); // Open in add mode
     setIsDrawerOpen(true);
-    showToast("Transaction duplicated - review and save", "success");
+    showToast("Transaction repeated - review and save", "success");
     
     // Track duplication for smart suggestions
     const trackingKey = `${original.name}_${original.category}_${original.type}`;
@@ -4504,7 +4536,7 @@ const demoMileageTrips: MileageTrip[] = [
     setActiveTab('billing');
     setDrawerMode('add');
     setIsDrawerOpen(true);
-    showToast("Invoice duplicated - review and save", "success");
+    showToast("Invoice repeated - review and save", "success");
   };
   
   // Phase 3: Batch Duplicate Function
@@ -4991,6 +5023,48 @@ const demoMileageTrips: MileageTrip[] = [
     showToast('Job deleted; linked records were kept', 'info');
   };
 
+  const repeatMileageTrip = (trip: MileageTrip) => {
+    const today = new Date().toISOString().split('T')[0];
+    setEditingMileageTripId(null);
+    setNewTrip({
+      date: today,
+      miles: String(trip.miles ?? ''),
+      purpose: trip.purpose || '',
+      client: trip.client || '',
+      jobId: trip.jobId || '',
+      notes: trip.notes || '',
+    });
+    setDrawerMode('mileage');
+    setIsDrawerOpen(true);
+    showToast('Trip repeated - review and save', 'success');
+  };
+
+  const repeatJob = (job: Job) => {
+    const today = new Date().toISOString().split('T')[0];
+    setEditingJobId(null);
+    setJobAssignmentTarget(null);
+    setJobDraft({
+      title: job.title,
+      status: 'active',
+      clientId: job.clientId,
+      clientName: job.clientName,
+      description: job.description || '',
+      startDate: today,
+      endDate: undefined,
+    });
+    setShowJobDrawer(true);
+    showToast('Job repeated - review and create', 'success');
+  };
+
+  const addExpenseToJob = (job: Job) => {
+    const today = new Date().toISOString().split('T')[0];
+    setDrawerMode('add');
+    setActiveTab('expense');
+    setCategorySearch('');
+    setActiveItem({ type: 'expense', date: today, name: '', amount: 0, category: CATS_OUT[0], jobId: job.id });
+    setIsDrawerOpen(true);
+  };
+
   const buildReadinessSnapshot = useCallback((year: number) => {
     const yearTransactions = transactions.filter(t => new Date(t.date).getFullYear() === year);
     const yearExpenses = yearTransactions.filter(t => t.type === 'expense');
@@ -5048,6 +5122,94 @@ const demoMileageTrips: MileageTrip[] = [
     if (incompleteMileage.length) items.push({ id: 'mileage', title: `${incompleteMileage.length} incomplete mileage trip${incompleteMileage.length === 1 ? '' : 's'}`, detail: 'Add purpose or mileage details', priority: 60, tone: 'blue' });
     return items.sort((a, b) => b.priority - a.priority);
   }, [invoices, estimates, transactions, mileageTrips]);
+
+  const monthlyGoalProgress = useMemo(() => buildMonthlyGoalProgress(
+    transactions,
+    settings.monthlyRevenueGoal,
+    settings.monthlyProfitGoal,
+    new Date(),
+  ), [transactions, settings.monthlyRevenueGoal, settings.monthlyProfitGoal]);
+
+  const monthlyGoalLabel = new Date().toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  const previousGoalMonthDate = new Date();
+  previousGoalMonthDate.setMonth(previousGoalMonthDate.getMonth() - 1);
+  const previousGoalMonthLabel = previousGoalMonthDate.toLocaleDateString(undefined, { month: 'long' });
+
+  type DailyEfficiencyAction = {
+    id: 'followup' | 'draft' | 'jobexpense' | 'mileage' | 'invoice' | 'expense' | 'job';
+    recordId: string;
+    title: string;
+    detail: string;
+  };
+
+  const dailyEfficiencyActions = useMemo<DailyEfficiencyAction[]>(() => {
+    const byDateDesc = <T extends { date?: string }>(items: T[]) => items.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    const overdue = invoices
+      .filter(invoice => invoice.status === 'unpaid' && getDaysOverdue(invoice.due) > 0)
+      .slice()
+      .sort((a, b) => getDaysOverdue(b.due) - getDaysOverdue(a.due))[0];
+    const draftEstimate = byDateDesc(estimates.filter(estimate => estimate.status === 'draft'))[0];
+    const activeJob = jobs.filter(job => job.status === 'active').slice().sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)))[0];
+    const lastMileage = byDateDesc(mileageTrips)[0];
+    const lastInvoice = byDateDesc(invoices.filter(invoice => invoice.status !== 'void'))[0];
+    const lastExpense = byDateDesc(transactions.filter(transaction => transaction.type === 'expense'))[0];
+    const lastJob = jobs.slice().sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)))[0];
+    const actions: DailyEfficiencyAction[] = [];
+
+    if (overdue) actions.push({ id: 'followup', recordId: overdue.id, title: `Follow up ${overdue.client || 'overdue invoice'}`, detail: `${formatCurrency.format(overdue.amount)} overdue · open reminder tools` });
+    if (draftEstimate) actions.push({ id: 'draft', recordId: draftEstimate.id, title: `Continue ${draftEstimate.number || 'draft estimate'}`, detail: draftEstimate.client ? `For ${draftEstimate.client}` : 'Finish and send the estimate' });
+    if (activeJob) actions.push({ id: 'jobexpense', recordId: activeJob.id, title: `Add expense to ${activeJob.title}`, detail: 'Start an expense already linked to this job' });
+    if (lastMileage) actions.push({ id: 'mileage', recordId: lastMileage.id, title: 'Repeat last mileage trip', detail: `${lastMileage.purpose || 'Business trip'} · ${Number(lastMileage.miles || 0).toLocaleString()} mi` });
+    if (lastInvoice) actions.push({ id: 'invoice', recordId: lastInvoice.id, title: `Repeat invoice${lastInvoice.client ? ` for ${lastInvoice.client}` : ''}`, detail: 'Reuse client, line items, pricing and terms' });
+    if (lastExpense) actions.push({ id: 'expense', recordId: lastExpense.id, title: `Repeat expense: ${lastExpense.name}`, detail: `${formatCurrency.format(lastExpense.amount)} · ${lastExpense.category || 'Expense'}` });
+    if (lastJob) actions.push({ id: 'job', recordId: lastJob.id, title: `Repeat job: ${lastJob.title}`, detail: 'Reuse client and scope in a new active job' });
+    return actions.slice(0, 4);
+  }, [invoices, estimates, jobs, mileageTrips, transactions, formatCurrency]);
+
+  const handleDailyEfficiencyAction = (action: DailyEfficiencyAction) => {
+    if (action.id === 'followup') {
+      const invoice = invoices.find(item => item.id === action.recordId);
+      if (!invoice) return;
+      setBillingDocType('invoice');
+      setCurrentPage(Page.Invoices);
+      setActiveItem(invoice);
+      setDrawerMode('edit_inv');
+      setIsDrawerOpen(true);
+      return;
+    }
+    if (action.id === 'draft') {
+      const estimate = estimates.find(item => item.id === action.recordId);
+      if (!estimate) return;
+      setBillingDocType('estimate');
+      setCurrentPage(Page.Invoices);
+      setActiveItem(estimate);
+      setDrawerMode('edit_inv');
+      setIsDrawerOpen(true);
+      return;
+    }
+    if (action.id === 'jobexpense') {
+      const job = jobs.find(item => item.id === action.recordId);
+      if (job) addExpenseToJob(job);
+      return;
+    }
+    if (action.id === 'mileage') {
+      const trip = mileageTrips.find(item => item.id === action.recordId);
+      if (trip) repeatMileageTrip(trip);
+      return;
+    }
+    if (action.id === 'invoice') {
+      const invoice = invoices.find(item => item.id === action.recordId);
+      if (invoice) { setBillingDocType('invoice'); duplicateInvoice(invoice); }
+      return;
+    }
+    if (action.id === 'expense') {
+      const expense = transactions.find(item => item.id === action.recordId);
+      if (expense) duplicateTransaction(expense);
+      return;
+    }
+    const job = jobs.find(item => item.id === action.recordId);
+    if (job) repeatJob(job);
+  };
 
   const selectedClientStatement = useMemo(() => {
     if (!selectedClientStatementKey) return null;
@@ -8321,6 +8483,66 @@ html, body, #root {
                 <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Tax Prep Readiness · {new Date().getFullYear()}</span>
                 <span className={`text-sm font-extrabold ${homeReadiness.score >= 90 ? 'text-emerald-600 dark:text-emerald-400' : homeReadiness.score >= 70 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>{homeReadiness.score}%</span>
               </button>
+            </section>
+
+            <section className="rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 overflow-hidden">
+              <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+                <div>
+                  <div className="flex items-center gap-2"><Percent size={18} className="text-blue-600 dark:text-blue-400" /><h3 className="text-base font-extrabold text-slate-900 dark:text-white">Monthly Business Goals</h3></div>
+                  <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">{monthlyGoalLabel} · track revenue and profit without a separate planning tool.</p>
+                </div>
+                <button type="button" onClick={openGoalsEditor} className="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-[11px] font-bold text-blue-700 transition-colors hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-950 dark:text-blue-300 dark:hover:bg-blue-500/10">{monthlyGoalProgress.hasRevenueGoal || monthlyGoalProgress.hasProfitGoal ? 'Edit' : 'Set Goals'}</button>
+              </div>
+              {!monthlyGoalProgress.hasRevenueGoal && !monthlyGoalProgress.hasProfitGoal ? (
+                <div className="px-5 py-5">
+                  <div className="text-sm font-extrabold text-slate-900 dark:text-white">Set a target for the month</div>
+                  <p className="mt-1 text-xs font-medium leading-5 text-slate-500 dark:text-slate-400">Optional goals show how much revenue or profit is still needed this month.</p>
+                  <button type="button" onClick={openGoalsEditor} className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2.5 text-xs font-extrabold text-white shadow-sm transition hover:bg-blue-500"><PlusCircle size={15} /> Set Monthly Goals</button>
+                </div>
+              ) : (
+                <div className="space-y-5 px-5 py-5">
+                  {monthlyGoalProgress.hasRevenueGoal && (
+                    <div>
+                      <div className="flex items-end justify-between gap-3"><div><div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Revenue Goal</div><div className="mt-1 text-lg font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(monthlyGoalProgress.revenue)} <span className="text-xs font-bold text-slate-400">of {formatCurrency.format(monthlyGoalProgress.revenueGoal)}</span></div></div><div className="text-sm font-extrabold text-blue-600 dark:text-blue-300">{Math.round(monthlyGoalProgress.revenuePct)}%</div></div>
+                      <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"><div className="h-full rounded-full bg-blue-600 transition-all" style={{ width: `${Math.min(100, monthlyGoalProgress.revenuePct)}%` }} /></div>
+                      <div className="mt-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">{monthlyGoalProgress.revenueRemaining > 0 ? `${formatCurrency.format(monthlyGoalProgress.revenueRemaining)} remaining` : 'Revenue goal reached'}</div>
+                    </div>
+                  )}
+                  {monthlyGoalProgress.hasProfitGoal && (
+                    <div>
+                      <div className="flex items-end justify-between gap-3"><div><div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Profit Goal</div><div className="mt-1 text-lg font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(monthlyGoalProgress.profit)} <span className="text-xs font-bold text-slate-400">of {formatCurrency.format(monthlyGoalProgress.profitGoal)}</span></div></div><div className="text-sm font-extrabold text-emerald-600 dark:text-emerald-300">{Math.round(monthlyGoalProgress.profitPct)}%</div></div>
+                      <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"><div className="h-full rounded-full bg-emerald-600 transition-all" style={{ width: `${Math.min(100, monthlyGoalProgress.profitPct)}%` }} /></div>
+                      <div className="mt-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">{monthlyGoalProgress.profitRemaining > 0 ? `${formatCurrency.format(monthlyGoalProgress.profitRemaining)} remaining` : 'Profit goal reached'}</div>
+                    </div>
+                  )}
+                </div>
+              )}
+              {(monthlyGoalProgress.hasRevenueGoal || monthlyGoalProgress.hasProfitGoal) && (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-200 bg-slate-50 px-5 py-3 text-[11px] font-semibold text-slate-500 dark:border-slate-800 dark:bg-slate-950/50 dark:text-slate-400">
+                  <span>{previousGoalMonthLabel} revenue: <strong className="text-slate-700 dark:text-slate-200">{formatCurrency.format(monthlyGoalProgress.previousRevenue)}</strong></span>
+                  <span>{previousGoalMonthLabel} profit: <strong className="text-slate-700 dark:text-slate-200">{formatCurrency.format(monthlyGoalProgress.previousProfit)}</strong></span>
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 overflow-hidden">
+              <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+                <div className="flex items-center gap-2"><Zap size={18} className="text-amber-600 dark:text-amber-400" /><h3 className="text-base font-extrabold text-slate-900 dark:text-white">Continue Work</h3></div>
+                <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">Fast shortcuts based on what you were already doing in MONIEZI.</p>
+              </div>
+              {dailyEfficiencyActions.length === 0 ? (
+                <div className="px-5 py-5 text-sm font-medium text-slate-500 dark:text-slate-400">Add your first job, invoice, expense or mileage trip and MONIEZI will offer repeat-work shortcuts here.</div>
+              ) : (
+                <div className="divide-y divide-slate-200 dark:divide-slate-800">
+                  {dailyEfficiencyActions.map(action => (
+                    <button key={`${action.id}-${action.recordId}`} type="button" onClick={() => handleDailyEfficiencyAction(action)} className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">{action.id === 'followup' ? <Megaphone size={17} /> : action.id === 'jobexpense' || action.id === 'job' ? <Briefcase size={17} /> : action.id === 'mileage' ? <Car size={17} /> : <Repeat size={17} />}</div>
+                      <div className="min-w-0 flex-1"><div className="text-sm font-extrabold text-slate-900 dark:text-white">{action.title}</div><div className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">{action.detail}</div></div>
+                      <ChevronRight size={17} className="shrink-0 text-slate-400" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </section>
 
             <div
@@ -12497,7 +12719,10 @@ html, body, #root {
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 pt-2">
                   {editingMileageTripId ? (
-                    <button type="button" onClick={deleteActiveMileageTrip} className="sm:w-40 py-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-lg shadow-red-500/20 uppercase tracking-widest transition-all active:scale-95">Delete</button>
+                    <>
+                      <button type="button" onClick={() => { const trip = mileageTrips.find(item => item.id === editingMileageTripId); if (trip) repeatMileageTrip(trip); }} className="sm:w-40 py-4 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-300 dark:bg-teal-500/10 dark:hover:bg-teal-500/15 dark:text-teal-200 dark:border-teal-800/60 font-bold rounded-lg uppercase tracking-wider transition-all active:scale-95"><Repeat size={16} className="inline mr-1.5" />Repeat</button>
+                      <button type="button" onClick={deleteActiveMileageTrip} className="sm:w-36 py-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-lg shadow-red-500/20 uppercase tracking-widest transition-all active:scale-95">Delete</button>
+                    </>
                   ) : null}
                   <button type="button" onClick={saveMileageTripFromDrawer} className="flex-1 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-lg shadow-emerald-500/20 uppercase tracking-widest transition-all active:scale-95">Save Trip</button>
                 </div>
@@ -12527,7 +12752,7 @@ html, body, #root {
                     <div className="bg-slate-100 dark:bg-slate-900/70 p-3 rounded-xl mb-5 border border-slate-300 dark:border-slate-700 shadow-sm">
                         <div className="grid grid-cols-3 gap-2 mb-2">
                             <button type="button" onClick={billingDocType === 'estimate' ? handleDirectExportEstimatePDF : handleDirectExportPDF} disabled={billingDocType === 'estimate' ? isGeneratingEstimatePdf : isGeneratingPdf} className={`py-2.5 flex flex-col items-center justify-center gap-1 rounded-lg bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm transition-all ${(billingDocType === 'estimate' ? isGeneratingEstimatePdf : isGeneratingPdf) ? 'opacity-70 cursor-wait' : ''}`}>{(billingDocType === 'estimate' ? isGeneratingEstimatePdf : isGeneratingPdf) ? <Loader2 size={18} className="animate-spin text-blue-600" /> : <Download size={18} />}<span className="text-[10px] font-bold uppercase tracking-wider">{(billingDocType === 'estimate' ? isGeneratingEstimatePdf : isGeneratingPdf) ? 'Generating...' : 'Export PDF'}</span></button>
-                            <button type="button" onClick={() => (billingDocType === 'estimate' ? duplicateEstimate(activeItem as any) : duplicateInvoice(activeItem as Invoice))} className="py-2.5 flex flex-col items-center justify-center gap-1 rounded-lg bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 shadow-sm transition-all"><Copy size={18} /><span className="text-[10px] font-bold uppercase tracking-wider">Duplicate</span></button>
+                            <button type="button" onClick={() => (billingDocType === 'estimate' ? duplicateEstimate(activeItem as any) : duplicateInvoice(activeItem as Invoice))} className="py-2.5 flex flex-col items-center justify-center gap-1 rounded-lg bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 shadow-sm transition-all"><Repeat size={18} /><span className="text-[10px] font-bold uppercase tracking-wider">Repeat</span></button>
                             <button type="button" onClick={() => (billingDocType === 'estimate' ? null : openBatchDuplicate(activeItem as Invoice))} disabled={billingDocType === 'estimate'} className={`py-2.5 flex flex-col items-center justify-center gap-1 rounded-lg bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 shadow-sm transition-all ${billingDocType === 'estimate' ? 'opacity-50 cursor-not-allowed' : ''}`}><Repeat size={18} /><span className="text-[10px] font-bold uppercase tracking-wider">Batch</span></button>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
@@ -12719,8 +12944,8 @@ html, body, #root {
                         <div className="bg-slate-100 dark:bg-slate-800/50 p-2 rounded-lg mb-2 border border-slate-200 dark:border-slate-700">
                           <div className="grid grid-cols-3 gap-2 mb-2">
                             <button type="button" onClick={() => duplicateTransaction(activeItem as Transaction)} className="py-2.5 flex flex-col items-center justify-center gap-1 rounded-lg bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 shadow-sm transition-all">
-                              <Copy size={18} />
-                              <span className="text-[10px] font-bold uppercase tracking-wider">Duplicate</span>
+                              <Repeat size={18} />
+                              <span className="text-[10px] font-bold uppercase tracking-wider">Repeat</span>
                             </button>
                             <button type="button" onClick={() => openBatchDuplicate(activeItem as Transaction)} className={`py-2.5 flex flex-col items-center justify-center gap-1 rounded-lg bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 shadow-sm transition-all ${billingDocType === 'estimate' ? 'opacity-50 cursor-not-allowed' : ''}`}>
                               <Repeat size={18} />
@@ -12944,11 +13169,26 @@ html, body, #root {
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row">
-            {editingJobId && <button type="button" onClick={() => deleteJob(editingJobId)} className="sm:w-36 rounded-lg border border-red-300 bg-red-50 px-4 py-3.5 text-sm font-extrabold uppercase tracking-wider text-red-700 transition hover:bg-red-100 dark:border-red-800/60 dark:bg-red-500/10 dark:text-red-300">Delete</button>}
+            {editingJobId && jobs.find(item => item.id === editingJobId) && <button type="button" onClick={() => { const job = jobs.find(item => item.id === editingJobId); if (job) repeatJob(job); }} className="sm:w-36 rounded-lg border border-cyan-300 bg-cyan-50 px-4 py-3.5 text-sm font-extrabold uppercase tracking-wider text-cyan-800 transition hover:bg-cyan-100 dark:border-cyan-800/60 dark:bg-cyan-500/10 dark:text-cyan-200"><Repeat size={15} className="inline mr-1" />Repeat</button>}
+            {editingJobId && <button type="button" onClick={() => deleteJob(editingJobId)} className="sm:w-32 rounded-lg border border-red-300 bg-red-50 px-4 py-3.5 text-sm font-extrabold uppercase tracking-wider text-red-700 transition hover:bg-red-100 dark:border-red-800/60 dark:bg-red-500/10 dark:text-red-300">Delete</button>}
             <button type="button" onClick={saveJob} className="flex-1 rounded-lg bg-cyan-700 px-4 py-3.5 text-sm font-extrabold uppercase tracking-wider text-white shadow-md transition hover:bg-cyan-600 active:scale-[0.99]">{editingJobId ? 'Save Job' : 'Create Job'}</button>
           </div>
         </div>
       </AppDrawer>
+
+      {showGoalsEditor && (
+        <div className="fixed inset-0 z-[130] flex items-end justify-center bg-slate-950/75 p-4 backdrop-blur-sm sm:items-center modal-overlay" onClick={() => setShowGoalsEditor(false)}>
+          <div className="w-full max-w-md overflow-hidden rounded-xl border border-slate-300 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900" onClick={event => event.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800"><div><h3 className="text-lg font-extrabold text-slate-950 dark:text-white">Monthly Business Goals</h3><p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">Set either goal, both goals, or leave a field blank to hide it.</p></div><button type="button" onClick={() => setShowGoalsEditor(false)} className="rounded-full p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" aria-label="Close goals editor"><X size={18} /></button></div>
+            <div className="space-y-4 p-5">
+              <div><label className="mb-2 block text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">Monthly Revenue Goal</label><div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-500 dark:text-slate-400">{settings.currencySymbol}</span><input type="number" inputMode="decimal" min="0" step="1" value={goalDraft.revenue} onChange={event => setGoalDraft(prev => ({ ...prev, revenue: event.target.value }))} className="w-full rounded-xl border border-slate-300 bg-white py-3.5 pl-10 pr-4 text-base font-bold text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white" placeholder="10000" /></div></div>
+              <div><label className="mb-2 block text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">Monthly Profit Goal</label><div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-500 dark:text-slate-400">{settings.currencySymbol}</span><input type="number" inputMode="decimal" min="0" step="1" value={goalDraft.profit} onChange={event => setGoalDraft(prev => ({ ...prev, profit: event.target.value }))} className="w-full rounded-xl border border-slate-300 bg-white py-3.5 pl-10 pr-4 text-base font-bold text-slate-900 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white" placeholder="4000" /></div></div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs font-medium leading-5 text-slate-600 dark:border-slate-800 dark:bg-slate-950/60 dark:text-slate-300">Revenue is this month's recorded income. Profit is recorded income minus recorded expenses. Goals do not change any accounting records.</div>
+            </div>
+            <div className="flex gap-3 border-t border-slate-200 px-5 py-4 dark:border-slate-800"><button type="button" onClick={() => { setGoalDraft({ revenue: '', profit: '' }); setSettings(prev => ({ ...prev, monthlyRevenueGoal: 0, monthlyProfitGoal: 0 })); setShowGoalsEditor(false); showToast('Monthly goals cleared', 'info'); }} className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800">Clear</button><button type="button" onClick={saveMonthlyGoals} className="flex-1 rounded-lg bg-blue-600 px-4 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-blue-500">Save Goals</button></div>
+          </div>
+        </div>
+      )}
 
       {/* GLOBAL RECEIPT SCAN INPUT */}
       <input type="file" ref={scanInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleScanReceipt} />

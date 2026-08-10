@@ -1,30 +1,17 @@
-# MONIEZI Pro Finance v38.0.14
+# MONIEZI Pro Finance v38.0.15
 
-Release date: 2026-08-10
+Source package for the v38.0.15 Goals + Repeat Work + Daily Efficiency release.
 
-## Job / Project Profitability
+## New in v38.0.15
 
-v38.0.14 adds an optional Job / Project layer on top of the existing MONIEZI records without changing or invalidating older data.
-
-### New in v38.0.14
-
-- New **Jobs / Projects** screen under **Your Business**.
-- Jobs can be linked to a client and marked Active, Completed, or Archived.
-- Invoices, estimates, income, expenses, and mileage can now be assigned to a job/project.
-- A new job can be created directly while editing an invoice, estimate, transaction, or mileage trip.
-- Job cards show revenue, expenses, estimated profit, profit margin, outstanding invoices, mileage, and estimate activity.
-- New **Reports → Job Profitability** report with year selection.
-- Client records show their linked jobs/projects.
-- Global Search now searches jobs/projects.
-- Linked job names are visible on invoices, estimates, and mileage records.
-- Paid invoice transactions inherit the invoice job link, while profitability calculations avoid double-counting the linked payment transaction.
-- Deleting a job keeps all business records and only removes their job assignment.
-- Backups now include Jobs / Projects; older backups without jobs continue to restore normally.
-
-### Profit calculation
-
-Estimated job profit is calculated as linked invoice value plus linked non-invoice income, minus linked expenses. Unpaid invoices remain visible as outstanding. Business mileage and its estimated tax deduction are shown separately and are not treated as an operating expense.
+- Optional monthly revenue and profit goals on Home, with current-month progress, remaining amount, and prior-month comparison.
+- Home Continue Work surfaces up to four high-value shortcuts based on recent activity, while Repeat remains available directly in the relevant record editors.
+- Repeat Mileage Trip from the mileage editor.
+- Repeat Job / Project from the job editor.
+- Existing invoice/transaction duplicate shortcuts are presented as Repeat for clearer everyday wording.
+- Goals are stored in existing local settings and are included automatically in backup/restore.
+- Existing v38.0.14 records remain compatible; goals are optional and default to off.
 
 ## Compatibility
 
-All v38.0.13 functionality remains in place, including Needs Your Attention, Business Insights, Tax Prep Readiness, Accountant Package, Client Statements, follow-up messages, Report Center, custom selectors, optional Company Equity, and the previous mobile/layout refinements.
+v38.0.15 preserves the v38.0.14 Jobs / Projects and Job Profitability data model and all earlier MONIEZI records.

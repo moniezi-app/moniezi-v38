@@ -24,6 +24,7 @@
     "types.ts",
     "src/features/mileage/draft.ts",
     "src/features/jobs/jobCore.ts",
+    "src/features/goals/monthlyGoals.ts",
     "src/navigation/hashRouting.ts",
     "src/features/equity/fundingMetrics.ts",
     "tests/regression/**/*.ts"

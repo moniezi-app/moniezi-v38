@@ -176,6 +176,10 @@ export interface UserSettings {
   // Optional Features
   companyEquityEnabled?: boolean;
 
+  // Monthly Business Goals (optional; 0/undefined means no goal)
+  monthlyRevenueGoal?: number;
+  monthlyProfitGoal?: number;
+
   // Invoice Defaults
   defaultInvoiceTerms?: string;
   defaultInvoiceNotes?: string;
