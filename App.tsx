@@ -6561,12 +6561,6 @@ const demoMileageTrips: MileageTrip[] = [
   const isActivityPage = currentPage === Page.AllTransactions || currentPage === Page.Ledger;
   const shouldHideBottomNav = isKeyboardEditing || (isActivityPage && isActivitySearchFocused);
 
-  useEffect(() => {
-    if (!isActivityPage && isActivitySearchFocused) {
-      setIsActivitySearchFocused(false);
-    }
-  }, [isActivityPage, isActivitySearchFocused]);
-
   return (
     <>
       <style>{`
