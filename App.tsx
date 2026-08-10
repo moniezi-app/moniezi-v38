@@ -11514,13 +11514,13 @@ html, body, #root {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><DateInput label="Date" value={activeItem.date || ''} onChange={v => setActiveItem(prev => ({ ...prev, date: v }))} /><div><label className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-2 block pl-1">Amount</label><div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 font-bold">{settings.currencySymbol}</span><input type="number" inputMode="decimal" enterKeyHint="done" step="0.01" value={activeItem.amount || ''} onChange={e => setActiveItem(prev => ({ ...prev, amount: Number(e.target.value) }))} className="w-full bg-transparent border border-slate-300 dark:border-slate-700 rounded-lg pl-10 pr-4 py-4 font-bold text-lg outline-none focus:ring-2 focus:ring-blue-500/20" placeholder="0.00" /></div></div></div>
                       <div><label className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-2 block pl-1">Category</label>{renderCategoryChips(activeItem.category, (cat) => setActiveItem(prev => ({ ...prev, category: cat })))}</div>
                       {activeTab === 'expense' && (
-                        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4">
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
+                        <div className="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4">
+                          <div className="flex flex-col items-start gap-4">
+                            <div className="w-full">
                               <div className="text-sm font-extrabold text-slate-900 dark:text-white">Review Status</div>
-                              <div className="text-xs text-slate-600 dark:text-slate-300 mt-1">Mark this expense as reviewed after checking category, amount, and receipt.</div>
+                              <div className="text-xs leading-5 text-slate-600 dark:text-slate-300 mt-1.5">Mark this expense as reviewed after checking category, amount, and receipt.</div>
                             </div>
-                            <button type="button" onClick={() => setActiveItem((prev: any) => ({ ...prev, reviewedAt: prev.reviewedAt ? undefined : new Date().toISOString() }))} className={`px-4 py-2 rounded-lg font-extrabold uppercase tracking-widest text-xs ${(activeItem as any).reviewedAt ? 'bg-emerald-600 text-white' : 'bg-amber-100 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300'}`}>
+                            <button type="button" onClick={() => setActiveItem((prev: any) => ({ ...prev, reviewedAt: prev.reviewedAt ? undefined : new Date().toISOString() }))} className={`self-start px-4 py-2.5 rounded-lg font-extrabold uppercase tracking-widest text-xs ${(activeItem as any).reviewedAt ? 'bg-emerald-600 text-white' : 'bg-amber-100 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300'}`}>
                               {(activeItem as any).reviewedAt ? 'Reviewed' : 'New'}
                             </button>
                           </div>
