@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+import * as assert from 'node:assert/strict';
 import type { Client, Estimate, Invoice, Job, MileageTrip, Transaction } from '../../types';
 import { buildJobProfitabilityRows } from '../../src/features/jobs/jobCore';
 
