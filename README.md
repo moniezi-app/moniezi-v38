@@ -1,20 +1,30 @@
-# MONIEZI Pro Finance v38.0.13
+# MONIEZI Pro Finance v38.0.14
 
 Release date: 2026-08-10
 
-## Action + Readiness Upgrade
+## Job / Project Profitability
 
-This release builds on the completed v38.0.12 Report Center and mobile usability work.
+v38.0.14 adds an optional Job / Project layer on top of the existing MONIEZI records without changing or invalidating older data.
 
-### New in v38.0.13
+### New in v38.0.14
 
-- **Needs Your Attention** on Home: prioritized overdue invoices, estimate follow-ups, missing receipts, unreviewed expenses, uncategorized records, and incomplete mileage.
-- **Business Insights**: Smart Insights is refocused around business operations and record quality rather than consumer-style savings advice.
-- **Tax Prep Readiness**: a 0–100 readiness score with tappable items for missing receipts, expense review, categories, and mileage completeness.
-- **Accountant Package**: one ZIP containing Tax Summary PDF, tax-year Profit & Loss PDF, transaction ledger CSV, mileage CSV, items-needing-attention CSV, and linked receipt images/manifest.
-- **Client Statements**: Clients & Work can open a client statement with invoice/estimate history and download it as PDF.
-- **Follow-Up Messages**: unpaid invoices and sent estimates can generate local copy/share reminder messages.
+- New **Jobs / Projects** screen under **Your Business**.
+- Jobs can be linked to a client and marked Active, Completed, or Archived.
+- Invoices, estimates, income, expenses, and mileage can now be assigned to a job/project.
+- A new job can be created directly while editing an invoice, estimate, transaction, or mileage trip.
+- Job cards show revenue, expenses, estimated profit, profit margin, outstanding invoices, mileage, and estimate activity.
+- New **Reports → Job Profitability** report with year selection.
+- Client records show their linked jobs/projects.
+- Global Search now searches jobs/projects.
+- Linked job names are visible on invoices, estimates, and mileage records.
+- Paid invoice transactions inherit the invoice job link, while profitability calculations avoid double-counting the linked payment transaction.
+- Deleting a job keeps all business records and only removes their job assignment.
+- Backups now include Jobs / Projects; older backups without jobs continue to restore normally.
 
-### Preserved from v38.0.12
+### Profit calculation
 
-Report Center, custom app-controlled selectors, Company Equity optional-feature behavior (enabled by default), mobile usability improvements, invoice/estimate visual refinements, Activity keyboard handling, license flow fixes, and the reduced corner-radius system remain intact.
+Estimated job profit is calculated as linked invoice value plus linked non-invoice income, minus linked expenses. Unpaid invoices remain visible as outstanding. Business mileage and its estimated tax deduction are shown separately and are not treated as an operating expense.
+
+## Compatibility
+
+All v38.0.13 functionality remains in place, including Needs Your Attention, Business Insights, Tax Prep Readiness, Accountant Package, Client Statements, follow-up messages, Report Center, custom selectors, optional Company Equity, and the previous mobile/layout refinements.

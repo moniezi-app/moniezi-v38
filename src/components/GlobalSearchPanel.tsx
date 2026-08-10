@@ -5,6 +5,7 @@ import {
   Car,
   ClipboardList,
   FileText,
+  Briefcase,
   Receipt,
   Search,
   TrendingDown,
@@ -47,6 +48,11 @@ const toneClasses: Record<GlobalSearchTone, { icon: string; badge: string; label
     badge: 'bg-purple-100 text-purple-800 dark:bg-purple-500/15 dark:text-purple-200',
     label: 'Client',
   },
+  job: {
+    icon: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-500/15 dark:text-cyan-200',
+    badge: 'bg-cyan-100 text-cyan-900 dark:bg-cyan-500/15 dark:text-cyan-200',
+    label: 'Job',
+  },
   mileage: {
     icon: 'bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-300',
     badge: 'bg-teal-100 text-teal-800 dark:bg-teal-500/15 dark:text-teal-200',
@@ -66,6 +72,7 @@ const iconForTone = (tone: GlobalSearchTone) => {
     case 'invoice': return <FileText size={19} strokeWidth={1.8} />;
     case 'estimate': return <ClipboardList size={19} strokeWidth={1.8} />;
     case 'client': return <Users size={19} strokeWidth={1.8} />;
+    case 'job': return <Briefcase size={19} strokeWidth={1.8} />;
     case 'mileage': return <Car size={19} strokeWidth={1.8} />;
     case 'receipt': return <Receipt size={19} strokeWidth={1.8} />;
   }
@@ -185,7 +192,7 @@ export const GlobalSearchPanel: React.FC<GlobalSearchPanelProps> = ({
               </div>
               <h2 className="text-xl font-extrabold tracking-tight text-slate-950 dark:text-white">Find anything in MONIEZI</h2>
               <p className="mt-2 max-w-md text-sm font-medium leading-6 text-slate-600 dark:text-slate-300">
-                Search transactions, invoices, estimates, clients, mileage and receipts. Enter at least two characters.
+                Search transactions, invoices, estimates, clients, jobs, mileage and receipts. Enter at least two characters.
               </p>
             </div>
           ) : totalMatches === 0 ? (

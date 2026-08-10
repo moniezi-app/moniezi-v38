@@ -12,6 +12,7 @@ export interface Transaction {
   notes?: string;
   receiptId?: string; // linked receipt id (IndexedDB)
   reviewedAt?: string;
+  jobId?: string; // optional Job / Project link
 }
 
 
@@ -48,6 +49,7 @@ export interface Invoice {
 
   // Link to Client (preferred)
   clientId?: string;
+  jobId?: string; // optional Job / Project link
 
   // Display fields (kept for backward compatibility + PDF rendering)
   client: string;
@@ -91,6 +93,7 @@ export interface Estimate {
 
   // Link to Client (preferred)
   clientId?: string;
+  jobId?: string; // optional Job / Project link
 
   // Client display fields
   client: string;
@@ -198,7 +201,24 @@ export interface MileageTrip {
   miles: number;
   purpose: string;
   client?: string;
+  jobId?: string; // optional Job / Project link
   notes?: string;
+}
+
+// --- Jobs / Projects ---
+export type JobStatus = 'active' | 'completed' | 'archived';
+
+export interface Job {
+  id: string;
+  title: string;
+  clientId?: string;
+  clientName?: string; // display fallback for deleted/legacy clients
+  description?: string;
+  status: JobStatus;
+  startDate?: string;
+  endDate?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Receipt {
@@ -361,6 +381,7 @@ export enum Page {
   Invoice = 'invoice',
   Invoices = 'invoices',
   Clients = 'clients',
+  Jobs = 'jobs',
   Mileage = 'mileage',
   Reports = 'reports',
   CompanyEquity = 'company_equity',

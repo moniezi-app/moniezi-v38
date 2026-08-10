@@ -1,7 +1,7 @@
-import type { Client, Estimate, Invoice, MileageTrip, Receipt, Transaction } from '../../../types';
+import type { Client, Estimate, Invoice, Job, MileageTrip, Receipt, Transaction } from '../../../types';
 
-export type GlobalSearchKind = 'transaction' | 'invoice' | 'estimate' | 'client' | 'mileage' | 'receipt';
-export type GlobalSearchTone = 'income' | 'expense' | 'invoice' | 'estimate' | 'client' | 'mileage' | 'receipt';
+export type GlobalSearchKind = 'transaction' | 'invoice' | 'estimate' | 'client' | 'job' | 'mileage' | 'receipt';
+export type GlobalSearchTone = 'income' | 'expense' | 'invoice' | 'estimate' | 'client' | 'job' | 'mileage' | 'receipt';
 
 export interface GlobalSearchResult {
   key: string;
@@ -25,6 +25,7 @@ interface BuildGlobalSearchGroupsInput {
   invoices: Invoice[];
   estimates: Estimate[];
   clients: Client[];
+  jobs: Job[];
   mileageTrips: MileageTrip[];
   receipts: Receipt[];
   formatCurrency: (value: number) => string;
@@ -86,6 +87,7 @@ export const buildGlobalSearchGroups = ({
   invoices,
   estimates,
   clients,
+  jobs,
   mileageTrips,
   receipts,
   formatCurrency,
@@ -241,6 +243,36 @@ export const buildGlobalSearchGroups = ({
           : undefined,
     }));
 
+  const clientById = new Map(clients.map(client => [client.id, client] as const));
+  const jobResults: GlobalSearchResult[] = [...jobs]
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime())
+    .filter(job => {
+      const client = job.clientId ? clientById.get(job.clientId) : undefined;
+      return matches([
+        job.title,
+        job.description,
+        job.status,
+        job.clientName,
+        client?.name,
+        client?.company,
+        dateSearchValues(job.startDate),
+        dateSearchValues(job.endDate),
+      ]);
+    })
+    .map(job => {
+      const client = job.clientId ? clientById.get(job.clientId) : undefined;
+      const clientName = client?.name || client?.company || job.clientName || 'No client';
+      return {
+        key: `job:${job.id}`,
+        id: job.id,
+        kind: 'job',
+        tone: 'job',
+        title: job.title,
+        subtitle: `${clientName} • ${job.status.charAt(0).toUpperCase() + job.status.slice(1)}${job.startDate ? ` • Started ${displayDate(job.startDate)}` : ''}`,
+        detail: job.description && matches([job.description]) ? `Scope: ${job.description}` : undefined,
+      };
+    });
+
   const mileageResults: GlobalSearchResult[] = [...mileageTrips]
     .sort(byDateDesc)
     .filter((trip) => matches([
@@ -301,6 +333,7 @@ export const buildGlobalSearchGroups = ({
     { id: 'invoice', label: 'Invoices', results: invoiceResults },
     { id: 'estimate', label: 'Estimates', results: estimateResults },
     { id: 'client', label: 'Clients', results: clientResults },
+    { id: 'job', label: 'Jobs / Projects', results: jobResults },
     { id: 'mileage', label: 'Mileage', results: mileageResults },
     { id: 'receipt', label: 'Receipts', results: receiptResults },
   ];

@@ -9,6 +9,7 @@ export function runMileageDraftTests() {
   assert.equal(draft.miles, "", "new mileage drafts should start with empty miles");
   assert.equal(draft.purpose, "");
   assert.equal(draft.client, "");
+  assert.equal(draft.jobId, "");
   assert.equal(draft.notes, "");
 
   assert.equal(normalizeMileageDraftMiles(""), "", "empty mileage input should stay empty");
@@ -21,6 +22,7 @@ export function runMileageDraftTests() {
     miles: "15.5",
     purpose: "Client visit",
     client: "Acme",
+    jobId: "",
     notes: "Round trip"
   });
 

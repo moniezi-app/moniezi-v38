@@ -87,7 +87,7 @@ import {
   Filter,
   Menu as MenuIcon
 } from 'lucide-react';
-import { Page, Transaction, Invoice, Estimate, Client, ClientStatus, UserSettings, Notification, FilterPeriod, RecurrenceFrequency, FilingStatus, TaxPayment, TaxEstimationMethod, InvoiceItem, EstimateItem, CustomCategories, Receipt as ReceiptType, MileageTrip, CompanyEquityState } from './types';
+import { Page, Transaction, Invoice, Estimate, Client, ClientStatus, Job, JobStatus, UserSettings, Notification, FilterPeriod, RecurrenceFrequency, FilingStatus, TaxPayment, TaxEstimationMethod, InvoiceItem, EstimateItem, CustomCategories, Receipt as ReceiptType, MileageTrip, CompanyEquityState } from './types';
 import { CATS_IN, CATS_OUT, CATS_BILLING, DEFAULT_PAY_PREFS, DB_KEY, STORAGE_NAMESPACE, TAX_CONSTANTS, TAX_PLANNER_2026, getFreshDemoData } from './constants';
 import InsightsDashboard from './InsightsDashboard';
 import { getInsightCount } from './services/insightsEngine';
@@ -106,6 +106,7 @@ import { buildHash, normalizePage, pageToHashPath, parseHashLocation } from './s
 import { createEmptyMileageDraft, normalizeMileageDraftMiles, toMileageTripPayload } from './src/features/mileage/draft';
 import { CompanyEquityModule } from './src/features/equity/CompanyEquityModule';
 import { createDefaultCompanyEquityState, normalizeCompanyEquityState } from './src/features/equity/equityCore';
+import { buildJobProfitabilityRows, normalizeJobs } from './src/features/jobs/jobCore';
 // --- Utility: UUID Generator ---
 const generateId = (prefix: string) => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -798,8 +799,8 @@ class PageErrorBoundary extends React.Component<
   }
 }
 
-const CUSTOMER_VERSION = "38.0.13"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
-setReportAppVersion("38.0.13");
+const CUSTOMER_VERSION = "38.0.14"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
+setReportAppVersion("38.0.14");
 const LICENSE_STORAGE_KEY = `moniezi_license_v1_${STORAGE_NAMESPACE}`;
 const DEVICE_ID_STORAGE_KEY = `moniezi_device_id_v1_${STORAGE_NAMESPACE}`;
 const LICENSE_TOKEN_SALT = "moniezi_v35_offline_binding";
@@ -1165,6 +1166,7 @@ export default function App() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [estimates, setEstimates] = useState<Estimate[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [settings, setSettings] = useState<UserSettings>({
     businessName: "My Business",
     ownerName: "Owner",
@@ -1262,6 +1264,13 @@ export default function App() {
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Partial<Client>>({ status: 'lead' });
 
+  // Jobs / Projects
+  const [jobFilter, setJobFilter] = useState<'all' | JobStatus>('active');
+  const [showJobDrawer, setShowJobDrawer] = useState(false);
+  const [editingJobId, setEditingJobId] = useState<string | null>(null);
+  const [jobAssignmentTarget, setJobAssignmentTarget] = useState<'record' | 'mileage' | null>(null);
+  const [jobDraft, setJobDraft] = useState<Partial<Job>>({ status: 'active' });
+
   // UI State
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -1344,7 +1353,7 @@ export default function App() {
   const taxSnapshotRef = useRef<HTMLDivElement>(null);
 
   // Reports screen menu (Settings-style tiles)
-  const [reportsMenuSection, setReportsMenuSection] = useState<'menu'|'pl'|'taxsnapshot'|'taxprep'|'planner'|'receivables'|'expensesreceipts'|'mileage'|'clients'|'cashflow'|'pipeline'|'ledger'|'yearend'>('menu');
+  const [reportsMenuSection, setReportsMenuSection] = useState<'menu'|'pl'|'taxsnapshot'|'taxprep'|'planner'|'receivables'|'expensesreceipts'|'mileage'|'clients'|'jobs'|'cashflow'|'pipeline'|'ledger'|'yearend'>('menu');
   const [selectedClientStatementKey, setSelectedClientStatementKey] = useState<string | null>(null);
   const [isGeneratingAccountantPackage, setIsGeneratingAccountantPackage] = useState(false);
   const isMileageKeyboardEditing = isKeyboardEditing && currentPage === Page.Mileage;
@@ -1498,10 +1507,11 @@ export default function App() {
     invoices,
     estimates,
     clients,
+    jobs,
     mileageTrips,
     receipts,
     formatCurrency: (value) => formatCurrency.format(value),
-  }), [globalSearchQuery, transactions, invoices, estimates, clients, mileageTrips, receipts, formatCurrency]);
+  }), [globalSearchQuery, transactions, invoices, estimates, clients, jobs, mileageTrips, receipts, formatCurrency]);
 
   // --- Money helpers (cents-safe math to avoid 0.01 rounding issues) ---
   const toCents = (v: any) => {
@@ -2131,6 +2141,7 @@ export default function App() {
           setInvoices(parsed.invoices || []);
           setEstimates(parsed.estimates || []);
           setClients(parsed.clients || []);
+          setJobs(normalizeJobs(parsed.jobs));
           applyDefaults(parsed.settings);
 
           setCustomCategories({
@@ -2182,6 +2193,7 @@ export default function App() {
                 invoices: parsed.invoices || [],
                 estimates: parsed.estimates || [],
                 clients: parsed.clients || [],
+                jobs: normalizeJobs(parsed.jobs),
                 settings: parsed.settings || {},
                 taxPayments: parsed.taxPayments || [],
                 customCategories: parsed.customCategories || { income: [], expense: [], billing: [] },
@@ -2214,6 +2226,7 @@ export default function App() {
         setInvoices([]);
         setEstimates([]);
         setClients([]);
+        setJobs([]);
         setTaxPayments([]);
         setCustomCategories({ income: [], expense: [], billing: [] });
         setReceipts([]);
@@ -2249,6 +2262,7 @@ export default function App() {
       invoices,
       estimates,
       clients,
+      jobs,
       settings,
       taxPayments,
       customCategories,
@@ -2277,7 +2291,7 @@ export default function App() {
         window.clearTimeout(appStateSaveTimerRef.current);
       }
     };
-  }, [transactions, invoices, estimates, clients, settings, taxPayments, customCategories, receipts, mileageTrips, companyEquity, savedTemplates, duplicationHistory, plannerData, isDemoData, dataLoaded]);
+  }, [transactions, invoices, estimates, clients, jobs, settings, taxPayments, customCategories, receipts, mileageTrips, companyEquity, savedTemplates, duplicationHistory, plannerData, isDemoData, dataLoaded]);
 
   useEffect(() => {
     if (!dataLoaded) return;
@@ -3009,12 +3023,13 @@ export default function App() {
         item.client,
         item.notes,
         item.invoiceNumber,
+        item.jobId ? jobs.find(job => job.id === item.jobId)?.title : '',
         typeof item.amount === 'number' ? item.amount.toFixed(2) : '',
         item.date,
       ].filter(Boolean).join(' ').toLowerCase();
       return haystack.includes(q);
     });
-  }, [ledgerSearch, ledgerItems, unfilteredLedgerItems]);
+  }, [ledgerSearch, ledgerItems, unfilteredLedgerItems, jobs]);
 
   const filteredLedgerItems = useMemo(() => applyExpenseMetaFilters(searchedLedgerItems as any), [searchedLedgerItems, applyExpenseMetaFilters]);
 
@@ -3143,6 +3158,7 @@ export default function App() {
       miles: String(trip.miles ?? ''),
       purpose: trip.purpose || '',
       client: trip.client || '',
+      jobId: trip.jobId || '',
       notes: trip.notes || '',
     });
     setDrawerMode('mileage');
@@ -3300,6 +3316,15 @@ export default function App() {
       if (client) {
         setEditingClient(client);
         setIsClientModalOpen(true);
+      }
+      return;
+    }
+
+    if (result.kind === 'job') {
+      const job = jobs.find((item) => item.id === result.id);
+      if (job) {
+        setCurrentPage(Page.Jobs);
+        window.setTimeout(() => openEditJob(job), 0);
       }
       return;
     }
@@ -3859,6 +3884,7 @@ const demoMileageTrips: MileageTrip[] = [
     setInvoices(demoInvoicesFixed as Invoice[]);
 
     setClients(demoClients);
+    setJobs([]);
     setEstimates(demoEstimates.map(e => {
       const t = calcDocTotals(e.items as any, e.discount || 0, e.taxRate || 0, e.shipping || 0);
       return { ...e, subtotal: t.subtotal, amount: t.total } as Estimate;
@@ -3885,6 +3911,7 @@ const demoMileageTrips: MileageTrip[] = [
     setInvoices([]);
     setEstimates([]);
     setClients([]);
+    setJobs([]);
     setTaxPayments([]);
     setReceipts([]);
     setMileageTrips([]);
@@ -3988,6 +4015,7 @@ const demoMileageTrips: MileageTrip[] = [
     invoices.length === 0 &&
     estimates.length === 0 &&
     clients.length === 0 &&
+    jobs.length === 0 &&
     receipts.length === 0 &&
     mileageTrips.length === 0 &&
     taxPayments.length === 0;
@@ -4024,7 +4052,7 @@ const demoMileageTrips: MileageTrip[] = [
     if (!data.amount || Number(data.amount) <= 0) return showToast("Please enter a valid amount", "error");
     const isExpense = ((data.type as any) || activeTab) === 'expense';
     const shouldRemindReceipt = settings.receiptReminderEnabled ?? true;
-    const newTx: Transaction = { id: generateId('tx'), name: data.name, amount: Number(data.amount), category: data.category || "General", date: data.date || new Date().toISOString().split('T')[0], type: (data.type as any) || 'income', notes: data.notes, receiptId: data.receiptId, reviewedAt: (data as any).reviewedAt };
+    const newTx: Transaction = { id: generateId('tx'), name: data.name, amount: Number(data.amount), category: data.category || "General", date: data.date || new Date().toISOString().split('T')[0], type: (data.type as any) || 'income', notes: data.notes, receiptId: data.receiptId, reviewedAt: (data as any).reviewedAt, jobId: (data as any).jobId || undefined };
     if (drawerMode === 'edit_tx' && activeItem.id) {
       setTransactions(prev => prev.map(t => t.id === activeItem.id ? { ...t, ...newTx, id: t.id } as Transaction : t));
       showToast("Transaction updated", "success");
@@ -4137,6 +4165,9 @@ const demoMileageTrips: MileageTrip[] = [
     // Auto-create/update client record and tie document to clientId
     const clientId = upsertClientFromDoc(data as any, 'client');
     data = { ...data, clientId };
+    if (data.jobId) {
+      setJobs(prev => prev.map(job => job.id === data.jobId && !job.clientId ? ({ ...job, clientId, clientName: data.client || job.clientName, updatedAt: new Date().toISOString() } as Job) : job));
+    }
     let totalAmount = 0, subtotal = 0;
     if (data.items && data.items.length > 0) {
         subtotal = data.items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
@@ -4152,7 +4183,7 @@ const demoMileageTrips: MileageTrip[] = [
         if (i.id === activeItem.id) {
            const updatedInvoice = { ...i, ...data, amount: totalAmount, subtotal, description } as Invoice;
            if (updatedInvoice.status !== 'void' && updatedInvoice.linkedTransactionId) {
-             setTransactions(txs => txs.map(t => t.id === updatedInvoice.linkedTransactionId ? { ...t, amount: updatedInvoice.amount, name: `Pmt: ${updatedInvoice.client}`, date: updatedInvoice.date } : t));
+             setTransactions(txs => txs.map(t => t.id === updatedInvoice.linkedTransactionId ? { ...t, amount: updatedInvoice.amount, name: `Pmt: ${updatedInvoice.client}`, date: updatedInvoice.date, jobId: updatedInvoice.jobId } : t));
            }
            return updatedInvoice;
         }
@@ -4162,7 +4193,7 @@ const demoMileageTrips: MileageTrip[] = [
     } else {
       const invNumber = generateDocNumber('INV', invoices);
       const newInv: Invoice = {
-        id: generateId('inv'), number: invNumber, clientId: data.clientId, client: data.client, clientAddress: data.clientAddress, clientEmail: data.clientEmail, clientCompany: data.clientCompany,
+        id: generateId('inv'), number: invNumber, clientId: data.clientId, jobId: data.jobId, client: data.client, clientAddress: data.clientAddress, clientEmail: data.clientEmail, clientCompany: data.clientCompany,
         amount: totalAmount, category: data.category || "Service", description, date: data.date || new Date().toISOString().split('T')[0],
         due: data.due || new Date().toISOString().split('T')[0], status: 'unpaid', notes: data.notes || settings.defaultInvoiceNotes,
         terms: data.terms || settings.defaultInvoiceTerms, payMethod: data.payMethod, recurrence: data.recurrence, items: data.items,
@@ -4179,6 +4210,9 @@ const demoMileageTrips: MileageTrip[] = [
     const statusHint: ClientStatus = (data.status === 'accepted') ? 'client' : 'lead';
     const clientId = upsertClientFromDoc(data as any, statusHint);
     data = { ...data, clientId };
+    if (data.jobId) {
+      setJobs(prev => prev.map(job => job.id === data.jobId && !job.clientId ? ({ ...job, clientId, clientName: data.client || job.clientName, updatedAt: new Date().toISOString() } as Job) : job));
+    }
     let totalAmount = 0;
     let subtotal = 0;
     if (data.items && data.items.length > 0) {
@@ -4201,6 +4235,7 @@ const demoMileageTrips: MileageTrip[] = [
         id: generateId('est'),
         number: estNumber,
         clientId: data.clientId,
+        jobId: data.jobId,
         client: data.client!,
         clientCompany: data.clientCompany,
         clientAddress: data.clientAddress,
@@ -4367,6 +4402,7 @@ const demoMileageTrips: MileageTrip[] = [
       id: generateId('inv'),
       number: invNumber,
       clientId: est.clientId,
+      jobId: est.jobId,
       client: est.client,
       clientCompany: est.clientCompany,
       clientAddress: est.clientAddress,
@@ -4617,7 +4653,7 @@ const demoMileageTrips: MileageTrip[] = [
       setActiveItem(prev => ({ ...prev, status: 'unpaid' })); showToast("Invoice marked as Unpaid", "info");
     } else {
       const txId = generateId('tx_pay');
-      const newTx: Transaction = { id: txId, name: `Pmt: ${inv.client}`, amount: inv.amount || 0, category: inv.category || 'Sales / Services', date: new Date().toISOString().split('T')[0], type: 'income', notes: `Linked to invoice #${inv.id.substring(0,6)}` };
+      const newTx: Transaction = { id: txId, name: `Pmt: ${inv.client}`, amount: inv.amount || 0, category: inv.category || 'Sales / Services', date: new Date().toISOString().split('T')[0], type: 'income', notes: `Linked to invoice #${inv.id.substring(0,6)}`, jobId: inv.jobId || undefined };
       setTransactions(prev => [newTx, ...prev]);
       setInvoices(prev => prev.map(i => i.id === inv.id ? { ...i, status: 'paid', linkedTransactionId: txId } : i));
       setActiveItem(prev => ({ ...prev, status: 'paid' })); showToast("Invoice marked as Paid", "success");
@@ -4810,6 +4846,150 @@ const demoMileageTrips: MileageTrip[] = [
       topExpenseCategory,
     };
   }, [txForTaxYear, reportExpenseSummary, reportYearInvoices, reportYearEstimates, reportClientRows, reportPipeline]);
+
+  const jobProfitabilityAll = useMemo(() => buildJobProfitabilityRows({
+    jobs,
+    clients,
+    transactions,
+    invoices,
+    estimates,
+    mileageTrips,
+    mileageRateCents: Number(settings.mileageRateCents ?? 72.5),
+  }), [jobs, clients, transactions, invoices, estimates, mileageTrips, settings.mileageRateCents]);
+
+  const jobProfitabilityReport = useMemo(() => buildJobProfitabilityRows({
+    jobs,
+    clients,
+    transactions,
+    invoices,
+    estimates,
+    mileageTrips,
+    mileageRateCents: Number(settings.mileageRateCents ?? 72.5),
+    year: taxPrepYear,
+  }), [jobs, clients, transactions, invoices, estimates, mileageTrips, settings.mileageRateCents, taxPrepYear]);
+
+  const jobStatsById = useMemo(() => new Map(jobProfitabilityAll.map(row => [row.job.id, row] as const)), [jobProfitabilityAll]);
+
+  const filteredJobRows = useMemo(() => jobProfitabilityAll
+    .filter(row => jobFilter === 'all' || row.job.status === jobFilter)
+    .sort((a, b) => {
+      const statusRank = (status: JobStatus) => status === 'active' ? 0 : status === 'completed' ? 1 : 2;
+      return statusRank(a.job.status) - statusRank(b.job.status)
+        || new Date(b.job.updatedAt || b.job.createdAt).getTime() - new Date(a.job.updatedAt || a.job.createdAt).getTime();
+    }), [jobProfitabilityAll, jobFilter]);
+
+  const getJobSelectOptions = (clientId?: string) => {
+    const clientMap = new Map(clients.map(client => [client.id, client] as const));
+    const sorted = jobs
+      .filter(job => job.status !== 'archived')
+      .slice()
+      .sort((a, b) => {
+        const aMatch = clientId && a.clientId === clientId ? 0 : 1;
+        const bMatch = clientId && b.clientId === clientId ? 0 : 1;
+        if (aMatch !== bMatch) return aMatch - bMatch;
+        if (a.status !== b.status) return a.status === 'active' ? -1 : 1;
+        return a.title.localeCompare(b.title);
+      });
+    return [
+      { value: '', label: 'No job / project' },
+      ...sorted.map(job => {
+        const client = job.clientId ? clientMap.get(job.clientId) : undefined;
+        const clientName = client?.name || client?.company || job.clientName;
+        return { value: job.id, label: `${job.title}${clientName ? ` — ${clientName}` : ''}${job.status === 'completed' ? ' (Completed)' : ''}` };
+      }),
+    ];
+  };
+
+  const openNewJob = (target: 'record' | 'mileage' | null = null, clientId?: string, clientName?: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    const linkedClient = clientId ? clients.find(client => client.id === clientId) : undefined;
+    setEditingJobId(null);
+    setJobAssignmentTarget(target);
+    setJobDraft({
+      title: '',
+      status: 'active',
+      clientId: clientId || undefined,
+      clientName: linkedClient?.name || linkedClient?.company || clientName || undefined,
+      startDate: today,
+      description: '',
+    });
+    setShowJobDrawer(true);
+  };
+
+  const openEditJob = (job: Job) => {
+    setEditingJobId(job.id);
+    setJobAssignmentTarget(null);
+    setJobDraft({ ...job });
+    setShowJobDrawer(true);
+  };
+
+  const saveJob = () => {
+    const title = String(jobDraft.title || '').trim();
+    if (!title) return showToast('Please enter a job / project name', 'error');
+    const now = new Date().toISOString();
+    const client = jobDraft.clientId ? clients.find(item => item.id === jobDraft.clientId) : undefined;
+    const status: JobStatus = jobDraft.status === 'completed' || jobDraft.status === 'archived' ? jobDraft.status : 'active';
+    const endDate = status === 'completed' ? (jobDraft.endDate || new Date().toISOString().split('T')[0]) : jobDraft.endDate;
+    let savedId = editingJobId;
+
+    if (editingJobId) {
+      setJobs(prev => prev.map(job => job.id === editingJobId ? ({
+        ...job,
+        ...jobDraft,
+        title,
+        status,
+        clientName: client?.name || client?.company || jobDraft.clientName,
+        endDate,
+        updatedAt: now,
+      } as Job) : job));
+      showToast('Job updated', 'success');
+    } else {
+      savedId = generateId('job');
+      const newJob: Job = {
+        id: savedId,
+        title,
+        status,
+        clientId: jobDraft.clientId || undefined,
+        clientName: client?.name || client?.company || jobDraft.clientName,
+        description: String(jobDraft.description || '').trim() || undefined,
+        startDate: jobDraft.startDate || undefined,
+        endDate,
+        createdAt: now,
+        updatedAt: now,
+      };
+      setJobs(prev => [newJob, ...prev]);
+      showToast('Job created', 'success');
+    }
+
+    if (savedId && jobAssignmentTarget === 'record') {
+      setActiveItem(prev => ({ ...prev, jobId: savedId }));
+    }
+    if (savedId && jobAssignmentTarget === 'mileage') {
+      const savedJob = jobs.find(job => job.id === savedId);
+      const clientName = client?.name || client?.company || savedJob?.clientName || jobDraft.clientName || '';
+      setNewTrip(prev => ({ ...prev, jobId: savedId || '', client: prev.client || clientName }));
+    }
+
+    setShowJobDrawer(false);
+    setEditingJobId(null);
+    setJobAssignmentTarget(null);
+    setJobDraft({ status: 'active' });
+  };
+
+  const deleteJob = (jobId: string) => {
+    const job = jobs.find(item => item.id === jobId);
+    if (!job) return;
+    if (!confirm(`Delete job "${job.title}"? Linked records will be kept and simply unassigned from this job.`)) return;
+    setJobs(prev => prev.filter(item => item.id !== jobId));
+    setTransactions(prev => prev.map(item => item.jobId === jobId ? ({ ...item, jobId: undefined } as Transaction) : item));
+    setInvoices(prev => prev.map(item => item.jobId === jobId ? ({ ...item, jobId: undefined } as Invoice) : item));
+    setEstimates(prev => prev.map(item => item.jobId === jobId ? ({ ...item, jobId: undefined } as Estimate) : item));
+    setMileageTrips(prev => prev.map(item => item.jobId === jobId ? ({ ...item, jobId: undefined } as MileageTrip) : item));
+    setShowJobDrawer(false);
+    setEditingJobId(null);
+    setJobAssignmentTarget(null);
+    showToast('Job deleted; linked records were kept', 'info');
+  };
 
   const buildReadinessSnapshot = useCallback((year: number) => {
     const yearTransactions = transactions.filter(t => new Date(t.date).getFullYear() === year);
@@ -6581,7 +6761,7 @@ const demoMileageTrips: MileageTrip[] = [
         metadata: {
           appName: "MONIEZI",
           version: CUSTOMER_VERSION,
-          schemaVersion: 1,
+          schemaVersion: 2,
           timestamp: new Date().toISOString(),
         },
         data: {
@@ -6589,6 +6769,7 @@ const demoMileageTrips: MileageTrip[] = [
           invoices,
           estimates,
           clients,
+          jobs,
           settings,
           taxPayments,
           customCategories,
@@ -6656,6 +6837,7 @@ const demoMileageTrips: MileageTrip[] = [
       const inv = Array.isArray(newData.invoices) ? newData.invoices : [];
       const est = Array.isArray(newData.estimates) ? newData.estimates : [];
       const cls = Array.isArray(newData.clients) ? newData.clients : [];
+      const restoredJobs = normalizeJobs(newData.jobs);
       const tax = Array.isArray(newData.taxPayments) ? newData.taxPayments : [];
       const rec = Array.isArray(newData.receipts) ? newData.receipts : [];
       const set = { ...settings, companyEquityEnabled: true, ...(newData.settings || {}) };
@@ -6698,6 +6880,7 @@ const demoMileageTrips: MileageTrip[] = [
       setInvoices(inv);
       setEstimates(est);
       setClients(cls);
+      setJobs(restoredJobs);
       setTaxPayments(tax);
       setReceipts(restoredReceipts);
       setSettings(set);
@@ -6793,6 +6976,7 @@ const demoMileageTrips: MileageTrip[] = [
                   <span className="shrink-0">{displayDate}</span>
                   {trip.client ? <><span aria-hidden="true">•</span><span className="truncate">{trip.client}</span></> : null}
                 </div>
+                {trip.jobId && jobs.find(job => job.id === trip.jobId) ? <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-extrabold text-cyan-800 dark:bg-cyan-500/15 dark:text-cyan-200"><Briefcase size={11} /> {jobs.find(job => job.id === trip.jobId)?.title}</div> : null}
                 {trip.notes ? <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">{trip.notes}</div> : null}
               </div>
               <div className="shrink-0 text-right">
@@ -8695,8 +8879,9 @@ html, body, #root {
                         <div className="flex items-start gap-4 mb-4">
                           <div className={`w-12 h-12 bg-slate-100 dark:bg-blue-500/10 text-slate-600 dark:text-blue-400 rounded-md flex items-center justify-center flex-shrink-0 ${isVoid ? 'bg-slate-200 dark:bg-slate-800 text-slate-400' : ''}`}>{isVoid ? <Ban size={20} strokeWidth={1.5} /> : isRecurring ? <Repeat size={20} strokeWidth={1.5} className="text-blue-500" /> : <FileText size={20} strokeWidth={1.5} />}</div>
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <div className={`font-bold text-slate-900 dark:text-white text-lg ${isVoid ? 'line-through text-slate-400' : ''}`}>{inv.client}</div>
+                              {inv.jobId && jobs.find(job => job.id === inv.jobId) && <span className="inline-flex items-center gap-1 rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-extrabold text-cyan-800 dark:bg-cyan-500/15 dark:text-cyan-200"><Briefcase size={11} /> {jobs.find(job => job.id === inv.jobId)?.title}</span>}
                               {isRecurring && <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Recurring</span>}
                             </div>
                             <div className="text-sm font-medium text-slate-600 dark:text-slate-300">{inv.description}</div>
@@ -8743,6 +8928,7 @@ html, body, #root {
                                       {invoiceStatusBadge}
                                   </div>
                                   <div className="text-xs font-medium text-slate-600 dark:text-slate-300">{item.date} · {item.category}</div>
+                                  {item.jobId && jobs.find(job => job.id === item.jobId) && <div className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-extrabold text-cyan-800 dark:bg-cyan-500/15 dark:text-cyan-200"><Briefcase size={11} /> {jobs.find(job => job.id === item.jobId)?.title}</div>}
                                   {!isIncome && !isInvoice && (
                                     <div className="mt-2 flex flex-wrap gap-2">
                                       <span className={`text-[10px] font-extrabold uppercase tracking-widest px-2 py-1 rounded-full ${item.receiptId ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>{item.receiptId ? 'Receipt attached' : 'No receipt'}</span>
@@ -8868,6 +9054,7 @@ html, body, #root {
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <div className={`font-bold text-slate-900 dark:text-white text-lg ${isVoid ? 'line-through text-slate-400' : ''}`}>{inv.client}</div>
                           {inv.number && <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded font-mono font-bold">{inv.number}</span>}
+                          {inv.jobId && jobs.find(job => job.id === inv.jobId) && <span className="inline-flex items-center gap-1 rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-extrabold text-cyan-800 dark:bg-cyan-500/15 dark:text-cyan-200"><Briefcase size={11} /> {jobs.find(job => job.id === inv.jobId)?.title}</span>}
                           {isRecurring && <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Recurring</span>}
                         </div>
                         <div className="text-sm font-medium text-slate-600 dark:text-slate-300">{inv.description}</div>
@@ -8954,6 +9141,7 @@ html, body, #root {
                                   <div className="flex items-start gap-2 min-w-0 flex-wrap">
                                     <span className="font-bold text-base sm:text-lg text-slate-950 dark:text-white break-words">{est.client}</span>
                                     {est.number && <span className="flex-shrink-0 text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400">{est.number}</span>}
+                                    {est.jobId && jobs.find(job => job.id === est.jobId) && <span className="inline-flex items-center gap-1 rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-extrabold text-cyan-800 dark:bg-cyan-500/15 dark:text-cyan-200"><Briefcase size={11} /> {jobs.find(job => job.id === est.jobId)?.title}</span>}
                                   </div>
                                   {(est.projectTitle || est.description) && <div className="mt-1 text-sm text-slate-600 dark:text-slate-300 line-clamp-2">{est.projectTitle || est.description}</div>}
                                 </div>
@@ -9152,6 +9340,7 @@ html, body, #root {
                         { section: 'expensesreceipts', title: 'Expenses & Receipts', description: 'Spending, receipt coverage, review status and top expense categories.', icon: <Receipt size={20} />, iconClass: 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-300' },
                         { section: 'mileage', title: 'Mileage', description: 'Business trips, miles and estimated mileage deduction.', icon: <Car size={20} />, iconClass: 'bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300' },
                         { section: 'clients', title: 'Clients & Work', description: 'Revenue, outstanding balances and estimate activity by client.', icon: <Users size={20} />, iconClass: 'bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-300' },
+                        { section: 'jobs', title: 'Job Profitability', description: 'Revenue, expenses, profit, margin, outstanding invoices and mileage by job.', icon: <Briefcase size={20} />, iconClass: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300' },
                       ],
                     },
                     {
@@ -10191,6 +10380,59 @@ html, body, #root {
                 )}
               </div>
 
+              {/* Job Profitability */}
+              <div style={{ display: reportsMenuSection === 'jobs' ? undefined : 'none' }} id="report-jobs" className="space-y-5">
+                <div className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300"><Briefcase size={20} /></div>
+                      <div>
+                        <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Job Profitability</h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Job revenue and direct expenses recorded in {taxPrepYear}. Mileage is shown separately as a tax-deduction reference.</p>
+                      </div>
+                    </div>
+                    <MonieziSelect value={String(taxPrepYear)} onChange={next => setTaxPrepYear(Number(next))} ariaLabel="Report year" options={Array.from({ length: 6 }).map((_, i) => { const y = new Date().getFullYear() - i; return { value: String(y), label: String(y) }; })} className="w-full sm:w-32 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm font-extrabold" />
+                  </div>
+                </div>
+
+                {jobs.length === 0 ? (
+                  <div className="rounded-xl border border-slate-300 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                    <EmptyState icon={<Briefcase size={32} />} title="No Jobs Yet" subtitle="Create Jobs / Projects and link business records to see profitability here." action={() => setCurrentPage(Page.Jobs)} actionLabel="Create Job" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Revenue</div><div className="mt-1 text-lg font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(jobProfitabilityReport.reduce((sum, row) => sum + row.revenue, 0))}</div></div>
+                      <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Expenses</div><div className="mt-1 text-lg font-extrabold text-red-700 dark:text-red-300">{formatCurrency.format(jobProfitabilityReport.reduce((sum, row) => sum + row.expenses, 0))}</div></div>
+                      <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Est. Profit</div><div className="mt-1 text-lg font-extrabold text-emerald-700 dark:text-emerald-300">{formatCurrency.format(jobProfitabilityReport.reduce((sum, row) => sum + row.estimatedProfit, 0))}</div></div>
+                      <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Outstanding</div><div className="mt-1 text-lg font-extrabold text-amber-700 dark:text-amber-300">{formatCurrency.format(jobProfitabilityReport.reduce((sum, row) => sum + row.outstanding, 0))}</div></div>
+                    </div>
+
+                    <div className="space-y-3">
+                      {jobProfitabilityReport
+                        .slice()
+                        .sort((a, b) => b.estimatedProfit - a.estimatedProfit)
+                        .map(row => (
+                          <button key={row.job.id} type="button" onClick={() => { setCurrentPage(Page.Jobs); window.setTimeout(() => openEditJob(row.job), 0); }} className="w-full rounded-xl border border-slate-300 bg-white p-4 text-left shadow-sm transition hover:border-cyan-400 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-cyan-600">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                              <div className="min-w-0"><div className="font-extrabold text-slate-950 dark:text-white">{row.job.title}</div><div className="mt-0.5 text-xs font-semibold text-slate-500 dark:text-slate-400">{row.clientName}</div></div>
+                              <div className={`text-lg font-extrabold ${row.estimatedProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(row.estimatedProfit)}</div>
+                            </div>
+                            <div className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-800 sm:grid-cols-5">
+                              <div><span className="block font-bold text-slate-500 dark:text-slate-400">Revenue</span><span className="font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.revenue)}</span></div>
+                              <div><span className="block font-bold text-slate-500 dark:text-slate-400">Expenses</span><span className="font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.expenses)}</span></div>
+                              <div><span className="block font-bold text-slate-500 dark:text-slate-400">Margin</span><span className="font-extrabold text-slate-900 dark:text-white">{row.revenue > 0 ? `${row.marginPct.toFixed(1)}%` : '—'}</span></div>
+                              <div><span className="block font-bold text-slate-500 dark:text-slate-400">Miles</span><span className="font-extrabold text-slate-900 dark:text-white">{row.miles.toFixed(1)}</span></div>
+                              <div><span className="block font-bold text-slate-500 dark:text-slate-400">Mileage deduction</span><span className="font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.mileageDeduction)}</span></div>
+                            </div>
+                          </button>
+                        ))}
+                    </div>
+                    <p className="text-xs font-medium leading-5 text-slate-500 dark:text-slate-400">Estimated profit = linked invoice value + non-invoice income − linked expenses. Unpaid invoices are included in revenue and shown separately as outstanding. Mileage deduction is a tax reference and is not subtracted as an operating expense.</p>
+                  </>
+                )}
+              </div>
+
               {/* Money In & Out */}
               <div style={{ display: reportsMenuSection === 'cashflow' ? undefined : 'none' }} id="report-cashflow" className="space-y-5">
                 <div className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300"><TrendingUp size={20} /></div><div><h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Money In & Out</h3><p className="text-sm text-slate-500 dark:text-slate-400">Month-by-month cash activity for {taxPrepYear}.</p></div></div><MonieziSelect value={String(taxPrepYear)} onChange={next => setTaxPrepYear(Number(next))} ariaLabel="Report year" options={Array.from({ length: 6 }).map((_, i) => { const y = new Date().getFullYear() - i; return { value: String(y), label: String(y) }; })} className="w-full sm:w-32 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm font-extrabold" /></div></div>
@@ -11053,6 +11295,119 @@ html, body, #root {
           </div>
         )}
 
+        {/* ==================== JOBS / PROJECTS PAGE ==================== */}
+        {currentPage === Page.Jobs && (
+          <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-right-4 pb-24">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 rounded-xl bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300 flex-shrink-0">
+                  <Briefcase size={22} strokeWidth={1.7} />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950 dark:text-white font-brand">Jobs / Projects</h2>
+                  <p className="mt-1 text-sm font-medium text-slate-600 dark:text-slate-300">See what each job earned, cost, and still has outstanding.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => openNewJob()}
+                className="w-11 h-11 sm:w-12 sm:h-12 bg-cyan-700 text-white rounded-full flex items-center justify-center shadow-md shadow-cyan-700/20 hover:bg-cyan-600 transition-all active:scale-95 flex-shrink-0"
+                aria-label="Add job"
+                title="Add job"
+              >
+                <Plus size={21} strokeWidth={2.5} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 rounded-xl border border-slate-300 bg-slate-100 p-1.5 dark:border-slate-700 dark:bg-slate-900">
+              {(['all', 'active', 'completed', 'archived'] as const).map(filter => {
+                const count = filter === 'all' ? jobs.length : jobs.filter(job => job.status === filter).length;
+                const label = filter === 'all' ? 'All' : filter.charAt(0).toUpperCase() + filter.slice(1);
+                return (
+                  <button
+                    key={filter}
+                    type="button"
+                    onClick={() => setJobFilter(filter)}
+                    className={`min-h-12 rounded-lg px-2 py-2 text-xs font-extrabold transition-all ${jobFilter === filter ? 'bg-cyan-700 text-white shadow-sm' : 'text-slate-600 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white'}`}
+                  >
+                    <span className="block">{label}</span>
+                    <span className={`mt-0.5 block text-[10px] ${jobFilter === filter ? 'text-cyan-100' : 'text-slate-400 dark:text-slate-500'}`}>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {jobs.length > 0 && (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Active Jobs</div>
+                  <div className="mt-1 text-xl font-extrabold text-slate-950 dark:text-white">{jobs.filter(job => job.status === 'active').length}</div>
+                </div>
+                <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Revenue</div>
+                  <div className="mt-1 text-xl font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(jobProfitabilityAll.filter(row => row.job.status !== 'archived').reduce((sum, row) => sum + row.revenue, 0))}</div>
+                </div>
+                <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Expenses</div>
+                  <div className="mt-1 text-xl font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(jobProfitabilityAll.filter(row => row.job.status !== 'archived').reduce((sum, row) => sum + row.expenses, 0))}</div>
+                </div>
+                <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Est. Profit</div>
+                  <div className="mt-1 text-xl font-extrabold text-emerald-700 dark:text-emerald-300">{formatCurrency.format(jobProfitabilityAll.filter(row => row.job.status !== 'archived').reduce((sum, row) => sum + row.estimatedProfit, 0))}</div>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              {filteredJobRows.length === 0 ? (
+                <EmptyState
+                  icon={<Briefcase size={32} />}
+                  title={jobs.length === 0 ? 'No Jobs Yet' : 'No Jobs in This View'}
+                  subtitle={jobs.length === 0 ? 'Create a job or project, then link invoices, estimates, expenses, income, and mileage to see profitability.' : 'Choose another status or create a new job.'}
+                  action={() => openNewJob()}
+                  actionLabel="Create Job"
+                />
+              ) : filteredJobRows.map(row => (
+                <button
+                  key={row.job.id}
+                  type="button"
+                  onClick={() => openEditJob(row.job)}
+                  className="w-full rounded-xl border border-slate-300 bg-white p-5 text-left shadow-sm transition-all hover:border-cyan-400 hover:shadow-md active:scale-[0.995] dark:border-slate-700 dark:bg-slate-900 dark:hover:border-cyan-600"
+                >
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-lg font-extrabold text-slate-950 dark:text-white">{row.job.title}</h3>
+                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${row.job.status === 'active' ? 'bg-cyan-100 text-cyan-800 dark:bg-cyan-500/15 dark:text-cyan-200' : row.job.status === 'completed' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200' : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}>{row.job.status}</span>
+                      </div>
+                      <div className="mt-1 text-sm font-semibold text-slate-600 dark:text-slate-300">{row.clientName}</div>
+                      {row.job.description && <div className="mt-2 line-clamp-2 text-sm text-slate-500 dark:text-slate-400">{row.job.description}</div>}
+                    </div>
+                    <ChevronRight size={19} className="hidden shrink-0 text-slate-400 sm:block" />
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-200 pt-4 dark:border-slate-800 sm:grid-cols-5">
+                    <div><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Revenue</div><div className="mt-1 text-sm font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(row.revenue)}</div></div>
+                    <div><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Expenses</div><div className="mt-1 text-sm font-extrabold text-red-700 dark:text-red-300">{formatCurrency.format(row.expenses)}</div></div>
+                    <div><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Est. Profit</div><div className={`mt-1 text-sm font-extrabold ${row.estimatedProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(row.estimatedProfit)}</div></div>
+                    <div><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Outstanding</div><div className="mt-1 text-sm font-extrabold text-amber-700 dark:text-amber-300">{formatCurrency.format(row.outstanding)}</div></div>
+                    <div><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Margin</div><div className="mt-1 text-sm font-extrabold text-slate-950 dark:text-white">{row.revenue > 0 ? `${row.marginPct.toFixed(1)}%` : '—'}</div></div>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    <span>{row.invoiceCount} invoice{row.invoiceCount === 1 ? '' : 's'}</span>
+                    <span>{row.expenseCount} expense{row.expenseCount === 1 ? '' : 's'}</span>
+                    <span>{row.miles.toFixed(1)} mi</span>
+                    {row.miles > 0 && <span>{formatCurrency.format(row.mileageDeduction)} mileage deduction</span>}
+                    {row.estimateValue > 0 && <span>{formatCurrency.format(row.estimateValue)} quoted</span>}
+                    {row.acceptedEstimateValue > 0 && <span>{formatCurrency.format(row.acceptedEstimateValue)} accepted estimates</span>}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ==================== COMPANY EQUITY PAGE ==================== */}
         {currentPage === Page.CompanyEquity && Boolean(settings.companyEquityEnabled) && (
           <CompanyEquityModule
@@ -11656,6 +12011,7 @@ html, body, #root {
           Page.Income,
           Page.Expenses,
           Page.Clients,
+          Page.Jobs,
           Page.Mileage,
           Page.Reports,
           Page.CompanyEquity,
@@ -11692,6 +12048,12 @@ html, body, #root {
                   className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-900"
                 >
                   Clients
+                </button>
+                <button
+                  onClick={() => setCurrentPage(Page.Jobs)}
+                  className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-900"
+                >
+                  Jobs
                 </button>
                 <button
                   onClick={() => setCurrentPage(Page.Mileage)}
@@ -11922,6 +12284,19 @@ html, body, #root {
               </button>
 
               <button
+                onClick={() => { setCurrentPage(Page.Jobs); setShowMainMenu(false); }}
+                className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-700/40 dark:bg-cyan-500/10 dark:text-cyan-300">
+                  <Briefcase size={18} />
+                </span>
+                <span className="min-w-0">
+                  Jobs / Projects
+                  <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Job profitability and linked work</span>
+                </span>
+              </button>
+
+              <button
                 onClick={() => { setBillingDocType('estimate'); setCurrentPage(Page.Invoices); setShowMainMenu(false); }}
                 className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
@@ -12098,6 +12473,24 @@ html, body, #root {
                   <label className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-2 block pl-1">Client</label>
                   <input type="text" value={newTrip.client} onChange={e => setNewTrip(p => ({ ...p, client: e.target.value }))} className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-4 font-bold text-base outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-900 dark:text-white" placeholder="Optional" />
                 </div>
+                <div className="rounded-xl border border-cyan-200 bg-cyan-50/70 p-3.5 dark:border-cyan-800/50 dark:bg-cyan-500/5">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <label className="text-xs font-bold uppercase tracking-wider text-cyan-800 dark:text-cyan-300">Job / Project</label>
+                    <button type="button" onClick={() => openNewJob('mileage', undefined, newTrip.client)} className="inline-flex items-center gap-1 text-[11px] font-extrabold text-cyan-700 hover:text-cyan-900 dark:text-cyan-300 dark:hover:text-cyan-100"><PlusCircle size={14} /> New Job</button>
+                  </div>
+                  <MonieziSelect
+                    value={newTrip.jobId || ''}
+                    onChange={jobId => {
+                      const job = jobs.find(item => item.id === jobId);
+                      const client = job?.clientId ? clients.find(item => item.id === job.clientId) : undefined;
+                      setNewTrip(prev => ({ ...prev, jobId: jobId || '', client: prev.client || client?.name || client?.company || job?.clientName || '' }));
+                    }}
+                    ariaLabel="Job or project"
+                    options={getJobSelectOptions()}
+                    menuMinWidth={260}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900 shadow-sm outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                  />
+                </div>
                 <div>
                   <label className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-2 block pl-1">Notes</label>
                   <textarea value={newTrip.notes} onChange={e => setNewTrip(p => ({ ...p, notes: e.target.value }))} className="w-full min-h-[96px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-4 font-bold text-base outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-900 dark:text-white" placeholder="Optional" />
@@ -12166,7 +12559,12 @@ html, body, #root {
                                 <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-2.5 block pl-1 uppercase tracking-wider">Select Client</label>
                                 <MonieziSelect
                                   value={(activeItem as any).clientId || ''}
-                                  onChange={id => { setActiveItem(p => ({ ...p, clientId: id || undefined })); if (id) fillDocFromClient(id); }}
+                                  onChange={id => {
+                                    const linkedJob = jobs.find(job => job.id === (activeItem as any).jobId);
+                                    const keepJobId = linkedJob && (!linkedJob.clientId || linkedJob.clientId === id) ? linkedJob.id : undefined;
+                                    setActiveItem(p => ({ ...p, clientId: id || undefined, jobId: keepJobId }));
+                                    if (id) fillDocFromClient(id);
+                                  }}
                                   ariaLabel="Select client"
                                   options={[
                                     { value: '', label: 'New / Not selected' },
@@ -12174,6 +12572,28 @@ html, body, #root {
                                   ]}
                                   menuMinWidth={260}
                                   className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3.5 font-bold text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm"
+                                />
+                              </div>
+                              <div className="rounded-xl border border-cyan-200 bg-cyan-50/70 p-3.5 dark:border-cyan-800/50 dark:bg-cyan-500/5">
+                                <div className="mb-2 flex items-center justify-between gap-3">
+                                  <label className="text-[11px] font-bold uppercase tracking-wider text-cyan-800 dark:text-cyan-300">Job / Project</label>
+                                  <button type="button" onClick={() => openNewJob('record', (activeItem as any).clientId, activeItem.client)} className="inline-flex items-center gap-1 text-[11px] font-extrabold text-cyan-700 hover:text-cyan-900 dark:text-cyan-300 dark:hover:text-cyan-100"><PlusCircle size={14} /> New Job</button>
+                                </div>
+                                <MonieziSelect
+                                  value={(activeItem as any).jobId || ''}
+                                  onChange={jobId => {
+                                    const job = jobs.find(item => item.id === jobId);
+                                    if (job?.clientId) {
+                                      setActiveItem(prev => ({ ...prev, jobId: jobId || undefined, clientId: job.clientId }));
+                                      fillDocFromClient(job.clientId);
+                                    } else {
+                                      setActiveItem(prev => ({ ...prev, jobId: jobId || undefined, client: prev.client || job?.clientName || '' }));
+                                    }
+                                  }}
+                                  ariaLabel="Job or project"
+                                  options={getJobSelectOptions((activeItem as any).clientId)}
+                                  menuMinWidth={260}
+                                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900 shadow-sm outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
                                 />
                               </div>
                               <input type="text" value={activeItem.client || ''} onChange={e => setActiveItem(prev => ({ ...prev, client: e.target.value }))} className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-3.5 font-bold text-base text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-sm" placeholder="Client Name (Required)" />
@@ -12321,6 +12741,13 @@ html, body, #root {
                       )}
                       <div><label className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-2 block pl-1">Description</label><input type="text" value={activeItem.name || ''} onChange={e => setActiveItem(prev => ({ ...prev, name: e.target.value }))} className="w-full bg-transparent border border-slate-300 dark:border-slate-700 rounded-lg px-4 py-4 font-bold text-lg outline-none focus:ring-2 focus:ring-blue-500/20" placeholder={activeTab === 'income' ? "Client or Source" : "Vendor or Purchase"} /></div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><DateInput label="Date" value={activeItem.date || ''} onChange={v => setActiveItem(prev => ({ ...prev, date: v }))} /><div><label className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-2 block pl-1">Amount</label><div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-300 font-bold">{settings.currencySymbol}</span><input type="number" inputMode="decimal" enterKeyHint="done" step="0.01" value={activeItem.amount || ''} onChange={e => setActiveItem(prev => ({ ...prev, amount: Number(e.target.value) }))} className="w-full bg-transparent border border-slate-300 dark:border-slate-700 rounded-lg pl-10 pr-4 py-4 font-bold text-lg outline-none focus:ring-2 focus:ring-blue-500/20" placeholder="0.00" /></div></div></div>
+                      <div className="rounded-xl border border-cyan-200 bg-cyan-50/70 p-3.5 dark:border-cyan-800/50 dark:bg-cyan-500/5">
+                        <div className="mb-2 flex items-center justify-between gap-3">
+                          <label className="text-xs font-bold uppercase tracking-wider text-cyan-800 dark:text-cyan-300">Job / Project</label>
+                          <button type="button" onClick={() => openNewJob('record')} className="inline-flex items-center gap-1 text-[11px] font-extrabold text-cyan-700 hover:text-cyan-900 dark:text-cyan-300 dark:hover:text-cyan-100"><PlusCircle size={14} /> New Job</button>
+                        </div>
+                        <MonieziSelect value={(activeItem as any).jobId || ''} onChange={jobId => setActiveItem(prev => ({ ...prev, jobId: jobId || undefined }))} ariaLabel="Job or project" options={getJobSelectOptions()} menuMinWidth={260} className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-900 shadow-sm outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white" />
+                      </div>
                       <div><label className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-2 block pl-1">Category</label>{renderCategoryChips(activeItem.category, (cat) => setActiveItem(prev => ({ ...prev, category: cat })))}</div>
                       {activeTab === 'expense' && (
                         <div className="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4">
@@ -12443,6 +12870,86 @@ html, body, #root {
          )}
       </AppDrawer>
 
+      <AppDrawer
+        isOpen={showJobDrawer}
+        onClose={() => { setShowJobDrawer(false); setEditingJobId(null); setJobAssignmentTarget(null); setJobDraft({ status: 'active' }); }}
+        title={editingJobId ? 'Job / Project' : 'New Job / Project'}
+      >
+        <div className="space-y-5">
+          {editingJobId && jobStatsById.get(editingJobId) && (() => {
+            const row = jobStatsById.get(editingJobId)!;
+            return (
+              <div className="rounded-xl border border-cyan-200 bg-cyan-50/70 p-4 dark:border-cyan-800/50 dark:bg-cyan-500/5">
+                <div className="mb-3 text-xs font-extrabold uppercase tracking-[0.14em] text-cyan-800 dark:text-cyan-300">Profitability Snapshot</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Revenue</div><div className="mt-1 text-lg font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(row.revenue)}</div></div>
+                  <div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Expenses</div><div className="mt-1 text-lg font-extrabold text-red-700 dark:text-red-300">{formatCurrency.format(row.expenses)}</div></div>
+                  <div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Est. Profit</div><div className={`mt-1 text-lg font-extrabold ${row.estimatedProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(row.estimatedProfit)}</div></div>
+                  <div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Outstanding</div><div className="mt-1 text-lg font-extrabold text-amber-700 dark:text-amber-300">{formatCurrency.format(row.outstanding)}</div></div>
+                </div>
+                <div className="mt-3 border-t border-cyan-200 pt-3 text-xs font-semibold leading-5 text-slate-600 dark:border-cyan-800/40 dark:text-slate-300">
+                  {row.revenue > 0 ? `${row.marginPct.toFixed(1)}% margin` : 'No recorded revenue yet'} · {row.miles.toFixed(1)} business miles · {formatCurrency.format(row.mileageDeduction)} mileage deduction reference
+                </div>
+              </div>
+            );
+          })()}
+
+          <div className="rounded-xl border border-slate-300 bg-slate-100 p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
+            <div className="space-y-4">
+              <div>
+                <label className="mb-2 block text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">Job / Project Name</label>
+                <input type="text" value={jobDraft.title || ''} onChange={event => setJobDraft(prev => ({ ...prev, title: event.target.value }))} className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-base font-bold text-slate-900 shadow-sm outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white" placeholder="e.g., Smith Bathroom Remodel" />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">Client</label>
+                <MonieziSelect
+                  value={jobDraft.clientId || ''}
+                  onChange={clientId => {
+                    const client = clients.find(item => item.id === clientId);
+                    setJobDraft(prev => ({ ...prev, clientId: clientId || undefined, clientName: client?.name || client?.company || undefined }));
+                  }}
+                  ariaLabel="Job client"
+                  options={[{ value: '', label: 'No client selected' }, ...clients.map(client => ({ value: client.id, label: `${client.name}${client.company ? ` — ${client.company}` : ''}` }))]}
+                  menuMinWidth={260}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-sm font-bold text-slate-900 shadow-sm outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">Status</label>
+                <MonieziSelect
+                  value={(jobDraft.status as JobStatus) || 'active'}
+                  onChange={status => setJobDraft(prev => ({ ...prev, status: status as JobStatus }))}
+                  ariaLabel="Job status"
+                  options={[{ value: 'active', label: 'Active' }, { value: 'completed', label: 'Completed' }, { value: 'archived', label: 'Archived' }]}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-sm font-bold text-slate-900 shadow-sm outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <DateInput label="Start Date" value={jobDraft.startDate || ''} onChange={value => setJobDraft(prev => ({ ...prev, startDate: value }))} />
+                <DateInput label="End Date" value={jobDraft.endDate || ''} onChange={value => setJobDraft(prev => ({ ...prev, endDate: value }))} />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">Description / Scope</label>
+                <textarea value={jobDraft.description || ''} onChange={event => setJobDraft(prev => ({ ...prev, description: event.target.value }))} className="min-h-[110px] w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-900 shadow-sm outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white" placeholder="Optional notes about the job or project" />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-300 bg-white p-4 text-xs font-medium leading-5 text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+            Link invoices, estimates, income, expenses, and mileage to this job. MONIEZI calculates estimated profit from linked revenue minus linked expenses. Mileage is shown separately as a tax-deduction reference.
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            {editingJobId && <button type="button" onClick={() => deleteJob(editingJobId)} className="sm:w-36 rounded-lg border border-red-300 bg-red-50 px-4 py-3.5 text-sm font-extrabold uppercase tracking-wider text-red-700 transition hover:bg-red-100 dark:border-red-800/60 dark:bg-red-500/10 dark:text-red-300">Delete</button>}
+            <button type="button" onClick={saveJob} className="flex-1 rounded-lg bg-cyan-700 px-4 py-3.5 text-sm font-extrabold uppercase tracking-wider text-white shadow-md transition hover:bg-cyan-600 active:scale-[0.99]">{editingJobId ? 'Save Job' : 'Create Job'}</button>
+          </div>
+        </div>
+      </AppDrawer>
+
       {/* GLOBAL RECEIPT SCAN INPUT */}
       <input type="file" ref={scanInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleScanReceipt} />
 
@@ -12504,7 +13011,7 @@ html, body, #root {
 
       {isClientModalOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-200 modal-overlay">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl p-5 shadow-2xl border border-slate-200 dark:border-slate-800">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-lg max-h-[90vh] overflow-y-auto custom-scrollbar rounded-2xl p-5 shadow-2xl border border-slate-200 dark:border-slate-800">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <div className="text-lg font-extrabold text-slate-900 dark:text-white">{editingClient.id ? 'Edit Client' : 'New Client'}</div>
@@ -12537,20 +13044,48 @@ html, body, #root {
               <textarea value={editingClient.notes || ''} onChange={e => setEditingClient(p => ({...p, notes: e.target.value}))} placeholder="Notes (optional)" className="w-full px-3 py-3 rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-sm min-h-[80px]" />
             </div>
 
+            {editingClient.id && (() => {
+              const clientJobs = jobProfitabilityAll.filter(row => row.job.clientId === editingClient.id);
+              return (
+                <div className="mt-4 rounded-xl border border-cyan-200 bg-cyan-50/60 p-4 dark:border-cyan-800/50 dark:bg-cyan-500/5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-extrabold uppercase tracking-wider text-cyan-800 dark:text-cyan-300">Jobs / Projects</div>
+                      <div className="mt-0.5 text-xs font-medium text-slate-600 dark:text-slate-300">{clientJobs.length} linked job{clientJobs.length === 1 ? '' : 's'}</div>
+                    </div>
+                    <button type="button" onClick={() => { const clientId = editingClient.id; const clientName = editingClient.name; setIsClientModalOpen(false); window.setTimeout(() => openNewJob(null, clientId, clientName), 0); }} className="inline-flex items-center gap-1 rounded-lg border border-cyan-300 bg-white px-2.5 py-2 text-[11px] font-extrabold text-cyan-800 shadow-sm dark:border-cyan-700 dark:bg-slate-950 dark:text-cyan-300"><PlusCircle size={14} /> New Job</button>
+                  </div>
+                  {clientJobs.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {clientJobs.slice(0, 4).map(row => (
+                        <button key={row.job.id} type="button" onClick={() => { setIsClientModalOpen(false); setCurrentPage(Page.Jobs); window.setTimeout(() => openEditJob(row.job), 0); }} className="flex w-full items-center justify-between gap-3 rounded-lg border border-cyan-200 bg-white px-3 py-2.5 text-left dark:border-cyan-800/40 dark:bg-slate-950">
+                          <div className="min-w-0"><div className="truncate text-sm font-extrabold text-slate-900 dark:text-white">{row.job.title}</div><div className="mt-0.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">Profit {formatCurrency.format(row.estimatedProfit)} · Outstanding {formatCurrency.format(row.outstanding)}</div></div>
+                          <ChevronRight size={16} className="shrink-0 text-slate-400" />
+                        </button>
+                      ))}
+                      {clientJobs.length > 4 && <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">+{clientJobs.length - 4} more job{clientJobs.length - 4 === 1 ? '' : 's'} in Jobs / Projects</div>}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             <div className="flex gap-3 mt-5">
               {editingClient.id && (
                 <button
                   onClick={() => {
                     const clientInvoices = invoices.filter(inv => inv.clientId === editingClient.id);
                     const clientEstimates = estimates.filter(est => est.clientId === editingClient.id);
+                    const clientJobs = jobs.filter(job => job.clientId === editingClient.id);
                     
                     // Build warning message if there are linked documents
                     let confirmMsg = 'Delete this client?';
-                    if (clientInvoices.length > 0 || clientEstimates.length > 0) {
+                    if (clientInvoices.length > 0 || clientEstimates.length > 0 || clientJobs.length > 0) {
                       const parts = [];
                       if (clientInvoices.length > 0) parts.push(`${clientInvoices.length} invoice${clientInvoices.length !== 1 ? 's' : ''}`);
                       if (clientEstimates.length > 0) parts.push(`${clientEstimates.length} estimate${clientEstimates.length !== 1 ? 's' : ''}`);
-                      confirmMsg = `This client has ${parts.join(' and ')}. Deleting will unlink these documents (they won't be deleted). Continue?`;
+                      if (clientJobs.length > 0) parts.push(`${clientJobs.length} job${clientJobs.length !== 1 ? 's' : ''}`);
+                      confirmMsg = `This client has ${parts.join(', ')}. Deleting will unlink these records (they won't be deleted). Continue?`;
                     }
                     
                     if (!confirm(confirmMsg)) return;
@@ -12573,6 +13108,10 @@ html, body, #root {
                       ));
                     }
                     
+                    if (clientJobs.length > 0) {
+                      setJobs(prev => prev.map(job => job.clientId === editingClient.id ? ({ ...job, clientId: undefined, clientName: editingClient.name || job.clientName, updatedAt: new Date().toISOString() } as Job) : job));
+                    }
+
                     setClients(prev => prev.filter(c => c.id !== editingClient.id));
                     setIsClientModalOpen(false);
                     setEditingClient({ status: 'lead' });
@@ -12599,6 +13138,7 @@ html, body, #root {
                       status: (editingClient.status as any) || 'lead',
                       updatedAt: now,
                     }) : c));
+                    setJobs(prev => prev.map(job => job.clientId === editingClient.id ? ({ ...job, clientName: name, updatedAt: now } as Job) : job));
                     showToast('Client updated', 'success');
                   } else {
                     const newClient: Client = {

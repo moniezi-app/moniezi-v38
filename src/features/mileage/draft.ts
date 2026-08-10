@@ -5,6 +5,7 @@ export type MileageDraft = {
   miles: string;
   purpose: string;
   client: string;
+  jobId: string;
   notes: string;
 };
 
@@ -14,6 +15,7 @@ export function createEmptyMileageDraft(today = new Date()): MileageDraft {
     miles: '',
     purpose: '',
     client: '',
+    jobId: '',
     notes: '',
   };
 }
@@ -31,6 +33,7 @@ export function toMileageTripPayload(draft: MileageDraft): Omit<MileageTrip, 'id
     miles: Number(draft.miles),
     purpose: draft.purpose,
     client: draft.client,
+    ...(draft.jobId ? { jobId: draft.jobId } : {}),
     notes: draft.notes,
   };
 }

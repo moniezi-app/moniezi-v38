@@ -17,6 +17,8 @@ export function normalizePage(p: unknown): Page {
     company_equity: Page.CompanyEquity,
     company: Page.CompanyEquity,
     clients: Page.Clients,
+    jobs: Page.Jobs,
+    projects: Page.Jobs,
     mileage: Page.Mileage,
     settings: Page.Settings,
     expenses: Page.Expenses,
@@ -68,6 +70,8 @@ export function pageToHashPath(page: Page): string {
       return 'mileage';
     case Page.Clients:
       return 'clients';
+    case Page.Jobs:
+      return 'jobs';
     case Page.Reports:
       return 'reports';
     case Page.CompanyEquity:
