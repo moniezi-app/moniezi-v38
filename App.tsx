@@ -11117,10 +11117,10 @@ html, body, #root {
       {/* Main menu — occasional destinations. The bottom bar keeps the five
           screens used daily; everything else lives here. */}
       <AppDrawer isOpen={showMainMenu} onClose={() => setShowMainMenu(false)} title="Menu">
-        <div className="space-y-6 pb-4">
+        <div className="pt-5 pb-4">
 
-          <div>
-            <div className="px-1 pb-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <section className="pb-6">
+            <div className="px-1 pb-3 text-xs font-extrabold uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">
               Your business
             </div>
             <div className="space-y-1">
@@ -11150,11 +11150,11 @@ html, body, #root {
                 </span>
               </button>
             </div>
-          </div>
+          </section>
 
           {(isAppEmpty || isDemoData) && (
-            <div>
-              <div className="px-1 pb-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <section className="border-t border-slate-300 dark:border-slate-700 py-6">
+              <div className="px-1 pb-3 text-xs font-extrabold uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">
                 Trying MONIEZI
               </div>
               <div className="space-y-1">
@@ -11186,11 +11186,11 @@ html, body, #root {
                   </button>
                 )}
               </div>
-            </div>
+            </section>
           )}
 
-          <div>
-            <div className="px-1 pb-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <section className="border-t border-slate-300 dark:border-slate-700 py-6">
+            <div className="px-1 pb-3 text-xs font-extrabold uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">
               App
             </div>
             <div className="space-y-1">
@@ -11223,10 +11223,10 @@ html, body, #root {
                 </a>
               )}
             </div>
-          </div>
+          </section>
 
-          <div className="px-1 pt-2 border-t border-slate-200 dark:border-slate-800">
-            <p className="pt-3 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+          <div className="px-1 pt-6 border-t border-slate-300 dark:border-slate-700">
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               MONIEZI Pro Finance v{CUSTOMER_VERSION} · Your records stay on this device.
               Back them up regularly from Settings.
             </p>

@@ -8,6 +8,7 @@ Release date: 2026-08-10
 - Invoice cards and estimate cards use stronger, more visible borders so each record is easy to distinguish.
 - Activity search on mobile hides the fixed bottom navigation while the search field is focused, preventing the navigation bar from covering the search area when the on-screen keyboard opens.
 - Invoice and estimate edit forms now use stronger visual hierarchy and clearer borders: section cards are more visible, headings are separated from fields, and input/select borders are easier to see.
+- The main Menu now has proper top spacing below its header, stronger section headings, and visible dividers between Your Business, Trying MONIEZI, App, and the version/privacy note.
 
 ## Notes
 
