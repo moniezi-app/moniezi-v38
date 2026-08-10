@@ -18,7 +18,7 @@ import {
   ChevronUp,
   ChevronRight,
 } from "lucide-react";
-import type { Transaction, Invoice, TaxPayment, UserSettings } from "./types";
+import type { Transaction, Invoice, Estimate, MileageTrip, TaxPayment, UserSettings } from "./types";
 import {
   generateInsights,
   getDismissedInsightIds,
@@ -31,6 +31,8 @@ import {
 type Props = {
   transactions: Transaction[];
   invoices: Invoice[];
+  estimates: Estimate[];
+  mileageTrips: MileageTrip[];
   taxPayments: TaxPayment[];
   settings: UserSettings;
   onClose: () => void;
@@ -82,6 +84,8 @@ function severityColors(severity: Insight["severity"]) {
 export default function InsightsDashboard({
   transactions,
   invoices,
+  estimates,
+  mileageTrips,
   taxPayments,
   settings,
   onClose,
@@ -96,8 +100,8 @@ export default function InsightsDashboard({
   }, []);
 
   const allInsights: Insight[] = useMemo(() => {
-    return generateInsights({ transactions, invoices, taxPayments, settings });
-  }, [transactions, invoices, taxPayments, settings]);
+    return generateInsights({ transactions, invoices, estimates, mileageTrips, taxPayments, settings });
+  }, [transactions, invoices, estimates, mileageTrips, taxPayments, settings]);
 
   const insightsBySeverity = useMemo(() => {
     const active = allInsights.filter((i) => !dismissed.has(i.id));
@@ -316,8 +320,8 @@ export default function InsightsDashboard({
               <BrainCircuit className="w-7 h-7 text-purple-600 dark:text-purple-400" strokeWidth={2} />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight mb-1">Smart Insights</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{stats.active} active insights</p>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight mb-1">Business Insights</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{stats.active} business signals</p>
             </div>
           </div>
         </div>

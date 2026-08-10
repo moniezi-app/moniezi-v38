@@ -798,8 +798,8 @@ class PageErrorBoundary extends React.Component<
   }
 }
 
-const CUSTOMER_VERSION = "38.0.12"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
-setReportAppVersion("38.0.12");
+const CUSTOMER_VERSION = "38.0.13"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
+setReportAppVersion("38.0.13");
 const LICENSE_STORAGE_KEY = `moniezi_license_v1_${STORAGE_NAMESPACE}`;
 const DEVICE_ID_STORAGE_KEY = `moniezi_device_id_v1_${STORAGE_NAMESPACE}`;
 const LICENSE_TOKEN_SALT = "moniezi_v35_offline_binding";
@@ -1327,8 +1327,8 @@ export default function App() {
   const [expenseReviewFilter, setExpenseReviewFilter] = useState<'all' | 'new' | 'reviewed'>('all');
 
   const insightsBadgeCount = useMemo(() => {
-    return getInsightCount({ transactions, invoices, taxPayments, settings });
-  }, [transactions, invoices, taxPayments, settings]);
+    return getInsightCount({ transactions, invoices, estimates, mileageTrips, taxPayments, settings });
+  }, [transactions, invoices, estimates, mileageTrips, taxPayments, settings]);
 
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
@@ -1345,6 +1345,8 @@ export default function App() {
 
   // Reports screen menu (Settings-style tiles)
   const [reportsMenuSection, setReportsMenuSection] = useState<'menu'|'pl'|'taxsnapshot'|'taxprep'|'planner'|'receivables'|'expensesreceipts'|'mileage'|'clients'|'cashflow'|'pipeline'|'ledger'|'yearend'>('menu');
+  const [selectedClientStatementKey, setSelectedClientStatementKey] = useState<string | null>(null);
+  const [isGeneratingAccountantPackage, setIsGeneratingAccountantPackage] = useState(false);
   const isMileageKeyboardEditing = isKeyboardEditing && currentPage === Page.Mileage;
   /**
    * These read as tabs, so they now behave as tabs: one report at a time.
@@ -4809,6 +4811,192 @@ const demoMileageTrips: MileageTrip[] = [
     };
   }, [txForTaxYear, reportExpenseSummary, reportYearInvoices, reportYearEstimates, reportClientRows, reportPipeline]);
 
+  const buildReadinessSnapshot = useCallback((year: number) => {
+    const yearTransactions = transactions.filter(t => new Date(t.date).getFullYear() === year);
+    const yearExpenses = yearTransactions.filter(t => t.type === 'expense');
+    const yearMileage = mileageTrips.filter(t => new Date(t.date).getFullYear() === year);
+    const missingReceipts = yearExpenses.filter(t => !(t as any).receiptId).length;
+    const unreviewedExpenses = yearExpenses.filter(t => !(t as any).reviewedAt).length;
+    const uncategorized = yearTransactions.filter(t => !String(t.category || '').trim()).length;
+    const incompleteMileage = yearMileage.filter(t => !String(t.purpose || '').trim() || Number(t.miles || 0) <= 0).length;
+
+    const receiptPct = yearExpenses.length ? ((yearExpenses.length - missingReceipts) / yearExpenses.length) * 100 : 100;
+    const reviewPct = yearExpenses.length ? ((yearExpenses.length - unreviewedExpenses) / yearExpenses.length) * 100 : 100;
+    const categoryPct = yearTransactions.length ? ((yearTransactions.length - uncategorized) / yearTransactions.length) * 100 : 100;
+    const mileagePct = yearMileage.length ? ((yearMileage.length - incompleteMileage) / yearMileage.length) * 100 : 100;
+    const score = Math.max(0, Math.min(100, Math.round((receiptPct + reviewPct + categoryPct + mileagePct) / 4)));
+
+    return {
+      year,
+      score,
+      yearTransactions,
+      yearExpenses,
+      yearMileage,
+      missingReceipts,
+      unreviewedExpenses,
+      uncategorized,
+      incompleteMileage,
+      receiptPct,
+      reviewPct,
+      categoryPct,
+      mileagePct,
+      issues: missingReceipts + unreviewedExpenses + uncategorized + incompleteMileage,
+    };
+  }, [transactions, mileageTrips]);
+
+  const taxPrepReadiness = useMemo(() => buildReadinessSnapshot(taxPrepYear), [buildReadinessSnapshot, taxPrepYear]);
+  const homeReadiness = useMemo(() => buildReadinessSnapshot(new Date().getFullYear()), [buildReadinessSnapshot]);
+
+  const businessActionItems = useMemo(() => {
+    const year = new Date().getFullYear();
+    const overdueInvoices = invoices.filter(inv => inv.status === 'unpaid' && getDaysOverdue(inv.due) > 0);
+    const overdueTotal = overdueInvoices.reduce((sum, inv) => sum + Number(inv.amount || 0), 0);
+    const today = new Date().toISOString().split('T')[0];
+    const estimateFollowUps = estimates.filter(est => est.status === 'sent' && !!est.followUpDate && est.followUpDate <= today);
+    const yearExpenses = transactions.filter(t => t.type === 'expense' && new Date(t.date).getFullYear() === year);
+    const missingReceipts = yearExpenses.filter(t => !(t as any).receiptId);
+    const unreviewed = yearExpenses.filter(t => !(t as any).reviewedAt);
+    const uncategorized = transactions.filter(t => new Date(t.date).getFullYear() === year && !String(t.category || '').trim());
+    const incompleteMileage = mileageTrips.filter(t => new Date(t.date).getFullYear() === year && (!String(t.purpose || '').trim() || Number(t.miles || 0) <= 0));
+
+    const items: Array<{ id: 'overdue'|'estimates'|'receipts'|'review'|'mileage'|'categories'; title: string; detail: string; priority: number; tone: 'red'|'amber'|'blue' }> = [];
+    if (overdueInvoices.length) items.push({ id: 'overdue', title: `${overdueInvoices.length} overdue invoice${overdueInvoices.length === 1 ? '' : 's'}`, detail: `${formatCurrency.format(overdueTotal)} needs collection`, priority: 100, tone: 'red' });
+    if (estimateFollowUps.length) items.push({ id: 'estimates', title: `${estimateFollowUps.length} estimate follow-up${estimateFollowUps.length === 1 ? '' : 's'} due`, detail: 'Follow up while the work is still active', priority: 90, tone: 'amber' });
+    if (missingReceipts.length) items.push({ id: 'receipts', title: `${missingReceipts.length} expense${missingReceipts.length === 1 ? '' : 's'} missing receipts`, detail: `${year} documentation needs attention`, priority: 80, tone: 'amber' });
+    if (unreviewed.length) items.push({ id: 'review', title: `${unreviewed.length} expense${unreviewed.length === 1 ? '' : 's'} still marked New`, detail: 'Review amount, category and receipt', priority: 70, tone: 'blue' });
+    if (uncategorized.length) items.push({ id: 'categories', title: `${uncategorized.length} uncategorized record${uncategorized.length === 1 ? '' : 's'}`, detail: 'Assign categories for cleaner reports', priority: 65, tone: 'amber' });
+    if (incompleteMileage.length) items.push({ id: 'mileage', title: `${incompleteMileage.length} incomplete mileage trip${incompleteMileage.length === 1 ? '' : 's'}`, detail: 'Add purpose or mileage details', priority: 60, tone: 'blue' });
+    return items.sort((a, b) => b.priority - a.priority);
+  }, [invoices, estimates, transactions, mileageTrips]);
+
+  const selectedClientStatement = useMemo(() => {
+    if (!selectedClientStatementKey) return null;
+    const row = reportClientRows.find(item => item.key === selectedClientStatementKey);
+    if (!row) return null;
+    const keyForInvoice = (inv: Invoice) => inv.clientId || `name:${(inv.client || 'Unknown client').trim().toLowerCase()}`;
+    const keyForEstimate = (est: Estimate) => est.clientId || `name:${(est.client || 'Unknown client').trim().toLowerCase()}`;
+    const statementInvoices = reportYearInvoices.filter(inv => keyForInvoice(inv) === selectedClientStatementKey).sort((a,b) => b.date.localeCompare(a.date));
+    const statementEstimates = reportYearEstimates.filter(est => keyForEstimate(est) === selectedClientStatementKey).sort((a,b) => b.date.localeCompare(a.date));
+    return { row, invoices: statementInvoices, estimates: statementEstimates };
+  }, [selectedClientStatementKey, reportClientRows, reportYearInvoices, reportYearEstimates]);
+
+  const handleBusinessAction = (id: 'overdue'|'estimates'|'receipts'|'review'|'mileage'|'categories', year = new Date().getFullYear()) => {
+    if (id === 'overdue') {
+      setBillingDocType('invoice');
+      setInvoiceQuickFilter('overdue');
+      setCurrentPage(Page.Invoices);
+      return;
+    }
+    if (id === 'estimates') {
+      setBillingDocType('estimate');
+      setEstimateQuickFilter('sent');
+      setCurrentPage(Page.Invoices);
+      return;
+    }
+    if (id === 'receipts') {
+      setFilterPeriod('yearly');
+      setReferenceDate(new Date(year, 0, 1));
+      setLedgerSearch('');
+      setLedgerFilter('expense');
+      setExpenseReceiptFilter('without_receipts');
+      setExpenseReviewFilter('all');
+      setCurrentPage(Page.Expenses);
+      return;
+    }
+    if (id === 'review') {
+      setFilterPeriod('yearly');
+      setReferenceDate(new Date(year, 0, 1));
+      setLedgerSearch('');
+      setLedgerFilter('expense');
+      setExpenseReceiptFilter('all');
+      setExpenseReviewFilter('new');
+      setCurrentPage(Page.Expenses);
+      return;
+    }
+    if (id === 'mileage') {
+      setTaxPrepYear(year);
+      setCurrentPage(Page.Mileage);
+      return;
+    }
+    setFilterPeriod('yearly');
+    setReferenceDate(new Date(year, 0, 1));
+    setLedgerSearch('');
+    setLedgerFilter('all');
+    setExpenseReceiptFilter('all');
+    setExpenseReviewFilter('all');
+    setCurrentPage(Page.AllTransactions);
+  };
+
+  const buildInvoiceReminderMessage = (inv: Invoice) => {
+    const number = inv.number ? ` ${inv.number}` : '';
+    const due = inv.due ? ` was due ${inv.due}` : ' is still unpaid';
+    return `Hi ${inv.client || 'there'}, just a reminder that Invoice${number} for ${formatCurrency.format(Number(inv.amount || 0))}${due}. Please let me know if you have any questions. Thank you.`;
+  };
+
+  const buildEstimateFollowUpMessage = (est: Estimate) => {
+    const number = est.number ? ` ${est.number}` : '';
+    const project = est.projectTitle || est.description;
+    const projectText = project ? ` for ${project}` : '';
+    return `Hi ${est.client || 'there'}, just checking whether you had a chance to review Estimate${number}${projectText} for ${formatCurrency.format(Number(est.amount || 0))}. Let me know if you'd like to move forward or if you have any questions. Thank you.`;
+  };
+
+  const copyTextToClipboard = async (text: string, successMessage: string) => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      showToast(successMessage, 'success');
+    } catch (error) {
+      console.error('Copy failed', error);
+      showToast('Could not copy the message.', 'error');
+    }
+  };
+
+  const shareFollowUpText = async (title: string, text: string) => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, text });
+        showToast('Share opened', 'success');
+      } else {
+        await copyTextToClipboard(text, 'Message copied');
+      }
+    } catch (error: any) {
+      if (error?.name !== 'AbortError') {
+        console.error('Share failed', error);
+        await copyTextToClipboard(text, 'Message copied');
+      }
+    }
+  };
+
+  const handleDownloadClientStatementPDF = async () => {
+    if (!selectedClientStatement) return;
+    const element = document.getElementById('client-statement-content');
+    if (!element) return showToast('Client statement is not ready yet.', 'error');
+    try {
+      const safeClient = selectedClientStatement.row.name.replace(/[^a-z0-9]/gi, '_').replace(/_+/g, '_');
+      await html2pdf().set({
+        margin: [10, 10, 10, 10],
+        filename: `${exportFilePrefix()}_${safeClient}_Statement_${taxPrepYear}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: 0 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      }).from(element).save();
+      showToast('Client statement PDF downloaded', 'success');
+    } catch (error) {
+      console.error('Client statement PDF failed', error);
+      showToast('Client statement PDF failed', 'error');
+    }
+  };
+
   const getTaxLedgerExportRows = () => {
     return txForTaxYear
       .slice()
@@ -5942,6 +6130,141 @@ const demoMileageTrips: MileageTrip[] = [
       blob: new Blob([pdfBytes], { type: 'application/pdf' }),
       filename,
     };
+  };
+
+  const buildTaxYearProfitLossPdfBlob = async (): Promise<{ blob: Blob; filename: string }> => {
+    const incomeTx = txForTaxYear.filter(t => t.type === 'income');
+    const expenseTx = txForTaxYear.filter(t => t.type === 'expense');
+    const totalIncome = incomeTx.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    const totalExpenses = expenseTx.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    const netIncome = totalIncome - totalExpenses;
+    const makeRows = (items: Transaction[], total: number) => {
+      const map = items.reduce((acc, t) => {
+        const key = String(t.category || '').trim() || 'Uncategorized';
+        acc[key] = (acc[key] || 0) + Number(t.amount || 0);
+        return acc;
+      }, {} as Record<string, number>);
+      return Object.entries(map)
+        .sort((a,b) => b[1] - a[1])
+        .map(([name, amount]) => ({ name, amount, sharePct: total > 0 ? (amount / total) * 100 : 0 }));
+    };
+    const revenueRows = makeRows(incomeTx, totalIncome);
+    const expenseRows = makeRows(expenseTx, totalExpenses);
+    const topExpense = expenseRows[0] || { name: 'No operating expenses recorded', amount: 0, sharePct: 0 };
+    const data: ProfitLossPdfData = {
+      businessName: settings.businessName || 'Business',
+      ownerName: settings.ownerName || 'Prepared privately',
+      generatedAtLabel: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }),
+      reportingPeriodLabel: `Jan 1, ${taxPrepYear} - Dec 31, ${taxPrepYear}`,
+      periodLabel: `Tax Year ${taxPrepYear}`,
+      accountingBasisLabel: 'Cash Basis',
+      grossSales: totalIncome,
+      refunds: 0,
+      netRevenue: totalIncome,
+      cogs: 0,
+      grossProfit: totalIncome,
+      totalOpex: totalExpenses,
+      operatingIncome: netIncome,
+      otherIncome: 0,
+      otherExpenses: 0,
+      netOtherIncome: 0,
+      netIncome,
+      grossMarginPct: totalIncome > 0 ? 100 : 0,
+      operatingExpenseRatioPct: totalIncome > 0 ? (totalExpenses / totalIncome) * 100 : 0,
+      operatingMarginPct: totalIncome > 0 ? (netIncome / totalIncome) * 100 : 0,
+      netMarginPct: totalIncome > 0 ? (netIncome / totalIncome) * 100 : 0,
+      transactionCount: txForTaxYear.length,
+      expenseCategoryCount: expenseRows.length,
+      topExpenseCategoryName: topExpense.name,
+      topExpenseCategoryAmount: topExpense.amount,
+      topExpenseCategorySharePct: topExpense.sharePct,
+      revenueRows,
+      cogsRows: [],
+      expenseRows,
+      otherIncomeRows: [{ name: 'No other income / expense recorded', amount: 0 }],
+      statementChecks: [
+        `Cash-basis statement generated from MONIEZI transactions recorded for tax year ${taxPrepYear}.`,
+        taxPrepReadiness.uncategorized > 0 ? `${taxPrepReadiness.uncategorized} uncategorized record(s) should be reviewed before filing.` : 'No uncategorized records were detected for this tax year.',
+      ],
+      currencySymbol: settings.currencySymbol || '$',
+    };
+    const bytes = await generateProfitLossPdfBytes(data);
+    return { blob: new Blob([bytes], { type: 'application/pdf' }), filename: `${exportFilePrefix()}_Profit_Loss_${taxPrepYear}.pdf` };
+  };
+
+  const handleDownloadAccountantPackage = async () => {
+    if (isGeneratingAccountantPackage) return;
+    setIsGeneratingAccountantPackage(true);
+    try {
+      const files: { name: string; data: Uint8Array; mtime?: Date }[] = [];
+      const addBlob = async (name: string, blob: Blob) => files.push({ name, data: new Uint8Array(await blob.arrayBuffer()), mtime: new Date() });
+
+      const taxSummary = await buildTaxSummaryPdfBlob();
+      await addBlob(`01_Tax_Summary/${taxSummary.filename}`, taxSummary.blob);
+
+      const pl = await buildTaxYearProfitLossPdfBlob();
+      await addBlob(`02_Profit_Loss/${pl.filename}`, pl.blob);
+
+      const transactionRows: any[][] = [
+        ['date', 'entry_type', 'description', 'category', 'amount_usd', 'notes', 'receipt_id'],
+        ...getTaxLedgerExportRows().map(row => [row[0], row[1], row[2], row[3], formatDecimalForExport(row[4]), row[5], row[6]]),
+      ];
+      await addBlob(`03_Transactions/${exportFilePrefix()}_Transactions_${taxPrepYear}.csv`, makeCsvBlob(transactionRows));
+
+      const mileageRows: any[][] = [
+        ['date', 'miles', 'rate_usd', 'deduction_usd', 'purpose', 'client', 'notes'],
+        ...getMileageExportRows().map(row => [row[0], formatDecimalForExport(row[1], 1), formatDecimalForExport(row[2]), formatDecimalForExport(row[3]), row[4], row[5], row[6]]),
+      ];
+      await addBlob(`04_Mileage/${exportFilePrefix()}_Mileage_${taxPrepYear}.csv`, makeCsvBlob(mileageRows));
+
+      const missingRows: any[][] = [['record_type', 'date', 'description', 'issue']];
+      txForTaxYear.filter(t => t.type === 'expense' && !(t as any).receiptId).forEach(t => missingRows.push(['expense', t.date, t.name, 'Missing receipt']));
+      txForTaxYear.filter(t => t.type === 'expense' && !(t as any).reviewedAt).forEach(t => missingRows.push(['expense', t.date, t.name, 'Needs review']));
+      txForTaxYear.filter(t => !String(t.category || '').trim()).forEach(t => missingRows.push([t.type, t.date, t.name, 'Missing category']));
+      mileageForTaxYear.filter(t => !String(t.purpose || '').trim() || Number(t.miles || 0) <= 0).forEach(t => missingRows.push(['mileage', t.date, t.client || t.purpose || 'Trip', 'Incomplete mileage details']));
+      await addBlob(`05_Record_Checks/${exportFilePrefix()}_Items_Needing_Attention_${taxPrepYear}.csv`, makeCsvBlob(missingRows));
+
+      const receiptManifest: any[] = [];
+      const receiptIds = Array.from(new Set(txForTaxYear.filter(t => t.type === 'expense' && (t as any).receiptId).map(t => (t as any).receiptId as string)));
+      for (const id of receiptIds) {
+        const meta = receipts.find(r => r.id === id);
+        const rec = await getReceiptBlob(meta?.imageKey || id);
+        if (!rec?.blob) continue;
+        const mime = meta?.mimeType || rec.mimeType || rec.blob.type || 'image/jpeg';
+        const ext = mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : 'jpg';
+        const filename = `06_Receipts/images/${id}.${ext}`;
+        files.push({ name: filename, data: new Uint8Array(await rec.blob.arrayBuffer()), mtime: meta?.date ? new Date(meta.date) : new Date() });
+        receiptManifest.push({ id, date: meta?.date || '', note: meta?.note || '', filename, mimeType: mime });
+      }
+      files.push({ name: '06_Receipts/manifest.json', data: utf8(JSON.stringify({ taxYear: taxPrepYear, receipts: receiptManifest }, null, 2)), mtime: new Date() });
+
+      const readme = [
+        `MONIEZI Accountant Package - ${taxPrepYear}`,
+        `Business: ${settings.businessName || 'Business'}`,
+        `Generated: ${new Date().toLocaleString()}`,
+        `Tax Prep Readiness: ${taxPrepReadiness.score}%`,
+        '',
+        'Included:',
+        '- Tax Summary PDF',
+        '- Tax-year Profit & Loss PDF',
+        '- Transaction ledger CSV',
+        '- Mileage CSV',
+        '- Items needing attention CSV',
+        '- Linked receipt images and manifest',
+        '',
+        'Review the items-needing-attention file before filing. MONIEZI organizes your records; your tax professional determines final tax treatment.',
+      ].join('\n');
+      files.unshift({ name: '00_READ_ME.txt', data: utf8(readme), mtime: new Date() });
+
+      const zip = createZipBlobUncompressed(files);
+      downloadBlob(zip, `${exportFilePrefix()}_Accountant_Package_${taxPrepYear}.zip`);
+      showToast(`Accountant package ${taxPrepYear} downloaded`, 'success');
+    } catch (error) {
+      console.error('Accountant package failed', error);
+      showToast('Accountant package could not be created.', 'error');
+    } finally {
+      setIsGeneratingAccountantPackage(false);
+    }
   };
 
   /**
@@ -7780,6 +8103,42 @@ html, body, #root {
               </div>
             </div>
 
+            <section className="rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 overflow-hidden">
+              <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={18} className={businessActionItems.length ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'} />
+                    <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Needs Your Attention</h3>
+                  </div>
+                  <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">MONIEZI checks collections, follow-ups and record readiness.</p>
+                </div>
+                <button type="button" onClick={() => setShowInsights(true)} className="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-[11px] font-bold text-blue-700 transition-colors hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-950 dark:text-blue-300 dark:hover:bg-blue-500/10">Insights</button>
+              </div>
+              {businessActionItems.length === 0 ? (
+                <div className="flex items-center gap-3 px-5 py-5">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"><CheckCircle size={18} /></div>
+                  <div><div className="font-bold text-slate-900 dark:text-white">Nothing urgent right now</div><div className="text-xs text-slate-500 dark:text-slate-400">No overdue collections or major record gaps were detected.</div></div>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-200 dark:divide-slate-800">
+                  {businessActionItems.slice(0, 5).map(item => {
+                    const toneClass = item.tone === 'red' ? 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300' : item.tone === 'amber' ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300';
+                    return (
+                      <button key={item.id} type="button" onClick={() => handleBusinessAction(item.id)} className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${toneClass}`}><AlertCircle size={17} /></div>
+                        <div className="min-w-0 flex-1"><div className="text-sm font-extrabold text-slate-900 dark:text-white">{item.title}</div><div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{item.detail}</div></div>
+                        <ChevronRight size={17} className="shrink-0 text-slate-400" />
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <button type="button" onClick={() => { setTaxPrepYear(new Date().getFullYear()); setReportsMenuSection('taxprep'); setCurrentPage(Page.Reports); }} className="flex w-full items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-3.5 text-left dark:border-slate-800 dark:bg-slate-950/50">
+                <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Tax Prep Readiness · {new Date().getFullYear()}</span>
+                <span className={`text-sm font-extrabold ${homeReadiness.score >= 90 ? 'text-emerald-600 dark:text-emerald-400' : homeReadiness.score >= 70 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>{homeReadiness.score}%</span>
+              </button>
+            </section>
+
             <div
                 className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 shadow-lg rounded-3xl p-6 relative overflow-hidden cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all"
                 onClick={() => {
@@ -8646,6 +9005,8 @@ html, body, #root {
                                       <button onClick={() => updateEstimateStatus(est, 'accepted')} className="min-h-11 px-3 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"><CheckCircle size={16} /> Accepted</button>
                                       <button onClick={() => updateEstimateStatus(est, 'declined')} className="min-h-11 px-3 py-2 rounded-lg text-sm font-semibold bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors flex items-center justify-center gap-2"><X size={16} /> Declined</button>
                                       <button onClick={() => recordFollowUp(est, 7)} className="min-h-11 px-3 py-2 rounded-lg text-sm font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"><Clock3 size={16} /> Follow-up</button>
+                                      <button onClick={() => copyTextToClipboard(buildEstimateFollowUpMessage(est), 'Estimate follow-up copied')} className="min-h-11 px-3 py-2 rounded-lg text-sm font-semibold bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"><Copy size={16} /> Copy Message</button>
+                                      <button onClick={() => shareFollowUpText(`Estimate follow-up${est.number ? ` ${est.number}` : ''}`, buildEstimateFollowUpMessage(est))} className="min-h-11 px-3 py-2 rounded-lg text-sm font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"><Share2 size={16} /> Share</button>
                                       {(isFollowUpOverdue || isFollowUpSoon) && <button onClick={() => snoozeFollowUp(est, 3)} className="min-h-11 px-3 py-2 rounded-lg text-sm font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Snooze 3d</button>}
                                     </>
                                   )}
@@ -9066,6 +9427,26 @@ html, body, #root {
                     <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/40"><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Mileage deduction</div><div className="mt-1 text-xl font-extrabold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(mileageDeductionForTaxYear)}</div></div>
                   </div>
 
+                  <div className="mb-6 rounded-xl border border-slate-300 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-900/50">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Tax Prep Readiness</div>
+                        <div className="mt-1 flex items-baseline gap-2"><span className={`text-3xl font-extrabold ${taxPrepReadiness.score >= 90 ? 'text-emerald-600 dark:text-emerald-400' : taxPrepReadiness.score >= 70 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>{taxPrepReadiness.score}%</span><span className="text-sm font-semibold text-slate-500 dark:text-slate-400">ready for {taxPrepYear}</span></div>
+                      </div>
+                      <button type="button" onClick={handleDownloadAccountantPackage} disabled={isGeneratingAccountantPackage} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-xs font-extrabold uppercase tracking-wider text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-wait disabled:opacity-60">
+                        {isGeneratingAccountantPackage ? <Loader2 size={16} className="animate-spin" /> : <Package size={16} />}
+                        {isGeneratingAccountantPackage ? 'Preparing...' : 'Accountant Package'}
+                      </button>
+                    </div>
+                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"><div className={`h-full rounded-full transition-all ${taxPrepReadiness.score >= 90 ? 'bg-emerald-500' : taxPrepReadiness.score >= 70 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${taxPrepReadiness.score}%` }} /></div>
+                    <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <button type="button" onClick={() => handleBusinessAction('receipts', taxPrepYear)} className="flex items-center justify-between rounded-lg border border-slate-300 bg-white px-3 py-3 text-left dark:border-slate-700 dark:bg-slate-950"><span className="text-xs font-bold text-slate-700 dark:text-slate-200">Missing receipts</span><span className={taxPrepReadiness.missingReceipts ? 'font-extrabold text-amber-600 dark:text-amber-400' : 'font-extrabold text-emerald-600 dark:text-emerald-400'}>{taxPrepReadiness.missingReceipts}</span></button>
+                      <button type="button" onClick={() => handleBusinessAction('review', taxPrepYear)} className="flex items-center justify-between rounded-lg border border-slate-300 bg-white px-3 py-3 text-left dark:border-slate-700 dark:bg-slate-950"><span className="text-xs font-bold text-slate-700 dark:text-slate-200">Expenses to review</span><span className={taxPrepReadiness.unreviewedExpenses ? 'font-extrabold text-amber-600 dark:text-amber-400' : 'font-extrabold text-emerald-600 dark:text-emerald-400'}>{taxPrepReadiness.unreviewedExpenses}</span></button>
+                      <button type="button" onClick={() => handleBusinessAction('categories', taxPrepYear)} className="flex items-center justify-between rounded-lg border border-slate-300 bg-white px-3 py-3 text-left dark:border-slate-700 dark:bg-slate-950"><span className="text-xs font-bold text-slate-700 dark:text-slate-200">Uncategorized records</span><span className={taxPrepReadiness.uncategorized ? 'font-extrabold text-amber-600 dark:text-amber-400' : 'font-extrabold text-emerald-600 dark:text-emerald-400'}>{taxPrepReadiness.uncategorized}</span></button>
+                      <button type="button" onClick={() => handleBusinessAction('mileage', taxPrepYear)} className="flex items-center justify-between rounded-lg border border-slate-300 bg-white px-3 py-3 text-left dark:border-slate-700 dark:bg-slate-950"><span className="text-xs font-bold text-slate-700 dark:text-slate-200">Incomplete mileage</span><span className={taxPrepReadiness.incompleteMileage ? 'font-extrabold text-amber-600 dark:text-amber-400' : 'font-extrabold text-emerald-600 dark:text-emerald-400'}>{taxPrepReadiness.incompleteMileage}</span></button>
+                    </div>
+                  </div>
+
                   {/* Grouped by WHAT is being sent, not by file format.
                       Seven flat buttons were really four things — the summary,
                       transactions, mileage and receipts — with Excel/CSV
@@ -9073,6 +9454,13 @@ html, body, #root {
                       inside each card, which is the order people think in. */}
                   <div className="space-y-3">
                     {[
+                      {
+                        title: 'Accountant Package',
+                        blurb: `One ZIP for ${taxPrepYear}: Tax Summary PDF, Profit & Loss PDF, transaction ledger, mileage, record checks and linked receipts.`,
+                        actions: [
+                          { label: isGeneratingAccountantPackage ? 'Preparing...' : 'Download ZIP', onClick: handleDownloadAccountantPackage, primary: true },
+                        ],
+                      },
                       {
                         title: 'Tax Summary',
                         blurb: `A four-page package for ${taxPrepYear}: income, deductions, mileage and record checks.`,
@@ -9139,7 +9527,7 @@ html, body, #root {
                   </div>
 
                   <div className="mt-6 bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-xl p-5">
-                    <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3">Audit Readiness (Quick Checks)</div>
+                    <div className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3">Readiness Details</div>
                     {(() => {
                       const missing = txForTaxYear.filter(t => t.type === 'expense' && !(t as any).receiptId).length;
                       const missingCategory = txForTaxYear.filter(t => !t.category?.trim()).length;
@@ -9677,10 +10065,7 @@ html, body, #root {
                 <div className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"><Wallet size={20} /></div>
-                    <div>
-                      <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Money Owed to You</h3>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">Every currently unpaid invoice, regardless of year.</p>
-                    </div>
+                    <div><h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Money Owed to You</h3><p className="text-sm text-slate-500 dark:text-slate-400">Every currently unpaid invoice, regardless of year.</p></div>
                   </div>
                   <div className="mt-5 grid grid-cols-1 divide-y divide-slate-200 overflow-hidden rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-700 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
                     <div className="flex items-center justify-between gap-3 px-4 py-3.5 sm:block"><span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total unpaid</span><span className="text-xl font-extrabold tabular-nums text-slate-900 dark:text-white sm:mt-1 sm:block">{formatCurrency.format(reportReceivables.total)}</span></div>
@@ -9696,15 +10081,17 @@ html, body, #root {
                     <div className="divide-y divide-slate-200 dark:divide-slate-800">
                       {reportReceivables.rows.map(({ inv, daysOverdue, daysUntilDue }) => (
                         <div key={inv.id} className="px-4 py-4">
-                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div className="min-w-0 flex-1">
                               <div className="font-extrabold text-slate-900 dark:text-white">{inv.client}</div>
                               <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{inv.number || 'Invoice'} · Due {inv.due || 'not set'}</div>
-                              <div className={`mt-1 text-xs font-bold ${daysOverdue > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                                {daysOverdue > 0 ? `${daysOverdue} day${daysOverdue === 1 ? '' : 's'} overdue` : daysUntilDue === null ? 'No due date' : daysUntilDue === 0 ? 'Due today' : `Due in ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'}`}
-                              </div>
+                              <div className={`mt-1 text-xs font-bold ${daysOverdue > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}>{daysOverdue > 0 ? `${daysOverdue} day${daysOverdue === 1 ? '' : 's'} overdue` : daysUntilDue === null ? 'No due date' : daysUntilDue === 0 ? 'Due today' : `Due in ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'}`}</div>
                             </div>
                             <div className="text-xl font-extrabold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(inv.amount)}</div>
+                          </div>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <button type="button" onClick={() => copyTextToClipboard(buildInvoiceReminderMessage(inv), 'Invoice reminder copied')} className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100 dark:border-blue-800/50 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/15"><Copy size={14} className="mr-1.5 inline" />Copy Reminder</button>
+                            <button type="button" onClick={() => shareFollowUpText(`Invoice reminder${inv.number ? ` ${inv.number}` : ''}`, buildInvoiceReminderMessage(inv))} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"><Share2 size={14} className="mr-1.5 inline" />Share</button>
                           </div>
                         </div>
                       ))}
@@ -9754,11 +10141,54 @@ html, body, #root {
               {/* Clients & Work */}
               <div style={{ display: reportsMenuSection === 'clients' ? undefined : 'none' }} id="report-clients" className="space-y-5">
                 <div className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-300"><Users size={20} /></div><div><h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Clients & Work</h3><p className="text-sm text-slate-500 dark:text-slate-400">Invoice and estimate activity by client for {taxPrepYear}.</p></div></div><MonieziSelect value={String(taxPrepYear)} onChange={next => setTaxPrepYear(Number(next))} ariaLabel="Report year" options={Array.from({ length: 6 }).map((_, i) => { const y = new Date().getFullYear() - i; return { value: String(y), label: String(y) }; })} className="w-full sm:w-32 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm font-extrabold" /></div>
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-300"><Users size={20} /></div><div><h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Clients & Work</h3><p className="text-sm text-slate-500 dark:text-slate-400">Invoice and estimate activity by client for {taxPrepYear}.</p></div></div>
+                    <MonieziSelect value={String(taxPrepYear)} onChange={next => { setTaxPrepYear(Number(next)); setSelectedClientStatementKey(null); }} ariaLabel="Report year" options={Array.from({ length: 6 }).map((_, i) => { const y = new Date().getFullYear() - i; return { value: String(y), label: String(y) }; })} className="w-full sm:w-32 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm font-extrabold" />
+                  </div>
                 </div>
                 <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                  {reportClientRows.length === 0 ? <div className="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">No client invoice or estimate activity for {taxPrepYear}.</div> : <div className="divide-y divide-slate-200 dark:divide-slate-800">{reportClientRows.map((row, index) => <div key={row.key} className="px-4 py-4"><div className="flex items-start gap-3"><div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs font-extrabold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{index + 1}</div><div className="min-w-0 flex-1"><div className="font-extrabold text-slate-900 dark:text-white">{row.name}</div><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4"><div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Paid</div><div className="font-bold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(row.paid)}</div></div><div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Outstanding</div><div className="font-bold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(row.outstanding)}</div></div><div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Invoices</div><div className="font-bold text-slate-900 dark:text-white">{row.invoices}</div></div><div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Estimates won</div><div className="font-bold text-slate-900 dark:text-white">{row.acceptedEstimates}/{row.estimates}</div></div></div></div></div></div>)}</div>}
+                  {reportClientRows.length === 0 ? (
+                    <div className="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">No client invoice or estimate activity for {taxPrepYear}.</div>
+                  ) : (
+                    <div className="divide-y divide-slate-200 dark:divide-slate-800">
+                      {reportClientRows.map((row, index) => (
+                        <div key={row.key} className="px-4 py-4">
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs font-extrabold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{index + 1}</div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="font-extrabold text-slate-900 dark:text-white">{row.name}</div>
+                                <button type="button" onClick={() => setSelectedClientStatementKey(row.key)} className="self-start rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-bold text-purple-700 transition-colors hover:bg-purple-100 dark:border-purple-800/50 dark:bg-purple-500/10 dark:text-purple-300 dark:hover:bg-purple-500/15">Statement</button>
+                              </div>
+                              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                                <div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Paid</div><div className="font-bold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(row.paid)}</div></div>
+                                <div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Outstanding</div><div className="font-bold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(row.outstanding)}</div></div>
+                                <div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Invoices</div><div className="font-bold text-slate-900 dark:text-white">{row.invoices}</div></div>
+                                <div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Estimates won</div><div className="font-bold text-slate-900 dark:text-white">{row.acceptedEstimates}/{row.estimates}</div></div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
+
+                {selectedClientStatement && (
+                  <div className="rounded-xl border border-purple-300 bg-white p-4 shadow-sm dark:border-purple-700 dark:bg-slate-900">
+                    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div><div className="text-xs font-bold uppercase tracking-widest text-purple-600 dark:text-purple-300">Client Statement</div><div className="mt-1 text-lg font-extrabold text-slate-900 dark:text-white">{selectedClientStatement.row.name}</div></div>
+                      <div className="flex gap-2"><button type="button" onClick={handleDownloadClientStatementPDF} className="rounded-lg bg-purple-600 px-3 py-2.5 text-xs font-bold uppercase tracking-wider text-white hover:bg-purple-700">Download PDF</button><button type="button" onClick={() => setSelectedClientStatementKey(null)} className="rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-xs font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">Close</button></div>
+                    </div>
+                    <div id="client-statement-content" className="bg-white p-5 text-slate-900">
+                      <div className="border-b border-slate-300 pb-4"><div className="text-2xl font-black">{settings.businessName || 'Business'}</div><div className="mt-1 text-sm text-slate-600">Client Statement · {taxPrepYear}</div><div className="mt-4 text-lg font-bold">{selectedClientStatement.row.name}</div></div>
+                      <div className="my-5 grid grid-cols-3 gap-3"><div className="rounded-lg border border-slate-300 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Invoiced</div><div className="mt-1 text-lg font-extrabold">{formatCurrency.format(selectedClientStatement.row.invoiced)}</div></div><div className="rounded-lg border border-slate-300 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Paid</div><div className="mt-1 text-lg font-extrabold text-emerald-700">{formatCurrency.format(selectedClientStatement.row.paid)}</div></div><div className="rounded-lg border border-slate-300 p-3"><div className="text-[10px] font-bold uppercase text-slate-500">Outstanding</div><div className="mt-1 text-lg font-extrabold text-amber-700">{formatCurrency.format(selectedClientStatement.row.outstanding)}</div></div></div>
+                      <div className="mt-5"><h4 className="mb-2 text-sm font-extrabold uppercase tracking-wider">Invoices</h4>{selectedClientStatement.invoices.length === 0 ? <div className="text-sm text-slate-500">No invoices for this year.</div> : <div className="divide-y divide-slate-200 border-y border-slate-200">{selectedClientStatement.invoices.map(inv => <div key={inv.id} className="grid grid-cols-[1fr_auto] gap-4 py-3 text-sm"><div><div className="font-bold">{inv.number || 'Invoice'} · {inv.date}</div><div className="text-xs text-slate-500">{inv.description || 'Services'} · {inv.status}</div></div><div className="font-extrabold">{formatCurrency.format(inv.amount)}</div></div>)}</div>}</div>
+                      <div className="mt-5"><h4 className="mb-2 text-sm font-extrabold uppercase tracking-wider">Estimates</h4>{selectedClientStatement.estimates.length === 0 ? <div className="text-sm text-slate-500">No estimates for this year.</div> : <div className="divide-y divide-slate-200 border-y border-slate-200">{selectedClientStatement.estimates.map(est => <div key={est.id} className="grid grid-cols-[1fr_auto] gap-4 py-3 text-sm"><div><div className="font-bold">{est.number || 'Estimate'} · {est.date}</div><div className="text-xs text-slate-500">{est.projectTitle || est.description || 'Estimate'} · {est.status}</div></div><div className="font-extrabold">{formatCurrency.format(est.amount)}</div></div>)}</div>}</div>
+                      <div className="mt-6 border-t border-slate-300 pt-3 text-xs text-slate-500">Generated by MONIEZI on {new Date().toLocaleDateString()}.</div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Money In & Out */}
@@ -9769,8 +10199,23 @@ html, body, #root {
 
               {/* Estimate Pipeline */}
               <div style={{ display: reportsMenuSection === 'pipeline' ? undefined : 'none' }} id="report-pipeline" className="space-y-5">
-                <div className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300"><FileText size={20} /></div><div><h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Estimate Pipeline</h3><p className="text-sm text-slate-500 dark:text-slate-400">Sales activity and estimate outcomes for {taxPrepYear}.</p></div></div><MonieziSelect value={String(taxPrepYear)} onChange={next => setTaxPrepYear(Number(next))} ariaLabel="Report year" options={Array.from({ length: 6 }).map((_, i) => { const y = new Date().getFullYear() - i; return { value: String(y), label: String(y) }; })} className="w-full sm:w-32 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm font-extrabold" /></div><div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5"><div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700"><div className="text-[10px] font-bold uppercase text-slate-500">Draft</div><div className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">{reportPipeline.draftCount}</div></div><div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700"><div className="text-[10px] font-bold uppercase text-blue-600">Sent</div><div className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">{reportPipeline.sentCount}</div></div><div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700"><div className="text-[10px] font-bold uppercase text-emerald-600">Accepted</div><div className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">{reportPipeline.acceptedCount}</div></div><div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700"><div className="text-[10px] font-bold uppercase text-red-600">Declined</div><div className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">{reportPipeline.declinedCount}</div></div><div className="col-span-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700 sm:col-span-1"><div className="text-[10px] font-bold uppercase text-slate-500">Win rate</div><div className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">{reportPipeline.conversionRate.toFixed(0)}%</div></div></div><div className="mt-3 flex flex-col gap-1 text-sm text-slate-600 dark:text-slate-300"><span>Open pipeline: <strong className="text-slate-900 dark:text-white">{formatCurrency.format(reportPipeline.activeValue)}</strong></span><span>Accepted value: <strong className="text-slate-900 dark:text-white">{formatCurrency.format(reportPipeline.acceptedValue)}</strong></span></div></div>
-                <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">{reportPipeline.rows.length === 0 ? <div className="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">No estimates for {taxPrepYear}.</div> : <div className="divide-y divide-slate-200 dark:divide-slate-800">{reportPipeline.rows.map(est => <div key={est.id} className="px-4 py-4"><div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><div className="font-extrabold text-slate-900 dark:text-white">{est.client}</div><div className="text-xs text-slate-500 dark:text-slate-400">{est.projectTitle || est.description || est.number || 'Estimate'} · {est.date}</div></div><div className="flex items-center justify-between gap-3 sm:block sm:text-right"><div className="font-extrabold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(est.amount)}</div><div className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{est.status}</div></div></div></div>)}</div>}</div>
+                <div className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300"><FileText size={20} /></div><div><h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Estimate Pipeline</h3><p className="text-sm text-slate-500 dark:text-slate-400">Sales activity and estimate outcomes for {taxPrepYear}.</p></div></div><MonieziSelect value={String(taxPrepYear)} onChange={next => setTaxPrepYear(Number(next))} ariaLabel="Report year" options={Array.from({ length: 6 }).map((_, i) => { const y = new Date().getFullYear() - i; return { value: String(y), label: String(y) }; })} className="w-full sm:w-32 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm font-extrabold" /></div>
+                  <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5"><div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700"><div className="text-[10px] font-bold uppercase text-slate-500">Draft</div><div className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">{reportPipeline.draftCount}</div></div><div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700"><div className="text-[10px] font-bold uppercase text-blue-600">Sent</div><div className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">{reportPipeline.sentCount}</div></div><div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700"><div className="text-[10px] font-bold uppercase text-emerald-600">Accepted</div><div className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">{reportPipeline.acceptedCount}</div></div><div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700"><div className="text-[10px] font-bold uppercase text-red-600">Declined</div><div className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">{reportPipeline.declinedCount}</div></div><div className="col-span-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700 sm:col-span-1"><div className="text-[10px] font-bold uppercase text-slate-500">Win rate</div><div className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">{reportPipeline.conversionRate.toFixed(0)}%</div></div></div>
+                  <div className="mt-3 flex flex-col gap-1 text-sm text-slate-600 dark:text-slate-300"><span>Open pipeline: <strong className="text-slate-900 dark:text-white">{formatCurrency.format(reportPipeline.activeValue)}</strong></span><span>Accepted value: <strong className="text-slate-900 dark:text-white">{formatCurrency.format(reportPipeline.acceptedValue)}</strong></span></div>
+                </div>
+                <div className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  {reportPipeline.rows.length === 0 ? <div className="px-5 py-10 text-center text-sm text-slate-500 dark:text-slate-400">No estimates for {taxPrepYear}.</div> : (
+                    <div className="divide-y divide-slate-200 dark:divide-slate-800">
+                      {reportPipeline.rows.map(est => (
+                        <div key={est.id} className="px-4 py-4">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><div className="font-extrabold text-slate-900 dark:text-white">{est.client}</div><div className="text-xs text-slate-500 dark:text-slate-400">{est.projectTitle || est.description || est.number || 'Estimate'} · {est.date}</div>{est.status === 'sent' && est.followUpDate ? <div className={`mt-1 text-xs font-bold ${est.followUpDate <= new Date().toISOString().split('T')[0] ? 'text-orange-600 dark:text-orange-400' : 'text-blue-600 dark:text-blue-400'}`}>Follow-up {est.followUpDate}</div> : null}</div><div className="flex items-center justify-between gap-3 sm:block sm:text-right"><div className="font-extrabold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(est.amount)}</div><div className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{est.status}</div></div></div>
+                          {est.status === 'sent' && <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => copyTextToClipboard(buildEstimateFollowUpMessage(est), 'Estimate follow-up copied')} className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100 dark:border-blue-800/50 dark:bg-blue-500/10 dark:text-blue-300"><Copy size={14} className="mr-1.5 inline" />Copy Follow-up</button><button type="button" onClick={() => shareFollowUpText(`Estimate follow-up${est.number ? ` ${est.number}` : ''}`, buildEstimateFollowUpMessage(est))} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"><Share2 size={14} className="mr-1.5 inline" />Share</button></div>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Transaction Ledger */}
@@ -11602,6 +12047,8 @@ html, body, #root {
             <InsightsDashboard
               transactions={transactions}
               invoices={invoices}
+              estimates={estimates}
+              mileageTrips={mileageTrips}
               taxPayments={taxPayments}
               settings={settings}
               onClose={() => setShowInsights(false)}
@@ -11700,6 +12147,12 @@ html, body, #root {
                             )}
                             <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); billingDocType === 'estimate' ? deleteEstimate(activeItem as any) : setInvoiceToDelete(activeItem.id!); }} className="py-2.5 flex flex-col items-center justify-center gap-1 rounded-lg bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 shadow-sm transition-all"><Trash2 size={18} /><span className="text-[10px] font-bold uppercase tracking-wider">Delete</span></button>
                         </div>
+                        {billingDocType !== 'estimate' && activeItem.status === 'unpaid' && (
+                          <div className="mt-2 grid grid-cols-2 gap-2 border-t border-slate-300 pt-2 dark:border-slate-700">
+                            <button type="button" onClick={() => copyTextToClipboard(buildInvoiceReminderMessage(activeItem as Invoice), 'Invoice reminder copied')} className="py-2.5 flex items-center justify-center gap-2 rounded-lg bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-800/50 text-blue-700 dark:text-blue-300 text-xs font-bold"><Copy size={16} /> Copy Reminder</button>
+                            <button type="button" onClick={() => shareFollowUpText(`Invoice reminder${activeItem.number ? ` ${activeItem.number}` : ''}`, buildInvoiceReminderMessage(activeItem as Invoice))} className="py-2.5 flex items-center justify-center gap-2 rounded-lg bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold"><Share2 size={16} /> Share</button>
+                          </div>
+                        )}
                     </div>
               ) : undefined}
               formContent={activeTab === 'billing' ? (

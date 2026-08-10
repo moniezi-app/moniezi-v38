@@ -1,4 +1,4 @@
-import type { Transaction, Invoice, TaxPayment, UserSettings } from "../types";
+import type { Transaction, Invoice, Estimate, MileageTrip, TaxPayment, UserSettings } from "../types";
 
 export type InsightSeverity = "low" | "medium" | "high";
 
@@ -118,10 +118,12 @@ function formatMoney(n: number): string {
 export function generateInsights(input: {
   transactions: Transaction[];
   invoices: Invoice[];
+  estimates?: Estimate[];
+  mileageTrips?: MileageTrip[];
   taxPayments: TaxPayment[];
   settings: UserSettings;
 }): Insight[] {
-  const { transactions, invoices, taxPayments, settings } = input;
+  const { transactions, invoices, estimates = [], mileageTrips = [], taxPayments, settings } = input;
   const insights: Insight[] = [];
 
   // Run all analysis modules
@@ -129,12 +131,12 @@ export function generateInsights(input: {
   analyzeSpendingTrends(transactions, insights);
   analyzeIncome(transactions, insights);
   analyzeInvoices(invoices, insights);
+  analyzeEstimateFollowUps(estimates, insights);
+  analyzeBusinessReadiness(transactions, mileageTrips, insights);
   analyzeCategoryConcentration(transactions, insights);
   analyzeTaxPayments(transactions, taxPayments, insights);
   detectAnomalies(transactions, insights);
   analyzeRecurringPatterns(transactions, insights);
-  analyzeSpendingByDayOfWeek(transactions, insights);
-  analyzeSavingsRate(transactions, insights);
   analyzeTopVendors(transactions, insights);
   detectSubscriptions(transactions, insights);
   predictNextMonthSpending(transactions, insights);
@@ -160,47 +162,44 @@ function analyzeCashFlow(transactions: Transaction[], insights: Insight[]) {
   const income = sum(transactions.filter(t => t.type === "income").map(t => t.amount));
   const expenses = sum(transactions.filter(t => t.type === "expense").map(t => Math.abs(t.amount)));
   const net = income - expenses;
+  const margin = income > 0 ? (net / income) * 100 : 0;
 
   if (net < 0) {
     insights.push({
       id: "cashflow_negative",
       severity: "high",
       category: "cashflow",
-      title: "Negative cash flow",
-      message: `You're spending more than you earn (${formatMoney(net)} net).`,
-      detail: "Consider reducing your biggest expense categories or increasing income sources.",
+      title: "Business is running cash-negative",
+      message: `Recorded expenses exceed income by ${formatMoney(Math.abs(net))}.`,
+      detail: "Review the largest business expense categories, outstanding invoices, and recent income trends to identify what needs attention first.",
       priority: 10,
       actionable: true,
-      data: { income, expenses, net }
+      data: { income, expenses, net, margin }
     });
-  } else if (income > 0) {
-    const savingsRate = (net / income) * 100;
-    
-    if (savingsRate < 10) {
-      insights.push({
-        id: "cashflow_low_savings",
-        severity: "medium",
-        category: "cashflow",
-        title: "Low savings rate",
-        message: `You're only saving ${savingsRate.toFixed(1)}% of your income.`,
-        detail: "Financial experts recommend saving at least 20% of income for financial health.",
-        priority: 8,
-        actionable: true,
-        data: { income, expenses, net, savingsRate }
-      });
-    } else if (savingsRate >= 20) {
-      insights.push({
-        id: "cashflow_healthy",
-        severity: "low",
-        category: "cashflow",
-        title: "Excellent savings rate!",
-        message: `You're saving ${savingsRate.toFixed(1)}% of your income (${formatMoney(net)}).`,
-        detail: "Great job! You're building strong financial health.",
-        priority: 6,
-        actionable: false,
-        data: { income, expenses, net, savingsRate }
-      });
-    }
+  } else if (income > 0 && margin < 10) {
+    insights.push({
+      id: "cashflow_thin_margin",
+      severity: "medium",
+      category: "cashflow",
+      title: "Thin operating margin",
+      message: `Only ${margin.toFixed(1)}% of recorded income remains after expenses (${formatMoney(net)}).`,
+      detail: "Check whether material, vendor, subscription, or other operating costs are rising faster than revenue.",
+      priority: 8,
+      actionable: true,
+      data: { income, expenses, net, margin }
+    });
+  } else if (income > 0 && margin >= 20) {
+    insights.push({
+      id: "cashflow_healthy",
+      severity: "low",
+      category: "cashflow",
+      title: "Healthy operating margin",
+      message: `${margin.toFixed(1)}% of recorded income remains after expenses (${formatMoney(net)}).`,
+      detail: "Your recorded business activity currently shows a healthy cushion between income and operating costs.",
+      priority: 5,
+      actionable: false,
+      data: { income, expenses, net, margin }
+    });
   }
 }
 
@@ -272,7 +271,7 @@ function analyzeIncome(transactions: Transaction[], insights: Insight[]) {
         category: "income",
         title: "Income varies significantly",
         message: `Your monthly income fluctuates by ${coefficientOfVariation.toFixed(1)}%.`,
-        detail: "Variable income requires a larger emergency fund (6+ months of expenses) and careful budgeting.",
+        detail: "Variable business income makes collections and expense timing more important. Watch receivables and recurring costs closely.",
         priority: 7,
         actionable: true,
         data: { avgIncome, stdDev, coefficientOfVariation, amounts }
@@ -284,7 +283,7 @@ function analyzeIncome(transactions: Transaction[], insights: Insight[]) {
         category: "income",
         title: "Stable income stream",
         message: "Your income is very consistent month-to-month.",
-        detail: "Predictable income allows for better planning. Consider automating savings and bill payments.",
+        detail: "Predictable business income makes it easier to plan purchasing, tax reserves, and recurring operating costs.",
         priority: 5,
         actionable: false,
         data: { avgIncome, coefficientOfVariation }
@@ -334,6 +333,50 @@ function analyzeInvoices(invoices: Invoice[], insights: Insight[]) {
   }
 }
 
+// Business follow-up and record-readiness checks
+function analyzeEstimateFollowUps(estimates: Estimate[], insights: Insight[]) {
+  if (!estimates.length) return;
+  const today = new Date().toISOString().split('T')[0];
+  const due = estimates.filter(est => est.status === 'sent' && !!est.followUpDate && est.followUpDate <= today);
+  if (!due.length) return;
+  const value = sum(due.map(est => Number(est.amount || 0)));
+  insights.push({
+    id: 'estimates_followup_due',
+    severity: 'high',
+    category: 'invoices',
+    title: 'Estimate follow-ups are due',
+    message: `${due.length} sent estimate${due.length === 1 ? '' : 's'} totaling ${formatMoney(value)} need follow-up.`,
+    detail: 'Open Estimates and follow up while the work is still active. MONIEZI can prepare a reminder message from the estimate details.',
+    priority: 9,
+    actionable: true,
+    data: { count: due.length, value, estimates: due },
+  });
+}
+
+function analyzeBusinessReadiness(transactions: Transaction[], mileageTrips: MileageTrip[], insights: Insight[]) {
+  const year = new Date().getFullYear();
+  const yearTx = transactions.filter(t => new Date(t.date).getFullYear() === year);
+  const expenses = yearTx.filter(t => t.type === 'expense');
+  const missingReceipts = expenses.filter(t => !(t as any).receiptId);
+  const unreviewed = expenses.filter(t => !(t as any).reviewedAt);
+  const uncategorized = yearTx.filter(t => !String(t.category || '').trim());
+  const yearMileage = mileageTrips.filter(t => new Date(t.date).getFullYear() === year);
+  const incompleteMileage = yearMileage.filter(t => !String(t.purpose || '').trim() || Number(t.miles || 0) <= 0);
+
+  if (missingReceipts.length) {
+    insights.push({ id: 'records_missing_receipts', severity: 'medium', category: 'tax', title: 'Expenses are missing receipts', message: `${missingReceipts.length} expense${missingReceipts.length === 1 ? '' : 's'} this year do not have a linked receipt.`, detail: 'Attach available documentation now so the record is easier to review at tax time.', priority: 8, actionable: true, data: { count: missingReceipts.length } });
+  }
+  if (unreviewed.length) {
+    insights.push({ id: 'records_unreviewed_expenses', severity: 'medium', category: 'spending', title: 'Expenses still need review', message: `${unreviewed.length} expense${unreviewed.length === 1 ? '' : 's'} this year are still marked New.`, detail: 'Review the amount, category, and receipt, then mark each expense Reviewed.', priority: 7, actionable: true, data: { count: unreviewed.length } });
+  }
+  if (uncategorized.length) {
+    insights.push({ id: 'records_uncategorized', severity: 'medium', category: 'tax', title: 'Uncategorized records need attention', message: `${uncategorized.length} record${uncategorized.length === 1 ? '' : 's'} this year have no category.`, detail: 'Assign categories so reports and tax summaries place the records in the correct business buckets.', priority: 8, actionable: true, data: { count: uncategorized.length } });
+  }
+  if (incompleteMileage.length) {
+    insights.push({ id: 'records_incomplete_mileage', severity: 'medium', category: 'tax', title: 'Mileage records are incomplete', message: `${incompleteMileage.length} mileage trip${incompleteMileage.length === 1 ? '' : 's'} this year need a purpose or valid mileage amount.`, detail: 'Complete the trip details while the business purpose is still easy to remember.', priority: 7, actionable: true, data: { count: incompleteMileage.length } });
+  }
+}
+
 // 5. Category Concentration Analysis
 function analyzeCategoryConcentration(transactions: Transaction[], insights: Insight[]) {
   const expenseTx = transactions.filter(t => t.type === "expense");
@@ -361,7 +404,7 @@ function analyzeCategoryConcentration(transactions: Transaction[], insights: Ins
         category: "distribution",
         title: "One category dominates spending",
         message: `"${topCategory.category}" represents ${percentage.toFixed(1)}% of your expenses (${formatMoney(topCategory.total)}).`,
-        detail: "If this is expected (e.g., rent, inventory), it's fine. Otherwise, review for potential savings opportunities.",
+        detail: "If this concentration is expected, no action is needed. Otherwise, review the category for cost increases or unnecessary business spending.",
         priority: 7,
         actionable: true,
         data: { topCategory, percentage, categoryTotals }
@@ -713,7 +756,7 @@ function predictNextMonthSpending(transactions: Transaction[], insights: Insight
       category: "forecast",
       title: "On track to overspend this month",
       message: `At current pace, you'll spend ${formatMoney(projectedMonthTotal)} vs typical ${formatMoney(predicted)}.`,
-      detail: `You've spent ${formatMoney(currentSpending)} in ${dayOfMonth} days. Reduce discretionary spending to stay on track.`,
+      detail: `You've recorded ${formatMoney(currentSpending)} of expenses in ${dayOfMonth} days. Review the largest categories before the month closes.`,
       priority: 7,
       actionable: true,
       data: { predicted, projectedMonthTotal, currentSpending, dayOfMonth }
@@ -725,7 +768,7 @@ function predictNextMonthSpending(transactions: Transaction[], insights: Insight
       category: "forecast",
       title: "Trending below normal spending",
       message: `You're on pace to spend ${formatMoney(projectedMonthTotal)} vs typical ${formatMoney(predicted)}.`,
-      detail: "Great spending control! Consider allocating the difference to savings or investments.",
+      detail: "Business spending is currently trending below its recent pattern. Confirm that expected bills and purchases have not simply shifted to later in the month.",
       priority: 5,
       actionable: false,
       data: { predicted, projectedMonthTotal, currentSpending }
@@ -779,6 +822,8 @@ function analyzeSeasonalPatterns(transactions: Transaction[], insights: Insight[
 export function getInsightCount(input: {
   transactions: Transaction[];
   invoices: Invoice[];
+  estimates?: Estimate[];
+  mileageTrips?: MileageTrip[];
   taxPayments: TaxPayment[];
   settings: UserSettings;
 }): number {
