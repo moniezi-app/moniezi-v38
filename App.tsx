@@ -802,8 +802,8 @@ class PageErrorBoundary extends React.Component<
   }
 }
 
-const CUSTOMER_VERSION = "38.0.10"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
-setReportAppVersion("38.0.10");
+const CUSTOMER_VERSION = "38.0.11"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
+setReportAppVersion("38.0.11");
 const LICENSE_STORAGE_KEY = `moniezi_license_v1_${STORAGE_NAMESPACE}`;
 const DEVICE_ID_STORAGE_KEY = `moniezi_device_id_v1_${STORAGE_NAMESPACE}`;
 const LICENSE_TOKEN_SALT = "moniezi_v35_offline_binding";
@@ -8430,7 +8430,7 @@ html, body, #root {
                         return (
                           <div
                             key={est.id}
-                            className={`${isVoid ? 'opacity-60' : ''} ${isFollowUpOverdue ? 'border-l-4 border-l-orange-500' : est.status === 'accepted' ? 'border-l-4 border-l-emerald-500' : isExpired && est.status !== 'accepted' && !isVoid ? 'border-l-4 border-l-amber-500' : ''}`}
+                            className={`${isVoid ? 'opacity-60' : ''} ${isFollowUpOverdue ? 'border-l-4 border-l-orange-500' : est.status === 'accepted' ? 'border-l-4 border-l-emerald-500' : isExpired && !isVoid ? 'border-l-4 border-l-amber-500' : ''}`}
                           >
                             <button
                               type="button"
