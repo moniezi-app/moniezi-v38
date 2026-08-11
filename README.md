@@ -1,17 +1,14 @@
-# MONIEZI v38.0.17
+# MONIEZI v38.0.18
 
-Source package for the v38.0.17 Dark Blue Visual System release.
+Source package for the v38.0.18 Optimized U.S. Receipt Gallery release.
 
-## New in v38.0.17
+## New in v38.0.18
 
-- Replaces the generic dark-slate card language with a branded blue/indigo surface system across the app.
-- Preserves the deeper blue KPI treatment on Overview while extending the same color family to standard cards and nested panels.
-- Keeps the app shell, header chrome, bottom navigation, and form fields darker so the blue panels stay readable and distinct.
-- Updates dark-mode borders and dividers to lighter blue-tinted separators for clearer card delineation.
-- Preserves the deterministic rich demo history, Job Profitability, Goals, Reports, and all earlier v38 features.
+- Keeps the v38.0.17 dark-blue visual system and Home Receipts workflow.
+- Replaces the prior demo receipt artwork with 10 realistic photo-style U.S. receipts matching the approved thermal-paper-on-dark-surface look.
+- Uses WebP at 600×900 for all 10 featured receipts; the full set is about 0.36 MB total.
+- Demo Home Receipts always presents the 10 featured receipt photos in a stable order for video/screenshot capture.
+- Every featured receipt is linked to an expense record; generic placeholder cards remain excluded from Recent Receipts.
+- Real-business behavior remains date-based: Home shows the 10 most recent real receipt images.
 
-MONIEZI v38.0.17 preserves the v38.0.16 data model and all earlier MONIEZI records. Existing installed v38 PWAs keep the same manifest application ID so updates continue normally.
-
-## Receipts workflow correction
-
-The Home Receipts section now separates capture actions, actual receipt images, and missing-documentation tasks. Blank placeholder-style expense cards no longer appear as receipts, and current-year missing receipts route directly to the filtered Expenses view.
+MONIEZI v38.0.18 preserves the v38.0.17 data model and all earlier MONIEZI records. Existing installed v38 PWAs keep the same manifest application ID so updates continue normally.

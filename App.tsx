@@ -797,8 +797,8 @@ class PageErrorBoundary extends React.Component<
   }
 }
 
-const CUSTOMER_VERSION = "38.0.17"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
-setReportAppVersion("38.0.17");
+const CUSTOMER_VERSION = "38.0.18"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
+setReportAppVersion("38.0.18");
 const LICENSE_STORAGE_KEY = `moniezi_license_v1_${STORAGE_NAMESPACE}`;
 const DEVICE_ID_STORAGE_KEY = `moniezi_device_id_v1_${STORAGE_NAMESPACE}`;
 const LICENSE_TOKEN_SALT = "moniezi_v35_offline_binding";
@@ -3396,11 +3396,9 @@ export default function App() {
     setSettings({ ...demo.settings } as UserSettings);
     setTaxPayments([...(demo.taxPayments || [])] as TaxPayment[]);
 
-    // The commercial demo now contains a deep receipt history while shipping
-    // only five bundled receipt images. Fetch those five assets once, then copy
-    // them into each deterministic demo receipt's own IndexedDB key. This keeps
-    // receipt thumbnails/downloads/Accountant Package realistic without adding
-    // dozens of duplicate image files to the app bundle.
+    // The commercial demo contains a deep receipt history plus ten featured
+    // lightweight U.S. receipt photos. Fetch the featured assets once, then reuse
+    // them for the deeper deterministic receipt history without bloating the app.
     try {
       const sourceBlobs = new Map<string, { blob: Blob; mimeType: string }>();
       for (const asset of DEMO_RECEIPT_ASSETS) {
@@ -4728,14 +4726,17 @@ export default function App() {
   const homeMissingReceiptAmount = useMemo(() => homeMissingReceiptExpenses
     .reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0), [homeMissingReceiptExpenses]);
 
-  const homeRecentReceipts = useMemo(() => receipts
-    // Home shows actual receipt images only. An image may be linked to an
-    // expense or still waiting to be linked, but a bare expense never appears
-    // here as a receipt-style placeholder.
-    .filter(receipt => Boolean(receiptPreviewUrls[receipt.id] || DEMO_ASSET_BY_ID.get(receipt.id)?.assetUrl))
-    .slice()
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 10), [receipts, receiptPreviewUrls]);
+  const homeRecentReceipts = useMemo(() => {
+    const withImages = receipts.filter(receipt => Boolean(receiptPreviewUrls[receipt.id] || DEMO_ASSET_BY_ID.get(receipt.id)?.assetUrl));
+    if (isDemoData) {
+      // The commercial demo deliberately presents all ten distinct U.S. receipt
+      // photos in a stable order for screenshots/video instead of letting deep
+      // historical receipt dates push them out of the Home carousel.
+      const byId = new Map(withImages.map(receipt => [receipt.id, receipt]));
+      return Array.from({ length: 10 }, (_, index) => byId.get(`rcpt_demo_${index + 1}`)).filter(Boolean) as ReceiptType[];
+    }
+    return withImages.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10);
+  }, [receipts, receiptPreviewUrls, isDemoData]);
 
   const handleBusinessAction = (id: 'overdue'|'estimates'|'receipts'|'review'|'mileage'|'categories', year = new Date().getFullYear()) => {
     if (id === 'overdue') {

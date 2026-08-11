@@ -547,11 +547,22 @@ export const getFreshDemoData = () => {
     const amount = Math.round((expenseBase[category] + ((monthIndex * 53 + slot * 31) % 220)) * 100) / 100;
     const isCurrentTaxYear = date.startsWith(`${currentYear}-`);
     const shouldAttachReceipt = isCurrentTaxYear || i % 2 === 0;
-    const receiptId = shouldAttachReceipt ? `rcpt_demo_hist_${i + 1}` : undefined;
+    const featuredReceiptByIndex: Record<number, { id: string; name: string; amount: number }> = {
+      4: { id: 'rcpt_demo_6', name: 'Office restock — Staples', amount: 83.55 },
+      13: { id: 'rcpt_demo_7', name: 'Paint prep materials — Lowe\'s', amount: 82.89 },
+      30: { id: 'rcpt_demo_8', name: 'Tool replacement — Harbor Freight', amount: 89.14 },
+      47: { id: 'rcpt_demo_9', name: 'Paint and caulk — Sherwin-Williams', amount: 178.16 },
+      64: { id: 'rcpt_demo_10', name: 'Hardware supplies — Ace Hardware', amount: 292.13 },
+    };
+    const featured = featuredReceiptByIndex[i];
+    const receiptId = shouldAttachReceipt ? (featured?.id || `rcpt_demo_hist_${i + 1}`) : undefined;
     return {
       id: `tx_demo_exp_hist_${i + 1}`,
-      date, name: names[(monthIndex + slot) % names.length],
-      category, amount, type: 'expense' as const,
+      date,
+      name: featured?.name || names[(monthIndex + slot) % names.length],
+      category,
+      amount: featured?.amount ?? amount,
+      type: 'expense' as const,
       notes: shouldAttachReceipt ? 'Demo history — receipt documented' : 'Prior-year demo history',
       ...(receiptId ? { receiptId } : {}),
       reviewedAt: reviewedAt(date),
@@ -596,11 +607,11 @@ export const getFreshDemoData = () => {
   const allMileageTrips = [...mileageTrips, ...richMileageTrips].sort((a, b) => b.date.localeCompare(a.date));
 
   const receipts = [
-    { id: 'rcpt_demo_1', date: expenseDates.office, imageKey: 'rcpt_demo_1', mimeType: 'image/png', note: 'Office supplies — Office Depot' },
-    { id: 'rcpt_demo_2', date: expenseDates.fuel, imageKey: 'rcpt_demo_2', mimeType: 'image/png', note: 'Fuel — Shell' },
-    { id: 'rcpt_demo_3', date: expenseDates.meal, imageKey: 'rcpt_demo_3', mimeType: 'image/png', note: 'Business meal — Corner Restaurant' },
-    { id: 'rcpt_demo_4', date: expenseDates.hardware, imageKey: 'rcpt_demo_4', mimeType: 'image/png', note: 'Hardware materials — Ace Hardware' },
-    { id: 'rcpt_demo_5', date: expenseDates.refreshments, imageKey: 'rcpt_demo_5', mimeType: 'image/png', note: 'Groceries / client refreshments — Market Fresh' },
+    { id: 'rcpt_demo_1', date: expenseDates.office, imageKey: 'rcpt_demo_1', mimeType: 'image/webp', note: 'Office supplies — Office Depot' },
+    { id: 'rcpt_demo_2', date: expenseDates.fuel, imageKey: 'rcpt_demo_2', mimeType: 'image/webp', note: 'Fuel — Shell' },
+    { id: 'rcpt_demo_3', date: expenseDates.meal, imageKey: 'rcpt_demo_3', mimeType: 'image/webp', note: 'Business meal — Market Street Cafe' },
+    { id: 'rcpt_demo_4', date: expenseDates.hardware, imageKey: 'rcpt_demo_4', mimeType: 'image/webp', note: 'Hardware materials — The Home Depot' },
+    { id: 'rcpt_demo_5', date: expenseDates.refreshments, imageKey: 'rcpt_demo_5', mimeType: 'image/webp', note: 'Client refreshments — H-E-B' },
   ];
 
   const receiptAssetSourceForCategory = (category: string) => {
@@ -613,16 +624,20 @@ export const getFreshDemoData = () => {
 
   const richReceipts = richExpenseTransactions
     .filter(transaction => Boolean(transaction.receiptId))
-    .map((transaction) => ({
-      id: transaction.receiptId!,
-      date: transaction.date,
-      imageKey: transaction.receiptId!,
-      mimeType: 'image/png',
-      note: transaction.name,
-      // App seeding uses this demo-only field to copy one of the five bundled
-      // receipt images into this receipt's own IndexedDB key.
-      assetSourceId: receiptAssetSourceForCategory(transaction.category),
-    }));
+    .map((transaction) => {
+      const featuredIds = new Set(['rcpt_demo_6', 'rcpt_demo_7', 'rcpt_demo_8', 'rcpt_demo_9', 'rcpt_demo_10']);
+      const featured = featuredIds.has(transaction.receiptId!);
+      return {
+        id: transaction.receiptId!,
+        date: transaction.date,
+        imageKey: transaction.receiptId!,
+        mimeType: featured ? 'image/webp' : 'image/png',
+        note: transaction.name,
+        // Featured gallery receipts copy their own optimized image; the deeper
+        // receipt history continues reusing the compact bundled source set.
+        assetSourceId: featured ? transaction.receiptId! : receiptAssetSourceForCategory(transaction.category),
+      };
+    });
 
   const allReceipts = [...receipts, ...richReceipts].sort((a, b) => b.date.localeCompare(a.date));
 

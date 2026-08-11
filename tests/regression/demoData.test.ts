@@ -49,6 +49,11 @@ export function runDemoDataRegressionTests() {
   const jobIds = new Set(jobs.map(job => job.id));
   const clientIds = new Set(clients.map(client => client.id));
   const receiptIds = new Set(receipts.map(receipt => receipt.id));
+  for (let index = 1; index <= 10; index += 1) {
+    const featuredReceiptId = `rcpt_demo_${index}`;
+    assert.ok(receiptIds.has(featuredReceiptId), `demo should include featured receipt ${featuredReceiptId}`);
+    assert.ok(transactions.some(tx => tx.receiptId === featuredReceiptId), `featured receipt ${featuredReceiptId} should be linked to an expense`);
+  }
 
   for (const job of jobs) {
     if (job.clientId) assert.ok(clientIds.has(job.clientId), `job ${job.id} should link to a real demo client`);
