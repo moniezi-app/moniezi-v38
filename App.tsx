@@ -106,7 +106,7 @@ import { buildHash, normalizePage, pageToHashPath, parseHashLocation } from './s
 import { createEmptyMileageDraft, normalizeMileageDraftMiles, toMileageTripPayload } from './src/features/mileage/draft';
 import { CompanyEquityModule } from './src/features/equity/CompanyEquityModule';
 import { createDefaultCompanyEquityState, normalizeCompanyEquityState } from './src/features/equity/equityCore';
-import { buildJobProfitabilityRows, normalizeJobs } from './src/features/jobs/jobCore';
+import { buildJobActivityRows, buildJobProfitabilityRows, normalizeJobs } from './src/features/jobs/jobCore';
 import { buildMonthlyGoalProgress } from './src/features/goals/monthlyGoals';
 // --- Utility: UUID Generator ---
 const generateId = (prefix: string) => {
@@ -797,8 +797,8 @@ class PageErrorBoundary extends React.Component<
   }
 }
 
-const CUSTOMER_VERSION = "38.0.18"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
-setReportAppVersion("38.0.18");
+const CUSTOMER_VERSION = "38.0.19"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
+setReportAppVersion("38.0.19");
 const LICENSE_STORAGE_KEY = `moniezi_license_v1_${STORAGE_NAMESPACE}`;
 const DEVICE_ID_STORAGE_KEY = `moniezi_device_id_v1_${STORAGE_NAMESPACE}`;
 const LICENSE_TOKEN_SALT = "moniezi_v35_offline_binding";
@@ -1266,6 +1266,7 @@ export default function App() {
 
   // Jobs / Projects
   const [jobFilter, setJobFilter] = useState<'all' | JobStatus>('active');
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [showJobDrawer, setShowJobDrawer] = useState(false);
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
   const [jobAssignmentTarget, setJobAssignmentTarget] = useState<'record' | 'mileage' | null>(null);
@@ -3226,7 +3227,7 @@ export default function App() {
     handleOpenFAB(fabType, fabType === 'billing' ? 'invoice' : undefined);
   };
 
-  const handleQuickAddSelection = (action: 'income' | 'expense' | 'invoice' | 'estimate' | 'mileage' | 'client') => {
+  const handleQuickAddSelection = (action: 'income' | 'expense' | 'invoice' | 'estimate' | 'mileage' | 'client' | 'job') => {
     setShowQuickAddMenu(false);
 
     if (action === 'income') {
@@ -3255,6 +3256,11 @@ export default function App() {
 
     if (action === 'mileage') {
       openMileageAddDrawer();
+      return;
+    }
+
+    if (action === 'job') {
+      openNewJob();
       return;
     }
 
@@ -3351,7 +3357,7 @@ export default function App() {
       const job = jobs.find((item) => item.id === result.id);
       if (job) {
         setCurrentPage(Page.Jobs);
-        window.setTimeout(() => openEditJob(job), 0);
+        window.setTimeout(() => openJobDashboard(job), 0);
       }
       return;
     }
@@ -4409,6 +4415,15 @@ export default function App() {
 
   const jobStatsById = useMemo(() => new Map(jobProfitabilityAll.map(row => [row.job.id, row] as const)), [jobProfitabilityAll]);
 
+  const selectedJobDashboard = selectedJobId ? (jobStatsById.get(selectedJobId) || null) : null;
+  const selectedJobActivity = useMemo(() => selectedJobId ? buildJobActivityRows({
+    jobId: selectedJobId,
+    transactions,
+    invoices,
+    estimates,
+    mileageTrips,
+  }) : [], [selectedJobId, transactions, invoices, estimates, mileageTrips]);
+
   const filteredJobRows = useMemo(() => jobProfitabilityAll
     .filter(row => jobFilter === 'all' || row.job.status === jobFilter)
     .sort((a, b) => {
@@ -4455,7 +4470,12 @@ export default function App() {
     setShowJobDrawer(true);
   };
 
+  const openJobDashboard = (job: Job) => {
+    setSelectedJobId(job.id);
+  };
+
   const openEditJob = (job: Job) => {
+    setSelectedJobId(null);
     setEditingJobId(job.id);
     setJobAssignmentTarget(null);
     setJobDraft({ ...job });
@@ -4527,6 +4547,7 @@ export default function App() {
     setShowJobDrawer(false);
     setEditingJobId(null);
     setJobAssignmentTarget(null);
+    if (selectedJobId === jobId) setSelectedJobId(null);
     showToast('Job deleted; linked records were kept', 'info');
   };
 
@@ -4565,11 +4586,114 @@ export default function App() {
 
   const addExpenseToJob = (job: Job) => {
     const today = new Date().toISOString().split('T')[0];
+    setSelectedJobId(null);
     setDrawerMode('add');
     setActiveTab('expense');
     setCategorySearch('');
     setActiveItem({ type: 'expense', date: today, name: '', amount: 0, category: CATS_OUT[0], jobId: job.id });
     setIsDrawerOpen(true);
+  };
+
+  const openJobBillingAction = (job: Job, documentType: 'invoice' | 'estimate') => {
+    const today = new Date().toISOString().split('T')[0];
+    const client = job.clientId ? clients.find(item => item.id === job.clientId) : undefined;
+    const clientName = client?.name || job.clientName || '';
+    const clientCompany = client?.company || undefined;
+    const clientAddress = client?.address || undefined;
+    const clientEmail = client?.email || undefined;
+
+    setSelectedJobId(null);
+    setDrawerMode('add');
+    setActiveTab('billing');
+    setBillingDocType(documentType);
+    setCategorySearch('');
+
+    if (documentType === 'estimate') {
+      setActiveItem({
+        clientId: job.clientId,
+        jobId: job.id,
+        client: clientName,
+        clientCompany,
+        clientAddress,
+        clientEmail,
+        amount: 0,
+        category: CATS_BILLING[0],
+        description: job.title,
+        projectTitle: job.title,
+        scopeOfWork: job.description || '',
+        date: today,
+        validUntil: today,
+        status: 'draft',
+        items: [{ id: generateId('est_item'), description: job.title, quantity: 1, rate: 0 }],
+        subtotal: 0,
+        discount: 0,
+        taxRate: 0,
+        shipping: 0,
+        notes: settings.defaultInvoiceNotes || '',
+        terms: settings.defaultInvoiceTerms || '',
+      });
+    } else {
+      setActiveItem({
+        clientId: job.clientId,
+        jobId: job.id,
+        client: clientName,
+        clientCompany,
+        clientAddress,
+        clientEmail,
+        amount: 0,
+        category: CATS_BILLING[0],
+        description: job.title,
+        date: today,
+        due: today,
+        status: 'unpaid',
+        items: [{ id: generateId('item'), description: job.title, quantity: 1, rate: 0 }],
+        subtotal: 0,
+        discount: 0,
+        taxRate: 0,
+        shipping: 0,
+        notes: settings.defaultInvoiceNotes || '',
+        terms: settings.defaultInvoiceTerms || '',
+      });
+    }
+    setIsDrawerOpen(true);
+  };
+
+  const openJobMileageAction = (job: Job) => {
+    const today = new Date().toISOString().split('T')[0];
+    const client = job.clientId ? clients.find(item => item.id === job.clientId) : undefined;
+    setSelectedJobId(null);
+    setEditingMileageTripId(null);
+    setNewTrip({
+      date: today,
+      miles: '',
+      purpose: job.title,
+      client: client?.name || client?.company || job.clientName || '',
+      jobId: job.id,
+      notes: '',
+    });
+    setDrawerMode('mileage');
+    setIsDrawerOpen(true);
+  };
+
+  const openJobActivityItem = (kind: 'invoice' | 'estimate' | 'income' | 'expense' | 'mileage', id: string) => {
+    setSelectedJobId(null);
+    if (kind === 'invoice') {
+      const invoice = invoices.find(item => item.id === id);
+      if (invoice) handleEditItem({ dataType: 'invoice', original: invoice });
+      return;
+    }
+    if (kind === 'estimate') {
+      const estimate = estimates.find(item => item.id === id);
+      if (estimate) handleEditItem({ dataType: 'estimate', original: estimate });
+      return;
+    }
+    if (kind === 'mileage') {
+      const trip = mileageTrips.find(item => item.id === id);
+      if (trip) openMileageEditDrawer(trip);
+      return;
+    }
+    const transaction = transactions.find(item => item.id === id);
+    if (transaction) handleEditItem({ dataType: 'transaction', original: transaction });
   };
 
   const buildReadinessSnapshot = useCallback((year: number) => {
@@ -10111,7 +10235,7 @@ html, body, #root {
                         .slice()
                         .sort((a, b) => b.estimatedProfit - a.estimatedProfit)
                         .map(row => (
-                          <button key={row.job.id} type="button" onClick={() => { setCurrentPage(Page.Jobs); window.setTimeout(() => openEditJob(row.job), 0); }} className="w-full rounded-xl border border-slate-300 bg-white p-4 text-left shadow-sm transition hover:border-cyan-400 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-cyan-600">
+                          <button key={row.job.id} type="button" onClick={() => { setCurrentPage(Page.Jobs); window.setTimeout(() => openJobDashboard(row.job), 0); }} className="w-full rounded-xl border border-slate-300 bg-white p-4 text-left shadow-sm transition hover:border-cyan-400 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-cyan-600">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                               <div className="min-w-0"><div className="font-extrabold text-slate-950 dark:text-white">{row.job.title}</div><div className="mt-0.5 text-xs font-semibold text-slate-500 dark:text-slate-400">{row.clientName}</div></div>
                               <div className={`text-lg font-extrabold ${row.estimatedProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(row.estimatedProfit)}</div>
@@ -11069,7 +11193,7 @@ html, body, #root {
                 <button
                   key={row.job.id}
                   type="button"
-                  onClick={() => openEditJob(row.job)}
+                  onClick={() => openJobDashboard(row.job)}
                   className="w-full rounded-xl border border-slate-300 bg-white p-5 text-left shadow-sm transition-all hover:border-cyan-400 hover:shadow-md active:scale-[0.995] dark:border-slate-700 dark:bg-slate-900 dark:hover:border-cyan-600"
                 >
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -12572,9 +12696,86 @@ html, body, #root {
       </AppDrawer>
 
       <AppDrawer
+        isOpen={Boolean(selectedJobDashboard)}
+        onClose={() => setSelectedJobId(null)}
+        title={selectedJobDashboard?.job.title || 'Job / Project'}
+      >
+        {selectedJobDashboard && (() => {
+          const row = selectedJobDashboard;
+          const cashPosition = row.collected - row.expenses;
+          const job = row.job;
+          return (
+            <div className="space-y-5">
+              <div className="rounded-xl border border-cyan-300 bg-cyan-50/80 p-5 shadow-sm dark:border-cyan-700/50 dark:bg-cyan-500/10">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${job.status === 'active' ? 'bg-cyan-100 text-cyan-800 dark:bg-cyan-500/15 dark:text-cyan-200' : job.status === 'completed' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200' : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}>{job.status}</span>
+                      {job.startDate && <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Started {job.startDate}</span>}
+                    </div>
+                    <div className="mt-3 text-lg font-extrabold text-slate-950 dark:text-white">{row.clientName}</div>
+                    {job.description && <p className="mt-2 text-sm font-medium leading-6 text-slate-600 dark:text-slate-300">{job.description}</p>}
+                  </div>
+                  <button type="button" onClick={() => openEditJob(job)} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-cyan-300 bg-white px-3 py-2 text-xs font-extrabold text-cyan-800 shadow-sm hover:bg-cyan-50 dark:border-cyan-700/60 dark:bg-slate-950 dark:text-cyan-200 dark:hover:bg-cyan-500/10"><Edit3 size={14} /> Edit</button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Invoiced</div><div className="mt-1 text-lg font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(row.invoiced)}</div>{row.directIncome > 0 && <div className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">+ {formatCurrency.format(row.directIncome)} direct income</div>}</div>
+                <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Collected</div><div className="mt-1 text-lg font-extrabold text-emerald-700 dark:text-emerald-300">{formatCurrency.format(row.collected)}</div></div>
+                <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Outstanding</div><div className="mt-1 text-lg font-extrabold text-amber-700 dark:text-amber-300">{formatCurrency.format(row.outstanding)}</div></div>
+                <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Expenses</div><div className="mt-1 text-lg font-extrabold text-red-700 dark:text-red-300">{formatCurrency.format(row.expenses)}</div></div>
+                <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Est. Job Profit</div><div className={`mt-1 text-lg font-extrabold ${row.estimatedProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(row.estimatedProfit)}</div><div className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">{row.revenue > 0 ? `${row.marginPct.toFixed(1)}% margin` : 'No revenue yet'}</div></div>
+                <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Cash Position</div><div className={`mt-1 text-lg font-extrabold ${cashPosition >= 0 ? 'text-cyan-700 dark:text-cyan-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(cashPosition)}</div><div className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">Collected minus expenses</div></div>
+              </div>
+
+              <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <div className="mb-3 flex items-center justify-between gap-3"><div><div className="text-sm font-extrabold text-slate-950 dark:text-white">Add to This Job</div><div className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">New records are linked automatically.</div></div></div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <button type="button" onClick={() => openJobBillingAction(job, 'invoice')} className="rounded-lg border border-blue-300 bg-blue-50 px-3 py-3 text-left text-xs font-extrabold text-blue-800 hover:bg-blue-100 dark:border-blue-700/60 dark:bg-blue-500/10 dark:text-blue-200"><FileText size={17} className="mb-2" />Invoice</button>
+                  <button type="button" onClick={() => openJobBillingAction(job, 'estimate')} className="rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-3 text-left text-xs font-extrabold text-indigo-800 hover:bg-indigo-100 dark:border-indigo-700/60 dark:bg-indigo-500/10 dark:text-indigo-200"><ClipboardList size={17} className="mb-2" />Estimate</button>
+                  <button type="button" onClick={() => addExpenseToJob(job)} className="rounded-lg border border-red-300 bg-red-50 px-3 py-3 text-left text-xs font-extrabold text-red-800 hover:bg-red-100 dark:border-red-700/60 dark:bg-red-500/10 dark:text-red-200"><Receipt size={17} className="mb-2" />Expense</button>
+                  <button type="button" onClick={() => openJobMileageAction(job)} className="rounded-lg border border-teal-300 bg-teal-50 px-3 py-3 text-left text-xs font-extrabold text-teal-800 hover:bg-teal-100 dark:border-teal-700/60 dark:bg-teal-500/10 dark:text-teal-200"><Car size={17} className="mb-2" />Mileage</button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Quoted</div><div className="mt-1 text-base font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(row.estimateValue)}</div><div className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">{row.acceptedEstimateValue > 0 ? `${formatCurrency.format(row.acceptedEstimateValue)} accepted` : 'All linked estimates'}</div></div>
+                <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Mileage</div><div className="mt-1 text-base font-extrabold text-slate-950 dark:text-white">{row.miles.toFixed(1)} mi</div><div className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">{formatCurrency.format(row.mileageDeduction)} deduction reference</div></div>
+              </div>
+
+              <div className="rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800"><div className="text-sm font-extrabold text-slate-950 dark:text-white">Job Activity</div><div className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">Invoices, estimates, money, expenses, and mileage in one timeline.</div></div>
+                {selectedJobActivity.length === 0 ? (
+                  <div className="px-4 py-8 text-center text-sm font-medium text-slate-500 dark:text-slate-400">No linked activity yet. Use the actions above to add the first record.</div>
+                ) : (
+                  <div className="divide-y divide-slate-200 dark:divide-slate-800">
+                    {selectedJobActivity.map(item => {
+                      const tone = item.kind === 'invoice' ? 'text-blue-700 dark:text-blue-300' : item.kind === 'estimate' ? 'text-indigo-700 dark:text-indigo-300' : item.kind === 'income' ? 'text-emerald-700 dark:text-emerald-300' : item.kind === 'expense' ? 'text-red-700 dark:text-red-300' : 'text-teal-700 dark:text-teal-300';
+                      return (
+                        <button key={`${item.kind}-${item.id}`} type="button" onClick={() => openJobActivityItem(item.kind, item.id)} className="flex w-full items-start justify-between gap-3 px-4 py-3.5 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                          <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><div className={`text-sm font-extrabold ${tone}`}>{item.title}</div>{item.status && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-slate-600 dark:bg-slate-800 dark:text-slate-300">{item.status}</span>}</div><div className="mt-1 truncate text-xs font-medium text-slate-500 dark:text-slate-400">{item.date} · {item.detail}</div></div>
+                          <div className="flex shrink-0 items-center gap-2">{typeof item.amount === 'number' && <div className="text-sm font-extrabold tabular-nums text-slate-900 dark:text-white">{item.kind === 'expense' ? '-' : ''}{formatCurrency.format(item.amount)}</div>}<ChevronRight size={16} className="text-slate-400" /></div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                <button type="button" onClick={() => { setSelectedJobId(null); repeatJob(job); }} className="rounded-lg border border-cyan-300 bg-cyan-50 px-4 py-3 text-xs font-extrabold uppercase tracking-wider text-cyan-800 hover:bg-cyan-100 dark:border-cyan-700/60 dark:bg-cyan-500/10 dark:text-cyan-200"><Repeat size={14} className="mr-1 inline" />Repeat</button>
+                <button type="button" onClick={() => openEditJob(job)} className="flex-1 rounded-lg bg-cyan-700 px-4 py-3 text-xs font-extrabold uppercase tracking-wider text-white shadow-sm hover:bg-cyan-600"><Edit3 size={14} className="mr-1 inline" />Edit Job Details</button>
+              </div>
+            </div>
+          );
+        })()}
+      </AppDrawer>
+
+      <AppDrawer
         isOpen={showJobDrawer}
         onClose={() => { setShowJobDrawer(false); setEditingJobId(null); setJobAssignmentTarget(null); setJobDraft({ status: 'active' }); }}
-        title={editingJobId ? 'Job / Project' : 'New Job / Project'}
+        title={editingJobId ? 'Edit Job Details' : 'New Job / Project'}
       >
         <div className="space-y-5">
           {editingJobId && jobStatsById.get(editingJobId) && (() => {
@@ -12675,7 +12876,7 @@ html, body, #root {
       {/* Client Modal */}
       {showQuickAddMenu && (
         <div className="fixed inset-0 z-[105] flex items-end sm:items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-200 modal-overlay" onClick={() => setShowQuickAddMenu(false)}>
-          <div className="quick-add-typography-lock w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-200" onClick={(e) => e.stopPropagation()}>
+          <div className="quick-add-typography-lock w-full max-w-md max-h-[90vh] overflow-y-auto custom-scrollbar rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl animate-in slide-in-from-bottom-4 duration-200" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800">
               <div>
                 <div className={theme === 'dark' ? 'qa-heading text-white' : 'qa-heading text-slate-950'}>Quick Add</div>
@@ -12718,6 +12919,15 @@ html, body, #root {
                 <div className="qa-tile-copy">
                   <div className={theme === 'dark' ? 'qa-tile-title text-purple-100' : 'qa-tile-title text-purple-950'}>Add Client</div>
                   <div className={theme === 'dark' ? 'qa-tile-desc text-purple-100' : 'qa-tile-desc text-purple-900'}>Create a new client profile.</div>
+                </div>
+              </button>
+              <button onClick={() => handleQuickAddSelection('job')} className="col-span-2 rounded-xl border border-cyan-300 bg-cyan-50 px-4 py-4 text-left transition-all active:scale-[0.98] hover:bg-cyan-100 shadow-sm dark:border-cyan-700/50 dark:bg-cyan-500/10 dark:hover:bg-cyan-500/15">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-cyan-100 text-cyan-800 dark:bg-cyan-500/15 dark:text-cyan-200"><Briefcase size={19} /></div>
+                  <div className="qa-tile-copy min-w-0">
+                    <div className={theme === 'dark' ? 'qa-tile-title text-cyan-100' : 'qa-tile-title text-cyan-950'}>New Job / Project</div>
+                    <div className={theme === 'dark' ? 'qa-tile-desc text-cyan-100' : 'qa-tile-desc text-cyan-900'}>Track the work and see what it earns.</div>
+                  </div>
                 </div>
               </button>
             </div>
@@ -12774,7 +12984,7 @@ html, body, #root {
                   {clientJobs.length > 0 && (
                     <div className="mt-3 space-y-2">
                       {clientJobs.slice(0, 4).map(row => (
-                        <button key={row.job.id} type="button" onClick={() => { setIsClientModalOpen(false); setCurrentPage(Page.Jobs); window.setTimeout(() => openEditJob(row.job), 0); }} className="flex w-full items-center justify-between gap-3 rounded-lg border border-cyan-200 bg-white px-3 py-2.5 text-left dark:border-cyan-800/40 dark:bg-slate-950">
+                        <button key={row.job.id} type="button" onClick={() => { setIsClientModalOpen(false); setCurrentPage(Page.Jobs); window.setTimeout(() => openJobDashboard(row.job), 0); }} className="flex w-full items-center justify-between gap-3 rounded-lg border border-cyan-200 bg-white px-3 py-2.5 text-left dark:border-cyan-800/40 dark:bg-slate-950">
                           <div className="min-w-0"><div className="truncate text-sm font-extrabold text-slate-900 dark:text-white">{row.job.title}</div><div className="mt-0.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">Profit {formatCurrency.format(row.estimatedProfit)} · Outstanding {formatCurrency.format(row.outstanding)}</div></div>
                           <ChevronRight size={16} className="shrink-0 text-slate-400" />
                         </button>

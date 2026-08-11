@@ -1,20 +1,25 @@
-# MONIEZI v38.0.18
+# MONIEZI v38.0.19
 
-Source package for the v38.0.18 Optimized U.S. Receipt Gallery release.
+Source package for the v38.0.19 Job Dashboard & Quick Add Integration release.
 
-## New in v38.0.18
+## New in v38.0.19
 
-- Keeps the v38.0.17 dark-blue visual system and Home Receipts workflow.
-- Replaces the prior demo receipt artwork with 10 realistic photo-style U.S. receipts matching the approved thermal-paper-on-dark-surface look.
-- Uses WebP at 600×900 for all 10 featured receipts; the full set is about 0.36 MB total.
-- Demo Home Receipts always presents the 10 featured receipt photos in a stable order for video/screenshot capture.
-- Every featured receipt is linked to an expense record; generic placeholder cards remain excluded from Recent Receipts.
-- Real-business behavior remains date-based: Home shows the 10 most recent real receipt images.
+- Adds **New Job / Project** to the Home/Activity Quick Add chooser.
+- Tapping a job now opens a purpose-built Job Dashboard instead of dropping directly into the edit form.
+- Job Dashboard separates Invoiced, Collected, Outstanding, Expenses, Estimated Job Profit, margin, and Cash Position.
+- Adds one-tap Invoice, Estimate, Expense, and Mileage actions from inside a job; new records are pre-linked to that job.
+- Adds a chronological Job Activity timeline for linked invoices, estimates, direct income, expenses, and mileage.
+- Editing job metadata is now a secondary **Edit Job Details** action.
+- Preserves the optimized 10-receipt U.S. demo gallery and the cleaned commercial-source structure from v38.0.18.
 
-MONIEZI v38.0.18 preserves the v38.0.17 data model and all earlier MONIEZI records. Existing installed v38 PWAs keep the same manifest application ID so updates continue normally.
+MONIEZI v38.0.19 preserves the v38.0.18 data model and all earlier MONIEZI records. Existing installed v38 PWAs keep the same manifest application ID so updates continue normally.
 
-## Current operational documentation
+## Commercial source package
 
-- `DEPLOYMENT_AND_LICENSE_SETUP.md` — GitHub Pages, Cloudflare Worker/KV, Stripe webhook, and owner-key setup.
-- `docs/COMMERCIAL_REGRESSION_CHECKLIST.md` — current pre-release validation checklist.
-- `MONIEZI_v38.0.18_RELEASE_NOTE.md` — current release notes.
+This package intentionally excludes obsolete historical development docs, old release notes, `node_modules`, `dist`, and temporary test output.
+
+Current documentation includes:
+- `README.md`
+- `MONIEZI_v38.0.19_RELEASE_NOTE.md`
+- `docs/COMMERCIAL_REGRESSION_CHECKLIST.md`
+- `DEPLOYMENT_AND_LICENSE_SETUP.md`

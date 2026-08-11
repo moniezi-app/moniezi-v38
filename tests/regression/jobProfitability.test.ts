@@ -1,6 +1,6 @@
 import * as assert from 'node:assert/strict';
 import type { Client, Estimate, Invoice, Job, MileageTrip, Transaction } from '../../types';
-import { buildJobProfitabilityRows } from '../../src/features/jobs/jobCore';
+import { buildJobActivityRows, buildJobProfitabilityRows } from '../../src/features/jobs/jobCore';
 
 export function runJobProfitabilityRegressionTests() {
   const jobs: Job[] = [{ id: 'j1', title: 'Kitchen Repair', clientId: 'c1', status: 'active', createdAt: '2026-01-01', updatedAt: '2026-01-01' }];
@@ -26,4 +26,13 @@ export function runJobProfitabilityRegressionTests() {
   assert.equal(row.miles, 100);
   assert.equal(row.mileageDeduction, 72.5);
   assert.equal(row.acceptedEstimateValue, 3300);
+
+  const activity = buildJobActivityRows({ jobId: 'j1', transactions, invoices, estimates, mileageTrips });
+  assert.equal(activity.some(item => item.id === 'pay1'), false, 'invoice payment transaction should not duplicate the linked invoice in job activity');
+  assert.equal(activity.filter(item => item.kind === 'invoice').length, 2);
+  assert.equal(activity.filter(item => item.kind === 'estimate').length, 1);
+  assert.equal(activity.filter(item => item.kind === 'expense').length, 1);
+  assert.equal(activity.filter(item => item.kind === 'income').length, 1);
+  assert.equal(activity.filter(item => item.kind === 'mileage').length, 1);
+  assert.equal(activity[0].date >= activity[activity.length - 1].date, true, 'job activity should be newest first');
 }

@@ -20,6 +20,85 @@ export type JobProfitabilityRow = {
   mileageCount: number;
 };
 
+
+export type JobActivityRow = {
+  kind: 'invoice' | 'estimate' | 'income' | 'expense' | 'mileage';
+  id: string;
+  date: string;
+  title: string;
+  detail: string;
+  amount?: number;
+  status?: string;
+};
+
+export function buildJobActivityRows(input: {
+  jobId: string;
+  transactions: Transaction[];
+  invoices: Invoice[];
+  estimates: Estimate[];
+  mileageTrips: MileageTrip[];
+}): JobActivityRow[] {
+  const { jobId, transactions, invoices, estimates, mileageTrips } = input;
+  const linkedInvoicePaymentIds = new Set(
+    invoices
+      .filter(invoice => invoice.jobId === jobId)
+      .map(invoice => invoice.linkedTransactionId)
+      .filter((id): id is string => Boolean(id)),
+  );
+
+  const invoiceRows: JobActivityRow[] = invoices
+    .filter(invoice => invoice.jobId === jobId)
+    .map(invoice => ({
+      kind: 'invoice',
+      id: invoice.id,
+      date: invoice.date,
+      title: invoice.number ? `Invoice ${invoice.number}` : 'Invoice',
+      detail: invoice.description || invoice.client || 'Invoice',
+      amount: Number(invoice.amount || 0),
+      status: invoice.status,
+    }));
+
+  const estimateRows: JobActivityRow[] = estimates
+    .filter(estimate => estimate.jobId === jobId)
+    .map(estimate => ({
+      kind: 'estimate',
+      id: estimate.id,
+      date: estimate.date,
+      title: estimate.number ? `Estimate ${estimate.number}` : 'Estimate',
+      detail: estimate.projectTitle || estimate.description || estimate.client || 'Estimate',
+      amount: Number(estimate.amount || 0),
+      status: estimate.status,
+    }));
+
+  const transactionRows: JobActivityRow[] = transactions
+    .filter(transaction => transaction.jobId === jobId)
+    .filter(transaction => !(transaction.type === 'income' && linkedInvoicePaymentIds.has(transaction.id)))
+    .map(transaction => ({
+      kind: transaction.type,
+      id: transaction.id,
+      date: transaction.date,
+      title: transaction.name || (transaction.type === 'income' ? 'Income' : 'Expense'),
+      detail: transaction.category || (transaction.type === 'income' ? 'Income' : 'Expense'),
+      amount: Number(transaction.amount || 0),
+      status: transaction.type,
+    }));
+
+  const mileageRows: JobActivityRow[] = mileageTrips
+    .filter(trip => trip.jobId === jobId)
+    .map(trip => ({
+      kind: 'mileage',
+      id: trip.id,
+      date: trip.date,
+      title: trip.purpose || 'Business mileage',
+      detail: `${Number(trip.miles || 0).toFixed(1)} mi${trip.client ? ` · ${trip.client}` : ''}`,
+      status: 'mileage',
+    }));
+
+  const kindRank: Record<JobActivityRow['kind'], number> = { invoice: 0, estimate: 1, income: 2, expense: 3, mileage: 4 };
+  return [...invoiceRows, ...estimateRows, ...transactionRows, ...mileageRows]
+    .sort((a, b) => b.date.localeCompare(a.date) || kindRank[a.kind] - kindRank[b.kind]);
+}
+
 const inYear = (dateValue: string | undefined, year?: number) => {
   if (!year) return true;
   if (!dateValue) return false;
