@@ -142,6 +142,102 @@ body.modal-open {
   scroll-padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 120px);
 }
 
+
+
+/* MONIEZI v38.0.17 dark blue visual system */
+:root {
+  --moniezi-dark-surface-hero: linear-gradient(135deg, rgba(59, 130, 246, 0.58) 0%, rgba(37, 99, 235, 0.42) 28%, rgba(49, 46, 129, 0.88) 100%);
+  --moniezi-dark-surface-card: linear-gradient(135deg, rgba(21, 61, 146, 0.70) 0%, rgba(16, 37, 96, 0.92) 54%, rgba(30, 27, 75, 0.98) 100%);
+  --moniezi-dark-surface-inset: linear-gradient(135deg, rgba(9, 32, 81, 0.82) 0%, rgba(11, 22, 58, 0.96) 100%);
+  --moniezi-dark-border-strong: rgba(147, 197, 253, 0.28);
+  --moniezi-dark-border-soft: rgba(96, 165, 250, 0.20);
+  --moniezi-dark-border-faint: rgba(96, 165, 250, 0.14);
+}
+
+.dark .moniezi-app-shell {
+  background: #020617;
+}
+
+.dark .moniezi-drawer-panel {
+  background: #071328;
+  color: #ffffff;
+}
+
+.dark .dark-chrome {
+  background-color: rgba(2, 6, 23, 0.94) !important;
+  border-color: rgba(96, 165, 250, 0.16) !important;
+}
+
+.dark .dark\:border-slate-700 {
+  border-color: var(--moniezi-dark-border-strong) !important;
+}
+
+.dark .dark\:border-slate-800,
+.dark .dark\:border-slate-800\/50,
+.dark .dark\:border-slate-800\/60,
+.dark .dark\:border-slate-900,
+.dark .dark\:border-slate-700\/50,
+.dark .dark\:border-slate-700\/60,
+.dark .dark\:border-slate-600 {
+  border-color: var(--moniezi-dark-border-soft) !important;
+}
+
+.dark .dark\:divide-slate-800 > :not([hidden]) ~ :not([hidden]),
+.dark .dark\:divide-slate-700 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--moniezi-dark-border-faint) !important;
+}
+
+.dark :is(div, section, article, aside)[class*="rounded"][class*="dark:bg-slate-900"],
+.dark :is(div, section, article, aside)[class*="rounded"][class*="dark:bg-slate-950"] {
+  background: var(--moniezi-dark-surface-card) !important;
+  border-color: var(--moniezi-dark-border-soft) !important;
+  box-shadow: 0 18px 42px rgba(2, 6, 23, 0.28);
+}
+
+.dark :is(div, section, article, aside)[class*="rounded"][class*="dark:bg-slate-800"],
+.dark :is(div, section, article, aside)[class*="rounded"][class*="dark:bg-slate-700"] {
+  background: var(--moniezi-dark-surface-inset) !important;
+  border-color: var(--moniezi-dark-border-faint) !important;
+}
+
+/* Preserve the deepest chrome and data-entry surfaces instead of turning everything blue. */
+.dark :is(input, textarea, select)[class*="dark:bg-slate-950"],
+.dark :is(input, textarea, select)[class*="dark:bg-slate-900"],
+.dark button[class*="dark:bg-slate-950"],
+.dark button[class*="dark:bg-slate-900"][class*="rounded-full"] {
+  background: rgba(3, 12, 31, 0.94) !important;
+}
+
+.dark .moniezi-app-shell,
+.dark .dark-chrome,
+.dark .moniezi-drawer-panel,
+.dark .modal-overlay,
+.dark .moniezi-drawer-overlay {
+  box-shadow: none;
+}
+
+/* Keep the signature Overview / hero KPI cards brighter than standard cards. */
+.dark :is(div, section, article, aside)[class*="dark:from-blue-800"][class*="dark:to-indigo-950"],
+.dark :is(div, section, article, aside)[class*="dark:from-blue-800"][class*="dark:to-indigo-900"] {
+  background: var(--moniezi-dark-surface-hero) !important;
+  border-color: rgba(165, 180, 252, 0.26) !important;
+}
+
+/* Subtle blue hover language for dark cards */
+.dark .dark\:hover\:bg-slate-700:hover,
+.dark .dark\:hover\:bg-slate-800:hover,
+.dark .dark\:hover\:bg-slate-800\/50:hover,
+.dark .dark\:hover\:bg-slate-800\/55:hover,
+.dark .dark\:hover\:bg-slate-800\/60:hover,
+.dark .dark\:hover\:bg-slate-800\/70:hover,
+.dark .dark\:hover\:bg-slate-900:hover,
+.dark .dark\:hover\:bg-slate-900\/30:hover,
+.dark .dark\:hover\:bg-slate-900\/50:hover,
+.dark .dark\:hover\:bg-slate-900\/60:hover,
+.dark .dark\:hover\:bg-slate-900\/70:hover {
+  background-color: rgba(29, 78, 216, 0.22) !important;
+}
+
 /* Extreme-contrast light mode pass */
 html.theme-light,
 html.theme-light body,
