@@ -3392,7 +3392,7 @@ export default function App() {
     setClients([...(demo.clients || [])] as Client[]);
     setJobs(normalizeJobs(demo.jobs || []));
     setMileageTrips([...(demo.mileageTrips || [])] as MileageTrip[]);
-    setReceipts([...(demo.receipts || [])] as ReceiptType[]);
+    setReceiptPreviewUrls({});
     setSettings({ ...demo.settings } as UserSettings);
     setTaxPayments([...(demo.taxPayments || [])] as TaxPayment[]);
 
@@ -3422,6 +3422,10 @@ export default function App() {
     } catch (e) {
       console.warn('Failed to seed demo receipt blobs', e);
     }
+
+    // Publish receipt metadata only after demo image blobs are ready. This keeps
+    // the Home carousel from hydrating early into blank placeholder cards.
+    setReceipts([...(demo.receipts || [])] as ReceiptType[]);
 
     setSeedSuccess(true);
     showToast('Demo data loaded successfully!', 'success');
@@ -4712,6 +4716,27 @@ export default function App() {
     return { row, invoices: statementInvoices, estimates: statementEstimates };
   }, [selectedClientStatementKey, reportClientRows, reportYearInvoices, reportYearEstimates]);
 
+  const homeReceiptYear = new Date().getFullYear();
+  const homeMissingReceiptExpenses = useMemo(() => transactions
+    .filter(transaction => transaction.type === 'expense')
+    .filter(transaction => {
+      const year = new Date(`${transaction.date}T12:00:00`).getFullYear();
+      return year === homeReceiptYear && !(transaction as any).receiptId;
+    })
+    .sort((a, b) => b.date.localeCompare(a.date)), [transactions, homeReceiptYear]);
+
+  const homeMissingReceiptAmount = useMemo(() => homeMissingReceiptExpenses
+    .reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0), [homeMissingReceiptExpenses]);
+
+  const homeRecentReceipts = useMemo(() => receipts
+    // Home shows actual receipt images only. An image may be linked to an
+    // expense or still waiting to be linked, but a bare expense never appears
+    // here as a receipt-style placeholder.
+    .filter(receipt => Boolean(receiptPreviewUrls[receipt.id] || DEMO_ASSET_BY_ID.get(receipt.id)?.assetUrl))
+    .slice()
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 10), [receipts, receiptPreviewUrls]);
+
   const handleBusinessAction = (id: 'overdue'|'estimates'|'receipts'|'review'|'mileage'|'categories', year = new Date().getFullYear()) => {
     if (id === 'overdue') {
       setBillingDocType('invoice');
@@ -5223,7 +5248,7 @@ export default function App() {
 
       const ab = await rec.blob.arrayBuffer();
       const data = new Uint8Array(ab);
-      const mime = meta?.mimeType || rec.mimeType || rec.blob.type || 'image/jpeg';
+      const mime = rec.mimeType || rec.blob.type || meta?.mimeType || 'image/jpeg';
       const ext = mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : 'jpg';
       const filename = `receipts/${id}.${ext}`;
       files.push({ name: filename, data, mtime: meta?.date ? new Date(meta.date) : new Date() });
@@ -6062,7 +6087,7 @@ export default function App() {
         const meta = receipts.find(r => r.id === id);
         const rec = await getReceiptBlob(meta?.imageKey || id);
         if (!rec?.blob) continue;
-        const mime = meta?.mimeType || rec.mimeType || rec.blob.type || 'image/jpeg';
+        const mime = rec.mimeType || rec.blob.type || meta?.mimeType || 'image/jpeg';
         const ext = mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : 'jpg';
         const filename = `06_Receipts/images/${id}.${ext}`;
         files.push({ name: filename, data: new Uint8Array(await rec.blob.arrayBuffer()), mtime: meta?.date ? new Date(meta.date) : new Date() });
@@ -8194,49 +8219,87 @@ html, body, #root {
                </div>
             </div>
 
-            {/* Scan Receipt Section */}
+            {/* Home Receipts: actions + real linked receipt images + missing-documentation workflow */}
             <div>
               <div className="flex items-center justify-between mb-4 pl-2">
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white font-brand">Receipts</h3>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white font-brand">Receipts</h3>
+                  <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">Capture receipts, record expenses, and see what still needs documentation.</p>
+                </div>
               </div>
-              <div className="flex overflow-x-auto gap-3 pb-4 pt-1 px-1 -mx-1 custom-scrollbar snap-x">
-                <button onClick={() => { setScanMode('receiptOnly'); scanInputRef.current?.click(); }} className="flex-shrink-0 w-24 h-24 bg-amber-50 dark:bg-amber-500/10 rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-amber-100 dark:hover:bg-amber-500/15 transition-colors border border-dashed border-amber-300 dark:border-amber-700/50 active:scale-95 snap-start">
+
+              <div className="grid grid-cols-2 gap-3 mb-5">
+                <button onClick={() => { setScanMode('receiptOnly'); scanInputRef.current?.click(); }} className="min-h-24 bg-amber-50 dark:bg-amber-500/10 rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-amber-100 dark:hover:bg-amber-500/15 transition-colors border border-dashed border-amber-300 dark:border-amber-700/50 active:scale-[0.98]">
                    <div className="bg-white dark:bg-slate-900 p-2.5 rounded-full shadow-sm text-amber-700 dark:text-amber-300">
                      <Camera size={20} />
                    </div>
-                   <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">Scan</span>
+                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-300">Scan Receipt</span>
                 </button>
-                {/*
-                  EXPENSE shortcut:
-                  Previously this launched the camera/receipt scan flow ("expenseWithReceipt").
-                  Per UX request, tapping Expense should open the Add Expense form first,
-                  where the user can optionally link/scan a receipt from within the form.
-                */}
-                <button onClick={() => { handleOpenFAB('expense'); }} className="flex-shrink-0 w-24 h-24 bg-red-50 dark:bg-red-500/10 rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-red-100 dark:hover:bg-red-500/15 transition-colors border border-red-200 dark:border-red-700/40 active:scale-95 snap-start">
+                <button onClick={() => { handleOpenFAB('expense'); }} className="min-h-24 bg-red-50 dark:bg-red-500/10 rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-red-100 dark:hover:bg-red-500/15 transition-colors border border-red-200 dark:border-red-700/40 active:scale-[0.98]">
                    <div className="bg-white dark:bg-slate-900 p-2.5 rounded-full shadow-sm text-red-700 dark:text-red-300">
                      <PlusCircle size={20} />
                    </div>
-                   <span className="text-[10px] font-bold uppercase tracking-wider text-red-700 dark:text-red-300">Expense</span>
+                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-red-700 dark:text-red-300">Add Expense</span>
                 </button>
-                {receipts.map(r => (
-                   <div key={r.id} onClick={() => {
-                      const linkedTx = (transactions as any[]).find(t => t && t.type === "expense" && t.receiptId === r.id);
-                      if (linkedTx) { handleEditItem(linkedTx); return; }
-                      openReceipt(r);
-                    }} className="flex-shrink-0 w-24 h-24 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden relative cursor-pointer shadow-sm group active:scale-95 transition-transform snap-start">
-                      <img src={receiptPreviewUrls[r.id] || DEMO_ASSET_BY_ID.get(r.id)?.assetUrl || ''} className="w-full h-full object-cover" />
-                      {r.note ? (
-                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1">
-                          <div className="text-[9px] font-extrabold uppercase tracking-widest text-white truncate">{r.note}</div>
-                        </div>
-                      ) : null}
-                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <Eye className="text-white drop-shadow-md" size={20} />
-                      </div>
-                   </div>
-                ))}
               </div>
-              <div className="text-[10px] text-slate-400 font-medium text-center mt-2 uppercase tracking-wide">Exports to Downloads</div>
+
+              <div className="flex items-center justify-between mb-3 px-1">
+                <div className="text-[11px] font-extrabold uppercase tracking-widest text-slate-600 dark:text-slate-300">Recent Receipts</div>
+                {homeRecentReceipts.length > 0 && <div className="text-[10px] font-bold text-slate-400">Tap a receipt to open its expense</div>}
+              </div>
+
+              {homeRecentReceipts.length > 0 ? (
+                <div className="flex overflow-x-auto gap-3 pb-4 pt-1 px-1 -mx-1 custom-scrollbar snap-x">
+                  {homeRecentReceipts.map(r => {
+                    const preview = receiptPreviewUrls[r.id] || DEMO_ASSET_BY_ID.get(r.id)?.assetUrl || '';
+                    const linkedTx = (transactions as any[]).find(t => t && t.type === 'expense' && t.receiptId === r.id);
+                    return (
+                      <button type="button" key={r.id} onClick={() => {
+                        if (linkedTx) { handleEditItem(linkedTx); return; }
+                        openReceipt(r);
+                      }} className="flex-shrink-0 w-28 h-32 bg-white dark:bg-slate-900 rounded-xl border border-slate-300 dark:border-slate-700 overflow-hidden relative cursor-pointer shadow-sm group active:scale-95 transition-transform snap-start text-left">
+                        <img src={preview} alt={r.note ? `Receipt: ${r.note}` : 'Receipt'} className="w-full h-full object-cover" />
+                        {r.note ? (
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 via-black/55 to-transparent px-2 pt-7 pb-2">
+                            <div className="text-[9px] font-extrabold uppercase tracking-wider text-white truncate">{r.note}</div>
+                          </div>
+                        ) : null}
+                        {!linkedTx && (
+                          <div className="absolute right-1.5 top-1.5 rounded-md bg-amber-400/95 px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wider text-slate-950 shadow-sm">Unlinked</div>
+                        )}
+                        <div className="absolute inset-0 bg-black/15 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Eye className="text-white drop-shadow-md" size={20} />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-slate-300 bg-white px-4 py-5 text-center dark:border-slate-700 dark:bg-slate-900">
+                  <div className="text-sm font-bold text-slate-900 dark:text-white">No linked receipt images yet</div>
+                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">Scan a receipt and link it to an expense to see it here.</div>
+                </div>
+              )}
+
+              {homeMissingReceiptExpenses.length > 0 ? (
+                <button type="button" onClick={() => handleBusinessAction('receipts', homeReceiptYear)} className="mt-4 flex w-full items-center justify-between gap-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-4 text-left shadow-sm transition-all hover:border-amber-400 active:scale-[0.99] dark:border-amber-700/60 dark:bg-amber-500/10">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+                      <Receipt size={18} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-extrabold text-slate-900 dark:text-white">{homeMissingReceiptExpenses.length} expense{homeMissingReceiptExpenses.length === 1 ? '' : 's'} need receipt{homeMissingReceiptExpenses.length === 1 ? '' : 's'}</div>
+                      <div className="mt-1 text-xs font-semibold text-slate-600 dark:text-slate-300">{formatCurrency.format(homeMissingReceiptAmount)} needs documentation for {homeReceiptYear}</div>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1 text-xs font-extrabold text-amber-700 dark:text-amber-300">Review <ChevronRight size={16} /></div>
+                </button>
+              ) : (
+                <div className="mt-4 flex items-center gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 dark:border-emerald-700/50 dark:bg-emerald-500/10">
+                  <CheckCircle size={18} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  <div className="text-xs font-bold text-emerald-800 dark:text-emerald-300">All {homeReceiptYear} expenses have receipts attached.</div>
+                </div>
+              )}
             </div>
           </div>
         )}

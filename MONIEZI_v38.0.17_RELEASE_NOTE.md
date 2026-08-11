@@ -25,3 +25,12 @@
 - Replaced the long indented bullet copy with a short summary and two compact feature rows.
 - Aligned the title/icon and made Raise Settings / Load Demo Raise a balanced two-button action row.
 - Preserves all Private Raise Tracker functionality and data behavior.
+
+
+## Receipts workflow correction
+
+- Home now separates receipt actions, actual linked receipt images, and expenses that still need documentation.
+- Recent Receipts contains only linked receipts with an available image preview; blank expense-style placeholders are no longer shown as receipts.
+- Added a Missing Receipts action with current-year count and unsupported expense amount.
+- Scan Receipt and Add Expense are explicit, separate actions.
+- Demo receipt metadata is published after IndexedDB image seeding to prevent blank thumbnail hydration races.
