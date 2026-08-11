@@ -888,31 +888,49 @@ export function CompanyEquityModule({ equity, onChange, currencySymbol, defaultB
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 pb-24">
-      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300 flex-shrink-0">
+      <section className="rounded-2xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-6">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-200">
             <Landmark size={24} />
           </div>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950 dark:!text-white font-brand">Private Raise Tracker</h1>
-            <div className="mt-2 space-y-1.5 text-sm font-semibold leading-6 text-slate-600 dark:text-slate-300">
-              <p>Simple owner-side workflow for friends, family, and early private investors.</p>
-              <ul className="list-disc pl-5 space-y-1">
-                <li>Track investor interest, proposed pledges, packages, signatures, and funding status.</li>
-                <li>Keep SAFEs, issued ownership records, and ownership summaries organized for review.</li>
-              </ul>
+          <h1 className="min-w-0 text-2xl font-black tracking-tight text-slate-950 dark:!text-white sm:text-3xl font-brand">Private Raise Tracker</h1>
+        </div>
+
+        <p className="mt-4 text-sm font-semibold leading-6 text-slate-600 dark:text-slate-200 sm:text-[15px]">
+          Track private investors, ownership, SAFE records, pledges, signatures, and funding status in one place.
+        </p>
+
+        <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5 dark:border-slate-700 dark:bg-slate-800/60">
+            <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-200">
+              <Users size={17} />
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-black text-slate-950 dark:!text-white">Investor Tracking</div>
+              <div className="mt-0.5 text-xs font-semibold leading-5 text-slate-600 dark:text-slate-300">Interest, pledges, packages, signatures and funding.</div>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5 dark:border-slate-700 dark:bg-slate-800/60">
+            <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-200">
+              <FileText size={17} />
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-black text-slate-950 dark:!text-white">Ownership Records</div>
+              <div className="mt-0.5 text-xs font-semibold leading-5 text-slate-600 dark:text-slate-300">SAFEs, issued ownership and ownership summaries.</div>
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button onClick={() => openSection('settings')} className="rounded-xl border border-slate-300 dark:border-slate-700 px-4 py-3 text-sm font-black text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-900 flex items-center gap-2">
-            <Shield size={16} /> Raise Settings
+
+        <div className="mt-4 grid grid-cols-2 gap-2.5">
+          <button onClick={() => openSection('settings')} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-3 text-xs font-black text-slate-800 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-900 sm:text-sm">
+            <Shield size={16} className="flex-shrink-0" /> <span>Raise Settings</span>
           </button>
-          <button onClick={loadDemoData} className="rounded-xl bg-blue-600 hover:bg-blue-700 !text-white px-4 py-3 text-sm font-black flex items-center gap-2 shadow-lg shadow-blue-600/20">
-            <FileText size={16} /> Load Demo Raise
+          <button onClick={loadDemoData} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-600 px-3 py-3 text-xs font-black !text-white shadow-lg shadow-blue-600/20 transition-colors hover:bg-blue-700 sm:text-sm">
+            <FileText size={16} className="flex-shrink-0" /> <span>Load Demo Raise</span>
           </button>
         </div>
-      </div>
+      </section>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
         <SummaryCard label="Issued Ownership" value={formatShares(totals.issuedShares)} note={`${formatShares(totals.unissuedShares)} unissued shares remain`} icon={<CheckCircle size={20} />} />

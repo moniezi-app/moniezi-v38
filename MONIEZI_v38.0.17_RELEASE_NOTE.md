@@ -18,3 +18,10 @@
 
 - Version updated to 38.0.17.
 - Service-worker cache updated so the new visual system replaces the cached v38.0.16 shell.
+
+## UI correction — Private Raise Tracker intro
+
+- Rebuilt the mobile introduction as one compact information card.
+- Replaced the long indented bullet copy with a short summary and two compact feature rows.
+- Aligned the title/icon and made Raise Settings / Load Demo Raise a balanced two-button action row.
+- Preserves all Private Raise Tracker functionality and data behavior.
