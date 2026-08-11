@@ -3396,12 +3396,28 @@ export default function App() {
     setSettings({ ...demo.settings } as UserSettings);
     setTaxPayments([...(demo.taxPayments || [])] as TaxPayment[]);
 
-    // Store the five bundled demo receipt images in IndexedDB so preview,
-    // download and Accountant Package exports work exactly like real receipts.
+    // The commercial demo now contains a deep receipt history while shipping
+    // only five bundled receipt images. Fetch those five assets once, then copy
+    // them into each deterministic demo receipt's own IndexedDB key. This keeps
+    // receipt thumbnails/downloads/Accountant Package realistic without adding
+    // dozens of duplicate image files to the app bundle.
     try {
+      const sourceBlobs = new Map<string, { blob: Blob; mimeType: string }>();
       for (const asset of DEMO_RECEIPT_ASSETS) {
         const { blob, mimeType } = await fetchDemoReceiptBlob(asset);
-        await putReceiptBlob(asset.id, blob, mimeType || asset.mimeType);
+        const record = { blob, mimeType: mimeType || asset.mimeType };
+        sourceBlobs.set(asset.id, record);
+        await putReceiptBlob(asset.id, blob, record.mimeType);
+      }
+
+      for (let i = 0; i < (demo.receipts || []).length; i += 1) {
+        const receipt = (demo.receipts || [])[i] as ReceiptType & { assetSourceId?: string };
+        if (DEMO_ASSET_BY_ID.has(receipt.id)) continue;
+        const fallbackAsset = DEMO_RECEIPT_ASSETS[i % DEMO_RECEIPT_ASSETS.length];
+        const sourceId = receipt.assetSourceId || fallbackAsset?.id;
+        const source = sourceId ? sourceBlobs.get(sourceId) : undefined;
+        if (!source) continue;
+        await putReceiptBlob(receipt.imageKey || receipt.id, source.blob, source.mimeType);
       }
     } catch (e) {
       console.warn('Failed to seed demo receipt blobs', e);

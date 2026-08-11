@@ -77,9 +77,10 @@ export const TAX_PLANNER_2026 = {
 };
 
 // --- Demo Data Generator ---
-// v38.0.16: one curated, deterministic commercial demo. The records are
-// intentionally connected so Home, Jobs, Reports, Tax Prep, Goals, invoices,
-// estimates, mileage and receipts all tell the same business story.
+// v38.0.16: one curated, deterministic commercial demo with deep history.
+// The core records are intentionally connected for Jobs, Tax Prep, Goals and
+// follow-ups, while the deterministic history gives every transaction/report
+// view enough volume to feel like a real operating business.
 export const getFreshDemoData = () => {
   const anchor = new Date();
   anchor.setHours(12, 0, 0, 0);
@@ -105,6 +106,11 @@ export const getFreshDemoData = () => {
     return iso(new Date(year, monthIndex, Math.min(preferredDay, lastDay), 12));
   };
   const reviewedAt = (date: string) => `${date}T12:00:00.000Z`;
+  const shiftIsoDate = (value: string, days: number) => {
+    const date = new Date(`${value}T12:00:00`);
+    date.setDate(date.getDate() + days);
+    return iso(date);
+  };
 
   const currentYear = anchor.getFullYear();
   const previousYear = currentYear - 1;
@@ -321,6 +327,82 @@ export const getFreshDemoData = () => {
     },
   ];
 
+  // Deep deterministic billing history. The active/demo-critical documents above
+  // stay small and easy to understand; these records make Invoices, Estimates,
+  // client history and Reports feel like a business that has been operating for
+  // more than a year. No random values are used.
+  const historicalEstimates = Array.from({ length: 24 }, (_, i) => {
+    const monthOffset = -(1 + (i % 18));
+    const client = clients[(i + 1) % clients.length];
+    const amount = 1800 + ((i * 925) % 6200);
+    const issueDate = monthDate(monthOffset, 5 + ((i * 3) % 18));
+    const status: 'accepted' | 'declined' | 'void' = i % 11 === 0 ? 'void' : (i % 6 === 0 ? 'declined' : 'accepted');
+    const labor = Math.round(amount * 0.68 * 100) / 100;
+    const materials = Math.round((amount - labor) * 100) / 100;
+    return {
+      id: `est_demo_hist_${i + 1}`,
+      number: `EST-H${String(i + 1).padStart(3, '0')}`,
+      clientId: client.id,
+      client: client.name,
+      clientCompany: client.company,
+      clientEmail: client.email,
+      clientPhone: client.phone,
+      clientAddress: client.address,
+      projectTitle: `${CATS_BILLING[i % CATS_BILLING.length]} — ${client.company || client.name}`,
+      category: CATS_BILLING[i % CATS_BILLING.length],
+      description: 'Completed historical proposal',
+      scopeOfWork: 'Professional services, coordination, materials and completion of the agreed project scope.',
+      timeline: '1–3 weeks',
+      date: issueDate,
+      validUntil: shiftIsoDate(issueDate, 14),
+      status,
+      sentAt: issueDate,
+      lastFollowUp: shiftIsoDate(issueDate, 5),
+      items: [
+        { id: `est_demo_hist_${i + 1}_labor`, description: 'Professional services', quantity: 1, rate: labor },
+        { id: `est_demo_hist_${i + 1}_materials`, description: 'Materials / project costs', quantity: 1, rate: materials },
+      ],
+      subtotal: amount, discount: 0, taxRate: 0, shipping: 0, amount,
+      notes: status === 'accepted' ? 'Historical accepted estimate.' : status === 'declined' ? 'Historical estimate declined after review.' : 'Historical estimate voided.',
+      terms: 'Pricing valid for 14 days.',
+    };
+  });
+
+  const historicalInvoices = Array.from({ length: 36 }, (_, i) => {
+    const monthIndex = Math.floor(i / 2);
+    const monthOffset = -(monthIndex + 1);
+    const client = clients[(i + 2) % clients.length];
+    const amount = 2600 + ((i * 1375) % 7200);
+    const issueDate = monthDate(monthOffset, 4 + ((i % 2) * 7) + (monthIndex % 3));
+    const status: 'paid' | 'void' = i % 17 === 0 ? 'void' : 'paid';
+    const serviceAmount = Math.round(amount * 0.72 * 100) / 100;
+    const materialsAmount = Math.round((amount - serviceAmount) * 100) / 100;
+    return {
+      id: `inv_demo_hist_${i + 1}`,
+      number: `INV-H${String(i + 1).padStart(3, '0')}`,
+      clientId: client.id,
+      client: client.name,
+      clientCompany: client.company,
+      clientEmail: client.email,
+      clientAddress: client.address,
+      amount,
+      category: CATS_BILLING[i % CATS_BILLING.length],
+      description: `${CATS_BILLING[i % CATS_BILLING.length]} — completed work`,
+      date: issueDate,
+      due: shiftIsoDate(issueDate, 14),
+      status,
+      payMethod: status === 'paid' ? (i % 3 === 0 ? 'Bank Transfer' : i % 3 === 1 ? 'Card' : 'Check') : undefined,
+      linkedTransactionId: status === 'paid' ? `tx_demo_invoice_payment_${i + 1}` : undefined,
+      items: [
+        { id: `inv_demo_hist_${i + 1}_service`, description: 'Professional services', quantity: 1, rate: serviceAmount },
+        { id: `inv_demo_hist_${i + 1}_materials`, description: 'Materials / project costs', quantity: 1, rate: materialsAmount },
+      ],
+      subtotal: amount, discount: 0, taxRate: 0, shipping: 0,
+      notes: status === 'paid' ? 'Historical invoice paid in full.' : 'Historical invoice voided.',
+      terms: 'Net 14.',
+    };
+  });
+
   const expenseDates = {
     hardware: currentMonthPast(8),
     fuel: currentMonthPast(7),
@@ -357,6 +439,132 @@ export const getFreshDemoData = () => {
     { id: 'tx_demo_hist_8', date: yearDate(previousYear, 2, 13), name: 'Advertising', category: 'Advertising / Marketing', amount: 420, type: 'expense' as const, notes: 'Prior-year demo history' },
   ].sort((a, b) => b.date.localeCompare(a.date));
 
+  const incomeNames: Record<string, string[]> = {
+    'Sales / Services': ['Property maintenance service', 'Installation milestone', 'Repair service', 'Facility service call'],
+    'Consulting / Freelance': ['Project consultation', 'Site planning consultation', 'Business advisory session', 'Project coordination'],
+    'Product Sales': ['Materials package sale', 'Replacement hardware package', 'Equipment accessory sale', 'Project supply package'],
+    'Affiliate / Referral': ['Partner referral commission', 'Vendor referral credit', 'Service referral fee', 'Partner program payout'],
+    'Interest / Bank': ['Business account interest', 'Bank interest credit', 'Business savings interest', 'Account interest'],
+    'Refunds': ['Supplier refund', 'Materials return credit', 'Vendor reimbursement', 'Shipping refund'],
+    'Other Income': ['Rush service fee', 'Training session', 'Equipment reimbursement', 'Miscellaneous service income'],
+  };
+
+  const expenseNames: Record<string, string[]> = {
+    'Advertising / Marketing': ['Google Ads', 'Local directory advertising', 'Printed door hangers', 'Social media promotion'],
+    'Software / SaaS': ['Adobe Creative Cloud', 'Microsoft 365', 'Scheduling software', 'Cloud backup software'],
+    'Rent / Workspace': ['Workshop rent', 'Storage / workspace rent', 'Office rent'],
+    'Utilities': ['Electric utility', 'Workshop utilities', 'Water / utility service'],
+    'Office Supplies': ['Office Depot supplies', 'Printer ink and paper', 'Project folders and labels'],
+    'Phone / Internet': ['Business mobile service', 'Business internet', 'Phone and data service'],
+    'Travel': ['Fuel — business travel', 'Parking and tolls', 'Client-site transportation'],
+    'Meals (Business)': ['Client lunch', 'Project meeting meal', 'Business coffee meeting'],
+    'Professional Services': ['Bookkeeping support', 'Legal consultation', 'Professional filing service'],
+    'Insurance': ['Business liability insurance', 'Equipment insurance', 'Commercial policy premium'],
+    'Contractors': ['Subcontractor labor', 'Specialty contractor support', 'Installation assistance'],
+    'Payroll': ['Part-time field support', 'Project labor payroll', 'Temporary labor'],
+    'Taxes & Licenses': ['Business license renewal', 'Permit / filing fee', 'State registration fee'],
+    'Equipment': ['Power tools and equipment', 'Replacement equipment', 'Job-site equipment purchase'],
+    'Shipping / Delivery': ['Materials delivery', 'Courier / delivery fee', 'Shipping charge'],
+    'Bank Fees': ['Business account fee', 'Payment processing fee', 'Wire / transfer fee'],
+    'Other Expense': ['Small business expense', 'Job-site miscellaneous', 'General operating expense'],
+  };
+
+  const incomeBase: Record<string, number> = {
+    'Sales / Services': 5200,
+    'Consulting / Freelance': 4600,
+    'Product Sales': 3600,
+    'Affiliate / Referral': 1400,
+    'Interest / Bank': 320,
+    'Refunds': 650,
+    'Other Income': 2100,
+  };
+
+  const expenseBase: Record<string, number> = {
+    'Advertising / Marketing': 650,
+    'Software / SaaS': 120,
+    'Rent / Workspace': 2200,
+    'Utilities': 260,
+    'Office Supplies': 185,
+    'Phone / Internet': 165,
+    'Travel': 380,
+    'Meals (Business)': 145,
+    'Professional Services': 780,
+    'Insurance': 420,
+    'Contractors': 1150,
+    'Payroll': 1850,
+    'Taxes & Licenses': 480,
+    'Equipment': 720,
+    'Shipping / Delivery': 135,
+    'Bank Fees': 42,
+    'Other Expense': 210,
+  };
+
+  // Seven income records per historical month means every income category is
+  // represented in every month. Eighteen months gives the dashboard and all
+  // time/year/month reports enough depth without changing the current-month
+  // Goals example above.
+  const richIncomeTransactions = Array.from({ length: 18 * CATS_IN.length }, (_, i) => {
+    const monthIndex = Math.floor(i / CATS_IN.length);
+    const slot = i % CATS_IN.length;
+    const monthOffset = -(monthIndex + 1);
+    const category = CATS_IN[slot];
+    const names = incomeNames[category] || ['Business income'];
+    const amount = Math.round((incomeBase[category] + ((monthIndex * 137 + slot * 89) % 900)) * 100) / 100;
+    return {
+      id: `tx_demo_income_hist_${monthIndex + 1}_${slot + 1}`,
+      date: monthDate(monthOffset, 3 + slot * 3),
+      name: names[(monthIndex + slot) % names.length],
+      category, amount, type: 'income' as const,
+      notes: 'Deterministic demo business history',
+    };
+  });
+
+  const historicalInvoicePaymentTransactions = historicalInvoices
+    .filter(invoice => invoice.status === 'paid' && invoice.linkedTransactionId)
+    .map((invoice) => ({
+      id: invoice.linkedTransactionId!,
+      date: shiftIsoDate(invoice.date, 12),
+      name: `Pmt: ${invoice.client}`,
+      category: invoice.category === 'Strategy Consulting' || invoice.category === 'Graphic Design' || invoice.category === 'Training / Workshop'
+        ? 'Consulting / Freelance'
+        : 'Sales / Services',
+      amount: invoice.amount,
+      type: 'income' as const,
+      notes: `Payment for ${invoice.number}`,
+    }));
+
+  // Ten expenses per historical month spread deterministically across every
+  // expense category. All current-tax-year generated expenses are documented
+  // and reviewed so the only readiness issues remain the two deliberate core
+  // examples above.
+  const richExpenseTransactions = Array.from({ length: 18 * 10 }, (_, i) => {
+    const monthIndex = Math.floor(i / 10);
+    const slot = i % 10;
+    const monthOffset = -(monthIndex + 1);
+    const category = CATS_OUT[i % CATS_OUT.length];
+    const names = expenseNames[category] || ['Business expense'];
+    const date = monthDate(monthOffset, 2 + slot * 2 + (monthIndex % 2));
+    const amount = Math.round((expenseBase[category] + ((monthIndex * 53 + slot * 31) % 220)) * 100) / 100;
+    const isCurrentTaxYear = date.startsWith(`${currentYear}-`);
+    const shouldAttachReceipt = isCurrentTaxYear || i % 2 === 0;
+    const receiptId = shouldAttachReceipt ? `rcpt_demo_hist_${i + 1}` : undefined;
+    return {
+      id: `tx_demo_exp_hist_${i + 1}`,
+      date, name: names[(monthIndex + slot) % names.length],
+      category, amount, type: 'expense' as const,
+      notes: shouldAttachReceipt ? 'Demo history — receipt documented' : 'Prior-year demo history',
+      ...(receiptId ? { receiptId } : {}),
+      reviewedAt: reviewedAt(date),
+    };
+  });
+
+  const allTransactions = [
+    ...transactions,
+    ...historicalInvoicePaymentTransactions,
+    ...richIncomeTransactions,
+    ...richExpenseTransactions,
+  ].sort((a, b) => b.date.localeCompare(a.date));
+
   const mileageTrips = [
     { id: 'mi_demo_1', date: addDays(-19), miles: 42.3, purpose: 'Initial site visit', client: 'Jimmy Wilson', jobId: 'job_demo_1', notes: 'Bathroom renovation walkthrough' },
     { id: 'mi_demo_2', date: addDays(-12), miles: 18.1, purpose: 'Materials pickup', client: 'Jimmy Wilson', jobId: 'job_demo_1', notes: 'Fixture pickup' },
@@ -368,6 +576,25 @@ export const getFreshDemoData = () => {
     { id: 'mi_demo_8', date: addDays(-16), miles: 8.0, purpose: '', client: '', notes: 'Demo: purpose still needs to be added' },
   ];
 
+  const mileagePurposes = ['Client site visit', 'Materials pickup', 'Project meeting', 'Business errands', 'Estimate walkthrough', 'Vendor visit'];
+  const richMileageTrips = Array.from({ length: 18 * 3 }, (_, i) => {
+    const monthIndex = Math.floor(i / 3);
+    const slot = i % 3;
+    const monthOffset = -(monthIndex + 1);
+    const client = clients[(i + 2) % clients.length];
+    const miles = Math.round((9.4 + ((i * 7) % 48) + ((i % 10) / 10)) * 10) / 10;
+    return {
+      id: `mi_demo_hist_${i + 1}`,
+      date: monthDate(monthOffset, 7 + slot * 7),
+      miles,
+      purpose: mileagePurposes[i % mileagePurposes.length],
+      client: client.name,
+      notes: 'Deterministic demo mileage history',
+    };
+  });
+
+  const allMileageTrips = [...mileageTrips, ...richMileageTrips].sort((a, b) => b.date.localeCompare(a.date));
+
   const receipts = [
     { id: 'rcpt_demo_1', date: expenseDates.office, imageKey: 'rcpt_demo_1', mimeType: 'image/png', note: 'Office supplies — Office Depot' },
     { id: 'rcpt_demo_2', date: expenseDates.fuel, imageKey: 'rcpt_demo_2', mimeType: 'image/png', note: 'Fuel — Shell' },
@@ -375,6 +602,29 @@ export const getFreshDemoData = () => {
     { id: 'rcpt_demo_4', date: expenseDates.hardware, imageKey: 'rcpt_demo_4', mimeType: 'image/png', note: 'Hardware materials — Ace Hardware' },
     { id: 'rcpt_demo_5', date: expenseDates.refreshments, imageKey: 'rcpt_demo_5', mimeType: 'image/png', note: 'Groceries / client refreshments — Market Fresh' },
   ];
+
+  const receiptAssetSourceForCategory = (category: string) => {
+    if (category === 'Travel') return 'rcpt_demo_2';
+    if (category === 'Meals (Business)') return 'rcpt_demo_3';
+    if (category === 'Equipment' || category === 'Contractors') return 'rcpt_demo_4';
+    if (category === 'Office Supplies' || category === 'Software / SaaS' || category === 'Phone / Internet') return 'rcpt_demo_1';
+    return 'rcpt_demo_5';
+  };
+
+  const richReceipts = richExpenseTransactions
+    .filter(transaction => Boolean(transaction.receiptId))
+    .map((transaction) => ({
+      id: transaction.receiptId!,
+      date: transaction.date,
+      imageKey: transaction.receiptId!,
+      mimeType: 'image/png',
+      note: transaction.name,
+      // App seeding uses this demo-only field to copy one of the five bundled
+      // receipt images into this receipt's own IndexedDB key.
+      assetSourceId: receiptAssetSourceForCategory(transaction.category),
+    }));
+
+  const allReceipts = [...receipts, ...richReceipts].sort((a, b) => b.date.localeCompare(a.date));
 
   const taxPayments = [
     { id: 'tax_demo_1', date: yearDate(currentYear, 0, 15), amount: 950, type: 'Estimated' as const, note: 'Q4 estimated tax payment' },
@@ -407,13 +657,13 @@ export const getFreshDemoData = () => {
       monthlyRevenueGoal: 12000,
       monthlyProfitGoal: 8500,
     },
-    transactions,
+    transactions: allTransactions,
     clients,
     jobs,
-    estimates,
-    invoices: invoices.sort((a, b) => b.date.localeCompare(a.date)),
-    mileageTrips,
-    receipts,
+    estimates: [...estimates, ...historicalEstimates].sort((a, b) => b.date.localeCompare(a.date)),
+    invoices: [...invoices, ...historicalInvoices].sort((a, b) => b.date.localeCompare(a.date)),
+    mileageTrips: allMileageTrips,
+    receipts: allReceipts,
     taxPayments,
   };
 };

@@ -1,5 +1,6 @@
 import * as assert from 'node:assert/strict';
-import { getFreshDemoData } from '../../constants';
+import { CATS_IN, CATS_OUT, getFreshDemoData } from '../../constants';
+import type { Estimate, Invoice, Job, MileageTrip, Receipt, Transaction, Client } from '../../types';
 import { buildJobProfitabilityRows } from '../../src/features/jobs/jobCore';
 import { buildMonthlyGoalProgress } from '../../src/features/goals/monthlyGoals';
 
@@ -8,42 +9,71 @@ export function runDemoDataRegressionTests() {
   const second = getFreshDemoData();
 
   assert.deepEqual(first, second, 'commercial demo should be deterministic within the same day');
-  assert.equal(first.clients.length, 5, 'demo client count should stay curated');
-  assert.equal(first.jobs.length, 4, 'demo should include linked jobs/projects');
-  assert.equal(first.invoices.length, 6, 'demo should include a compact invoice history');
-  assert.equal(first.estimates.length, 6, 'demo should include a compact estimate pipeline');
-  assert.equal(first.receipts.length, 5, 'all bundled demo receipt assets should be represented');
+
+  const transactions = first.transactions as Transaction[];
+  const invoices = first.invoices as Invoice[];
+  const estimates = first.estimates as Estimate[];
+  const mileageTrips = first.mileageTrips as MileageTrip[];
+  const jobs = first.jobs as Job[];
+  const clients = first.clients as Client[];
+  const receipts = first.receipts as Receipt[];
+
+  assert.equal(clients.length, 5, 'demo client count should stay curated');
+  assert.equal(jobs.length, 4, 'demo should include linked jobs/projects');
+
+  // Commercial-demo density: protect against accidentally shrinking the demo
+  // back to a handful of records. These floors intentionally leave room for
+  // future curation without requiring exact fixture counts forever.
+  assert.ok(transactions.length >= 350, 'demo should include a deep transaction history');
+  assert.ok(invoices.length >= 40, 'demo should include a substantial invoice history');
+  assert.ok(estimates.length >= 28, 'demo should include a substantial estimate history');
+  assert.ok(mileageTrips.length >= 60, 'demo should include meaningful mileage history');
+  assert.ok(receipts.length >= 120, 'demo should include rich receipt coverage');
   assert.ok(first.settings.monthlyRevenueGoal > 0, 'demo should visibly exercise monthly revenue goals');
   assert.ok(first.settings.monthlyProfitGoal > 0, 'demo should visibly exercise monthly profit goals');
 
-  const jobIds = new Set(first.jobs.map(job => job.id));
-  const clientIds = new Set(first.clients.map(client => client.id));
-  const receiptIds = new Set(first.receipts.map(receipt => receipt.id));
+  const incomeTotal = transactions
+    .filter(tx => tx.type === 'income')
+    .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+  const expenseTotal = transactions
+    .filter(tx => tx.type === 'expense')
+    .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+  assert.ok(incomeTotal >= 550000, 'demo all-time income should look like an established operating business');
+  assert.ok(expenseTotal >= 100000, 'demo all-time expenses should be substantial enough for reports and categories');
 
-  for (const job of first.jobs) {
+  const incomeCategories = new Set(transactions.filter(tx => tx.type === 'income').map(tx => tx.category));
+  const expenseCategories = new Set(transactions.filter(tx => tx.type === 'expense').map(tx => tx.category));
+  for (const category of CATS_IN) assert.ok(incomeCategories.has(category), `demo should exercise income category: ${category}`);
+  for (const category of CATS_OUT) assert.ok(expenseCategories.has(category), `demo should exercise expense category: ${category}`);
+
+  const jobIds = new Set(jobs.map(job => job.id));
+  const clientIds = new Set(clients.map(client => client.id));
+  const receiptIds = new Set(receipts.map(receipt => receipt.id));
+
+  for (const job of jobs) {
     if (job.clientId) assert.ok(clientIds.has(job.clientId), `job ${job.id} should link to a real demo client`);
   }
-  for (const record of [...first.transactions, ...first.invoices, ...first.estimates, ...first.mileageTrips]) {
+  for (const record of [...transactions, ...invoices, ...estimates, ...mileageTrips]) {
     if (record.jobId) assert.ok(jobIds.has(record.jobId), `record should not reference a missing demo job: ${record.jobId}`);
   }
-  for (const transaction of first.transactions) {
+  for (const transaction of transactions) {
     if (transaction.receiptId) assert.ok(receiptIds.has(transaction.receiptId), `transaction should not reference a missing receipt: ${transaction.receiptId}`);
   }
 
   const currentYear = new Date().getFullYear();
-  const currentYearExpenses = first.transactions.filter(tx => tx.type === 'expense' && new Date(tx.date).getFullYear() === currentYear);
-  assert.equal(currentYearExpenses.length, 7, 'Tax Prep demo should use a controlled current-year expense set');
-  assert.equal(currentYearExpenses.filter(tx => !tx.receiptId).length, 2, 'Tax Prep demo should show exactly two missing receipts');
+  const currentYearExpenses = transactions.filter(tx => tx.type === 'expense' && new Date(tx.date).getFullYear() === currentYear);
+  assert.ok(currentYearExpenses.length >= 50, 'current tax year should have enough expenses for meaningful tax/report demos');
+  assert.equal(currentYearExpenses.filter(tx => !tx.receiptId).length, 2, 'Tax Prep demo should show exactly two deliberate missing receipts');
   assert.equal(currentYearExpenses.filter(tx => !tx.reviewedAt).length, 1, 'Tax Prep demo should show exactly one expense awaiting review');
-  assert.equal(first.mileageTrips.filter(trip => !trip.purpose || trip.miles <= 0).length, 1, 'Tax Prep demo should show one incomplete mileage trip');
+  assert.equal(mileageTrips.filter(trip => !trip.purpose || trip.miles <= 0).length, 1, 'Tax Prep demo should show one incomplete mileage trip');
 
   const rows = buildJobProfitabilityRows({
-    jobs: first.jobs,
-    clients: first.clients,
-    transactions: first.transactions,
-    invoices: first.invoices,
-    estimates: first.estimates,
-    mileageTrips: first.mileageTrips,
+    jobs,
+    clients,
+    transactions,
+    invoices,
+    estimates,
+    mileageTrips,
     mileageRateCents: first.settings.mileageRateCents || 72.5,
     year: currentYear,
   });
@@ -54,9 +84,11 @@ export function runDemoDataRegressionTests() {
   assert.equal(bathroom?.estimatedProfit, 4540);
   assert.ok(Math.abs((bathroom?.miles || 0) - 84.6) < 0.001, 'bathroom demo job should show 84.6 business miles');
 
-  const goals = buildMonthlyGoalProgress(first.transactions, first.settings.monthlyRevenueGoal, first.settings.monthlyProfitGoal, new Date());
-  assert.equal(goals.revenue, 9850, 'demo monthly revenue should be stable and meaningful');
-  assert.ok(Math.abs(goals.profit - 7447.2) < 0.001, 'demo monthly profit should be stable and meaningful');
+  // Historical density must not pollute the intentionally simple current-month
+  // Goals example used on Home.
+  const goals = buildMonthlyGoalProgress(transactions, first.settings.monthlyRevenueGoal, first.settings.monthlyProfitGoal, new Date());
+  assert.equal(goals.revenue, 9850, 'demo monthly revenue should stay stable and meaningful');
+  assert.ok(Math.abs(goals.profit - 7447.2) < 0.001, 'demo monthly profit should stay stable and meaningful');
   assert.equal(goals.hasRevenueGoal, true);
   assert.equal(goals.hasProfitGoal, true);
 }
