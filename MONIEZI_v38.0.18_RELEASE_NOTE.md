@@ -7,3 +7,13 @@
 - Each featured receipt is linked to an expense record rather than appearing as a generic placeholder.
 - Real-business behavior remains unchanged: Home shows the 10 most recent receipt images.
 - Preserves the Missing Receipts workflow, dark-blue visual system, rich demo history, Reports, Jobs, Goals, and all prior v38 functionality.
+
+## Commercial source cleanup
+
+- Removed obsolete v30/v32/v35 documentation and prior v36/v38.0.16/v38.0.17 release notes.
+- Removed unused public stylesheet, redundant unreferenced favicons, and orphaned ESLint configuration.
+- Replaced the old deployment/owner-key document with current Stripe + Cloudflare + GitHub instructions.
+- Replaced the old regression checklist with a current commercial v38 checklist.
+- Corrected the license-email `APP_URL` from the legacy v36 project path to the v38 project path.
+- Removed stale Gumroad/v36/v37 wording from active license-worker documentation/comments.
+- Cleaned package/workflow labels without changing the application data model or PWA identity.

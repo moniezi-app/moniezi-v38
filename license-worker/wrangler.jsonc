@@ -14,7 +14,7 @@
     "MAX_DEVICES": "3",
 
     // Used only in the purchase email body.
-    "APP_URL": "https://moniezi-app.github.io/moniezi-v36/",
+    "APP_URL": "https://moniezi-app.github.io/moniezi-v38/",
     "INSTALL_URL": "https://moniezi.com/install",
     "REFUND_URL": "https://moniezi.com/refund-policy",
     "SUPPORT_EMAIL": "support@moniezi.com",

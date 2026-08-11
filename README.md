@@ -12,3 +12,9 @@ Source package for the v38.0.18 Optimized U.S. Receipt Gallery release.
 - Real-business behavior remains date-based: Home shows the 10 most recent real receipt images.
 
 MONIEZI v38.0.18 preserves the v38.0.17 data model and all earlier MONIEZI records. Existing installed v38 PWAs keep the same manifest application ID so updates continue normally.
+
+## Current operational documentation
+
+- `DEPLOYMENT_AND_LICENSE_SETUP.md` — GitHub Pages, Cloudflare Worker/KV, Stripe webhook, and owner-key setup.
+- `docs/COMMERCIAL_REGRESSION_CHECKLIST.md` — current pre-release validation checklist.
+- `MONIEZI_v38.0.18_RELEASE_NOTE.md` — current release notes.

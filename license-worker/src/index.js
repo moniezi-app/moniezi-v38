@@ -1,11 +1,10 @@
 /**
- * MONIEZI License Worker — v37.0.0
+ * MONIEZI License Worker
  *
- * Replaces Gumroad verification with a MONIEZI-controlled license registry
- * held in Cloudflare Workers KV, fulfilled by Stripe Checkout webhooks.
+ * MONIEZI-controlled license registry held in Cloudflare Workers KV and fulfilled by Stripe Checkout webhooks.
  *
  * Routes
- *   POST /validate          Called by the MONIEZI app. Contract unchanged from v36.
+ *   POST /validate          Called by the MONIEZI app.
  *   POST /stripe/webhook    Called by Stripe. Mints and revokes licenses.
  *   POST /admin/lookup      Owner only. Find a license by email or key.
  *   POST /admin/issue       Owner only. Manually mint a license (fallback / comped).
