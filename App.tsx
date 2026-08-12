@@ -11284,23 +11284,56 @@ html, body, #root {
                     <ChevronRight size={19} className="hidden shrink-0 text-slate-400 sm:block" />
                   </div>
 
-                  <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-200 pt-4 dark:border-slate-800 sm:grid-cols-5">
-                    <div><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Revenue</div><div className="mt-1 text-sm font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(row.revenue)}</div></div>
-                    <div><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Cost</div><div className="mt-1 text-sm font-extrabold text-red-700 dark:text-red-300">{formatCurrency.format(row.totalActualCost)}</div></div>
-                    <div><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Job Profit</div><div className={`mt-1 text-sm font-extrabold ${row.estimatedProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(row.estimatedProfit)}</div></div>
-                    <div><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Outstanding</div><div className="mt-1 text-sm font-extrabold text-amber-700 dark:text-amber-300">{formatCurrency.format(row.outstanding)}</div></div>
-                    <div><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Margin</div><div className="mt-1 text-sm font-extrabold text-slate-950 dark:text-white">{row.revenue > 0 ? `${row.marginPct.toFixed(1)}%` : '—'}</div></div>
+                  <div className="mt-5 border-t border-slate-200 pt-5 dark:border-slate-800">
+                    <div className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Financial Summary</div>
+                    <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-5">
+                      <div>
+                        <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Revenue</div>
+                        <div className="mt-1.5 text-base font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(row.revenue)}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Cost</div>
+                        <div className="mt-1.5 text-base font-extrabold text-red-700 dark:text-red-300">{formatCurrency.format(row.totalActualCost)}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Job Profit</div>
+                        <div className={`mt-1.5 text-base font-extrabold ${row.estimatedProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(row.estimatedProfit)}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Profit Margin</div>
+                        <div className="mt-1.5 text-base font-extrabold text-slate-950 dark:text-white">{row.revenue > 0 ? `${row.marginPct.toFixed(1)}%` : '—'}</div>
+                      </div>
+                    </div>
+                    <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800/50 dark:bg-amber-500/10">
+                      <div className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-300">Outstanding</div>
+                      <div className="mt-1.5 text-base font-extrabold text-amber-800 dark:text-amber-200">{formatCurrency.format(row.outstanding)}</div>
+                    </div>
                   </div>
 
-                  <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                    <span>{row.invoiceCount} invoice{row.invoiceCount === 1 ? '' : 's'}</span>
-                    <span>{row.expenseCount} expense{row.expenseCount === 1 ? '' : 's'}</span>
-                    <span>{row.actualLaborHours.toFixed(1)} labor hours</span>
-                    <span>{formatCurrency.format(row.actualLaborCost)} labor cost</span>
-                    <span>{row.miles.toFixed(1)} miles</span>
-                    {row.miles > 0 && <span>{formatCurrency.format(row.mileageDeduction)} mileage deduction</span>}
-                    {row.estimateValue > 0 && <span>{formatCurrency.format(row.estimateValue)} quoted</span>}
-                    {row.acceptedEstimateValue > 0 && <span>{formatCurrency.format(row.acceptedEstimateValue)} accepted estimates</span>}
+                  <div className="mt-5 border-t border-slate-200 pt-5 dark:border-slate-800">
+                    <div className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Job Activity Snapshot</div>
+                    <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                      <div>
+                        <div className="font-extrabold text-slate-950 dark:text-white">Invoices</div>
+                        <div className="mt-1 font-medium text-slate-500 dark:text-slate-400">{row.invoiceCount} invoice{row.invoiceCount === 1 ? '' : 's'}</div>
+                      </div>
+                      <div>
+                        <div className="font-extrabold text-slate-950 dark:text-white">Expenses</div>
+                        <div className="mt-1 font-medium text-slate-500 dark:text-slate-400">{row.expenseCount} expense{row.expenseCount === 1 ? '' : 's'}</div>
+                      </div>
+                      <div>
+                        <div className="font-extrabold text-slate-950 dark:text-white">Labor</div>
+                        <div className="mt-1 font-medium text-slate-500 dark:text-slate-400">{row.actualLaborHours.toFixed(1)} hours</div>
+                      </div>
+                      <div>
+                        <div className="font-extrabold text-slate-950 dark:text-white">Mileage</div>
+                        <div className="mt-1 font-medium text-slate-500 dark:text-slate-400">{row.miles.toFixed(1)} miles</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 flex items-center justify-end gap-1 border-t border-slate-200 pt-4 text-sm font-extrabold text-cyan-700 dark:border-slate-800 dark:text-cyan-300">
+                    View Job <ChevronRight size={17} />
                   </div>
                 </button>
               ))}
@@ -12964,7 +12997,15 @@ html, body, #root {
                 })}</div>}
               </section>
 
-              <div className="flex flex-wrap gap-3"><button type="button" onClick={() => { setSelectedJobId(null); repeatJob(job); }} className="rounded-lg border border-cyan-300 bg-cyan-50 px-4 py-3 text-xs font-extrabold uppercase tracking-wider text-cyan-800 hover:bg-cyan-100 dark:border-cyan-700/60 dark:bg-cyan-500/10 dark:text-cyan-200"><Repeat size={14} className="mr-1 inline" />Repeat</button>{job.status === 'active' && <button type="button" onClick={() => completeJob(job)} className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-xs font-extrabold uppercase tracking-wider text-emerald-800 hover:bg-emerald-100 dark:border-emerald-700/60 dark:bg-emerald-500/10 dark:text-emerald-200"><CheckCircle size={14} className="mr-1 inline" />Complete Job</button>}<button type="button" onClick={() => openEditJob(job)} className="min-w-[160px] flex-1 rounded-lg bg-cyan-700 px-4 py-3 text-xs font-extrabold uppercase tracking-wider text-white shadow-sm hover:bg-cyan-600"><Edit3 size={14} className="mr-1 inline" />Edit Job Details</button></div>
+              <section className="space-y-3 pb-6">
+                <div className={`grid gap-3 ${job.status === 'active' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  <button type="button" onClick={() => { setSelectedJobId(null); repeatJob(job); }} className="min-h-14 rounded-lg border border-cyan-300 bg-cyan-50 px-4 py-3 text-sm font-extrabold text-cyan-800 transition hover:bg-cyan-100 active:scale-[0.99] dark:border-cyan-700/60 dark:bg-cyan-500/10 dark:text-cyan-200">
+                    <Repeat size={17} className="mr-2 inline" />Repeat Job
+                  </button>
+                  {job.status === 'active' && <button type="button" onClick={() => completeJob(job)} className="min-h-14 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-extrabold text-emerald-800 transition hover:bg-emerald-100 active:scale-[0.99] dark:border-emerald-700/60 dark:bg-emerald-500/10 dark:text-emerald-200"><CheckCircle size={17} className="mr-2 inline" />Complete Job</button>}
+                </div>
+                <button type="button" onClick={() => openEditJob(job)} className="min-h-14 w-full rounded-lg bg-cyan-700 px-5 py-4 text-sm font-extrabold text-white shadow-sm transition hover:bg-cyan-600 active:scale-[0.99]"><Edit3 size={17} className="mr-2 inline" />Edit Job Details</button>
+              </section>
             </div>
           );
         })()}

@@ -20,3 +20,12 @@ The permanent bottom navigation is now: Home, Jobs, Invoice, Activity, Mileage, 
 ## Compatibility
 
 v38.0.21 preserves the v38.0.20 data model, job budgets, labor entries, demo data, backups, and calculations.
+
+## v38.0.21 UI correction — Jobs list and dashboard actions
+
+- Simplified Jobs list cards so they summarize instead of duplicating the full Job Dashboard.
+- Added clear Financial Summary and Job Activity Snapshot sections to each job card.
+- Removed mileage deduction, labor-cost, quoted-value, and accepted-estimate detail from the list card; those remain in the Job Dashboard where they belong.
+- Added an explicit View Job affordance.
+- Replaced the cramped three-column bottom action layout with Repeat Job / Complete Job on one row and a full-width Edit Job Details action below.
+- Added additional bottom breathing room for mobile.
