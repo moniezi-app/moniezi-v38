@@ -3538,24 +3538,6 @@ export default function App() {
    * is the safety check: no empty app, no button.
    */
   /**
-   * Real counts pulled from the sample data itself, so the welcome card can
-   * never advertise numbers that differ from what loading actually produces.
-   * Only computed while the app is empty, which is the only time it renders.
-   */
-  const sampleDataCounts = useMemo(() => {
-    try {
-      const demo: any = getFreshDemoData();
-      return {
-        transactions: (demo?.transactions || []).length,
-        invoices: (demo?.invoices || []).length,
-        clients: (demo?.clients || []).length,
-      };
-    } catch {
-      return { transactions: 0, invoices: 0, clients: 0 };
-    }
-  }, []);
-
-  /**
    * The install prompt takes the whole screen when it applies, so nobody starts
    * entering records in a browser tab and then loses them.
    *
@@ -8030,44 +8012,102 @@ html, body, #root {
           : 'border-sky-300/65 bg-gradient-to-br from-slate-50/98 via-white/98 to-sky-50/96 shadow-[0_18px_48px_rgba(15,23,42,0.16)] ring-1 ring-sky-200/70'}`}>
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(96,165,250,0.20),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(125,211,252,0.10),transparent_32%)]" />
 
-          <div className="relative px-6 py-7">
-            <div className={`mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-3xl border shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${theme === 'dark'
-              ? 'border-sky-300/25 bg-gradient-to-br from-sky-500/20 to-blue-600/10'
-              : 'border-sky-200/90 bg-gradient-to-br from-sky-100 to-blue-50 shadow-[0_8px_20px_rgba(59,130,246,0.12)]'}`}>
-              {hasTriedSampleData
-                ? <Plus size={30} className={theme === 'dark' ? 'text-sky-200' : 'text-sky-500'} strokeWidth={2.5} />
-                : <PlayCircle size={28} className={theme === 'dark' ? 'text-sky-200' : 'text-sky-500'} strokeWidth={2} />}
-            </div>
+          <div className="relative px-5 py-6 sm:px-6 sm:py-7">
+            {!hasTriedSampleData ? (
+              <>
+                {/* Business Preview: show what the demo lets the buyer experience,
+                    rather than leading with abstract record counts. */}
+                <div className="relative overflow-hidden rounded-xl border border-blue-300/30 bg-gradient-to-br from-blue-700/85 via-blue-900/90 to-indigo-950 p-4 shadow-[0_18px_38px_rgba(2,6,23,0.32)]">
+                  <div className="pointer-events-none absolute -right-12 -top-14 h-40 w-40 rounded-full bg-cyan-300/15 blur-2xl" />
+                  <div className="relative flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-blue-200">Sample Business</div>
+                      <div className="mt-1 text-sm font-bold text-white">See MONIEZI already working</div>
+                    </div>
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sky-300/25 bg-slate-950/35 text-sky-200">
+                      <PlayCircle size={22} strokeWidth={2} />
+                    </div>
+                  </div>
 
-            <div className={`text-center text-2xl font-extrabold leading-tight tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-              {hasTriedSampleData ? 'Now make it yours' : 'Load the demo'}
-            </div>
-            <p className={`mx-auto mt-2.5 max-w-[34ch] text-center text-[14px] leading-6 ${theme === 'dark' ? 'text-slate-200/90' : 'text-slate-800'}`}>
-              {hasTriedSampleData
-                ? 'The demo is cleared. Record a job, an expense, a mile or an invoice — whatever you did today.'
-                : 'A complete demo business you can look around, then clear out and start your own. Nothing to undo.'}
-            </p>
+                  <div className="relative mt-4 grid grid-cols-[1.2fr_0.8fr] gap-2.5">
+                    <div className="rounded-xl border border-emerald-300/20 bg-emerald-400/10 p-3">
+                      <div className="flex items-center gap-2 text-emerald-200">
+                        <TrendingUp size={16} strokeWidth={2} />
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider">Job Profit</span>
+                      </div>
+                      <div className="mt-2 text-2xl font-extrabold tabular-nums text-emerald-300">$3,490</div>
+                      <div className="mt-1 text-[10px] font-semibold text-blue-100/80">Budget, labor and costs linked</div>
+                    </div>
 
-            {/* Real counts, read from the sample data itself. Only shown while
-                the demo is still being offered as the main action. */}
-            {!hasTriedSampleData && (
-            <div className="mt-5 flex gap-2">
-              {[
-                { value: sampleDataCounts.transactions, label: 'RECORDS' },
-                { value: sampleDataCounts.invoices, label: 'INVOICES' },
-                { value: sampleDataCounts.clients, label: 'CLIENTS' },
-              ].map((stat) => (
-                <div
-                  key={stat.label}
-                  className="flex-1 rounded-xl border border-emerald-200 bg-emerald-50 px-1.5 py-3 text-center dark:border-emerald-700/40 dark:bg-emerald-500/10"
-                >
-                  <div className="text-[19px] font-extrabold text-emerald-700 dark:text-emerald-300">{stat.value}</div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                    {stat.label}
+                    <div className="space-y-2.5">
+                      <div className="rounded-xl border border-blue-300/20 bg-slate-950/30 p-2.5">
+                        <div className="flex items-center gap-1.5 text-blue-100">
+                          <FileText size={14} />
+                          <span className="text-[9px] font-extrabold uppercase tracking-wider">Invoice</span>
+                        </div>
+                        <div className="mt-1 text-xs font-extrabold text-emerald-300">PAID</div>
+                      </div>
+                      <div className="rounded-xl border border-blue-300/20 bg-slate-950/30 p-2.5">
+                        <div className="flex items-center gap-1.5 text-blue-100">
+                          <Receipt size={14} />
+                          <span className="text-[9px] font-extrabold uppercase tracking-wider">Receipt</span>
+                        </div>
+                        <div className="mt-1 text-xs font-extrabold text-cyan-200">LINKED</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="relative mt-2.5 grid grid-cols-3 gap-2">
+                    <div className="rounded-lg bg-slate-950/25 px-2 py-2 text-center">
+                      <Briefcase size={15} className="mx-auto text-cyan-200" />
+                      <div className="mt-1 text-[9px] font-bold text-blue-100">Jobs</div>
+                    </div>
+                    <div className="rounded-lg bg-slate-950/25 px-2 py-2 text-center">
+                      <Car size={15} className="mx-auto text-cyan-200" />
+                      <div className="mt-1 text-[9px] font-bold text-blue-100">Mileage</div>
+                    </div>
+                    <div className="rounded-lg bg-slate-950/25 px-2 py-2 text-center">
+                      <BarChart3 size={15} className="mx-auto text-cyan-200" />
+                      <div className="mt-1 text-[9px] font-bold text-blue-100">Reports</div>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
+
+                <div className={`mt-5 text-center text-2xl font-extrabold leading-tight tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                  Load the demo
+                </div>
+                <p className={`mx-auto mt-2.5 max-w-[38ch] text-center text-[14px] leading-6 ${theme === 'dark' ? 'text-slate-200/90' : 'text-slate-800'}`}>
+                  Explore a complete sample business and see how MONIEZI works before entering your own records.
+                </p>
+
+                <div className="mt-5 space-y-2.5">
+                  {[
+                    { icon: <Wallet size={17} />, title: 'Money', detail: 'Income, expenses, invoices and collections' },
+                    { icon: <Briefcase size={17} />, title: 'Work', detail: 'Clients, estimates, jobs and mileage' },
+                    { icon: <BarChart3 size={17} />, title: 'Records & Reports', detail: 'Receipts, profit, tax readiness and reports' },
+                  ].map((item) => (
+                    <div key={item.title} className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-white/60 px-3.5 py-3 text-left dark:border-blue-300/15 dark:bg-slate-950/25">
+                      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-cyan-200">{item.icon}</div>
+                      <div className="min-w-0">
+                        <div className="text-sm font-extrabold text-slate-900 dark:text-white">{item.title}</div>
+                        <div className="mt-0.5 text-xs font-medium leading-5 text-slate-600 dark:text-slate-300">{item.detail}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className={`mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-3xl border shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${theme === 'dark'
+                  ? 'border-sky-300/25 bg-gradient-to-br from-sky-500/20 to-blue-600/10'
+                  : 'border-sky-200/90 bg-gradient-to-br from-sky-100 to-blue-50 shadow-[0_8px_20px_rgba(59,130,246,0.12)]'}`}>
+                  <Plus size={30} className={theme === 'dark' ? 'text-sky-200' : 'text-sky-500'} strokeWidth={2.5} />
+                </div>
+                <div className={`text-center text-2xl font-extrabold leading-tight tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Now make it yours</div>
+                <p className={`mx-auto mt-2.5 max-w-[34ch] text-center text-[14px] leading-6 ${theme === 'dark' ? 'text-slate-200/90' : 'text-slate-800'}`}>
+                  The demo is cleared. Record a job, an expense, a mile or an invoice — whatever you did today.
+                </p>
+              </>
             )}
 
             {/* Once the demo has been seen, the actions swap. Offering "load the
@@ -11199,7 +11239,7 @@ html, body, #root {
 
         {/* ==================== JOBS / PROJECTS PAGE ==================== */}
         {currentPage === Page.Jobs && (
-          <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-right-4 pb-24">
+          <div className="space-y-6 pt-4 sm:space-y-8 sm:pt-5 animate-in fade-in slide-in-from-right-4 pb-24">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="p-2.5 rounded-xl bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300 flex-shrink-0">
@@ -11226,16 +11266,12 @@ html, body, #root {
               const totalRevenue = visibleRows.reduce((sum, row) => sum + row.revenue, 0);
               const totalCost = visibleRows.reduce((sum, row) => sum + row.totalActualCost, 0);
               const totalProfit = visibleRows.reduce((sum, row) => sum + row.estimatedProfit, 0);
-              const activeCount = jobs.filter(job => job.status === 'active').length;
               return (
                 <section className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
                   <div className="p-5 sm:p-6">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <div className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Jobs Overview</div>
-                        <div className="mt-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Profit across active and completed work</div>
-                      </div>
-                      <div className="rounded-full bg-cyan-100 px-3 py-1.5 text-xs font-extrabold text-cyan-800 dark:bg-cyan-500/15 dark:text-cyan-200">{activeCount} active</div>
+                    <div>
+                      <div className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Jobs Overview</div>
+                      <div className="mt-2 text-sm font-semibold leading-6 text-slate-600 dark:text-slate-300">Profit across active and completed work</div>
                     </div>
 
                     <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50/80 p-5 dark:border-emerald-800/50 dark:bg-emerald-500/10">

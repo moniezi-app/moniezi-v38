@@ -18,3 +18,12 @@
 ## Compatibility
 
 No Job data fields were removed or changed. Existing v38.0.21 jobs, budgets, labor entries, linked records, backups, demo data, and report calculations remain compatible.
+
+
+## UI correction — Jobs header + Demo invitation
+
+- Adds extra top breathing room to the Jobs page header so Jobs / Projects no longer crowds or clips against the fixed app chrome.
+- Removes the redundant active-job badge from Jobs Overview; status counts remain in the dedicated All / Active / Completed / Archived selector.
+- Replaces the first-run demo count cards with a Business Preview that demonstrates Job Profit, a paid invoice, a linked receipt, Jobs, Mileage, and Reports.
+- Rewrites the demo invitation around what the buyer can experience: Money, Work, and Records & Reports.
+- Keeps the existing demo load/remove behavior unchanged.
