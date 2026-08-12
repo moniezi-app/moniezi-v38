@@ -1,20 +1,13 @@
-# MONIEZI v38.0.20
+# MONIEZI v38.0.21
 
-Source package for the v38.0.20 Complete Job Costing & Profitability release.
+Source package for the v38.0.21 Job Dashboard Mobile UX Refinement release.
 
-## New in v38.0.20
+## New in v38.0.21
 
-- Completes Jobs / Projects with expected job budgets and actual-cost comparison.
-- Adds estimated labor hours, internal hourly labor cost, actual labor time entries, labor cost, and labor variance.
-- Adds materials, subcontractor, other-cost, total-cost, profit, margin, and cash-position views per job.
-- Adds Budget vs Actual and Profit vs Budget analysis.
-- Adds Log Time and Job Cost actions directly from the Job Dashboard.
-- Adds a one-tap Complete Job action and completed-job closeout summary.
-- Expands Job Activity to include labor time entries.
-- Expands Job Profitability Reports with ranking by profit, revenue, margin, total cost, outstanding balance, and labor hours.
-- Expands all four existing demo jobs with realistic budgets and labor entries so the complete workflow is visible immediately.
-- Preserves the optimized U.S. receipt demo, Reports, Tax Prep, Goals, Company Equity, backups, PWA behavior, and all earlier v38 functionality.
-
-## Compatibility
-
-The new Job fields are optional and normalized on load, so jobs created in v38.0.19 and earlier remain valid. Job labor entries are stored inside the Job record and are included automatically in app-state storage and backups. Backup schema metadata is now version 3.
+- Adds Jobs as a permanent bottom-navigation destination while preserving Jobs / Projects in the main menu.
+- Replaces the cramped mobile Budget vs Actual table with readable stacked comparison cards.
+- Expands Labor metrics into full-width mobile records with complete labels and full words.
+- Expands labor entries so descriptions, worker names, dates, hours, rates, and labor cost can be read without truncation.
+- Rebuilds Job Activity as vertically spaced records with full titles, details, dates, status, and amounts.
+- Gives Financial Summary, Actual Cost Breakdown, Job actions, mileage/quoted cards, and Job Closeout more mobile breathing room.
+- Keeps the complete v38.0.20 job-costing calculations, labor model, demo data, reports, and backward-compatible data model unchanged.

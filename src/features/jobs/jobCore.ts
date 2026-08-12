@@ -150,7 +150,7 @@ export function buildJobActivityRows(input: {
       id: trip.id,
       date: trip.date,
       title: trip.purpose || 'Business mileage',
-      detail: `${Number(trip.miles || 0).toFixed(1)} mi${trip.client ? ` · ${trip.client}` : ''}`,
+      detail: `${Number(trip.miles || 0).toFixed(1)} miles${trip.client ? ` · ${trip.client}` : ''}`,
       status: 'mileage',
     }));
 
@@ -160,7 +160,7 @@ export function buildJobActivityRows(input: {
       id: entry.id,
       date: entry.date,
       title: entry.description || 'Labor time',
-      detail: `${entry.hours.toFixed(1)} hr${entry.worker ? ` · ${entry.worker}` : ''} · $${entry.costRate.toFixed(2)}/hr internal cost`,
+      detail: `${entry.hours.toFixed(1)} hours${entry.worker ? ` · ${entry.worker}` : ''} · $${entry.costRate.toFixed(2)} per hour internal cost`,
       amount: entry.hours * entry.costRate,
       status: 'labor',
     }));
