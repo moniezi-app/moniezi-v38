@@ -159,21 +159,47 @@ export const getFreshDemoData = () => {
       id: 'job_demo_1', title: 'Master Bathroom Renovation', clientId: 'cli_demo_3', clientName: 'Jimmy Wilson',
       description: 'Complete master-bath renovation with fixtures, plumbing and finish work.', status: 'active' as const,
       startDate: addDays(-21), createdAt: addDays(-28), updatedAt: addDays(-2),
+      budgetRevenue: 6850, budgetMaterials: 1450, budgetLaborHours: 32, budgetLaborRate: 35, budgetSubcontractors: 780, budgetOtherCosts: 80,
+      timeEntries: [
+        { id: 'jobtime_demo_1a', date: addDays(-18), hours: 8, costRate: 35, worker: 'Alex Rivera', description: 'Demolition and plumbing prep' },
+        { id: 'jobtime_demo_1b', date: addDays(-13), hours: 10, costRate: 35, worker: 'Alex Rivera', description: 'Fixture and vanity installation' },
+        { id: 'jobtime_demo_1c', date: addDays(-7), hours: 8, costRate: 35, worker: 'Alex Rivera', description: 'Finish hardware and punch list' },
+        { id: 'jobtime_demo_1d', date: addDays(-3), hours: 4, costRate: 35, worker: 'Alex Rivera', description: 'Final walkthrough and corrections' },
+      ],
     },
     {
       id: 'job_demo_2', title: 'Chen Tech Office Refresh', clientId: 'cli_demo_4', clientName: 'Maria Chen',
       description: 'Office refresh, hardware installation and client-space improvements.', status: 'active' as const,
       startDate: addDays(-14), createdAt: addDays(-18), updatedAt: addDays(-1),
+      budgetRevenue: 3400, budgetMaterials: 300, budgetLaborHours: 16, budgetLaborRate: 45, budgetSubcontractors: 0, budgetOtherCosts: 100,
+      timeEntries: [
+        { id: 'jobtime_demo_2a', date: addDays(-11), hours: 7.5, costRate: 45, worker: 'Alex Rivera', description: 'Office hardware installation' },
+        { id: 'jobtime_demo_2b', date: addDays(-6), hours: 7, costRate: 45, worker: 'Alex Rivera', description: 'Refresh work and adjustments' },
+        { id: 'jobtime_demo_2c', date: addDays(-2), hours: 5.5, costRate: 45, worker: 'Alex Rivera', description: 'Punch-list work and client changes' },
+      ],
     },
     {
       id: 'job_demo_3', title: 'KB Monthly Lawn Care', clientId: 'cli_demo_1', clientName: 'Kenny Barria',
       description: 'Monthly lawn-care package with four scheduled visits.', status: 'active' as const,
       startDate: addDays(-40), createdAt: addDays(-45), updatedAt: addDays(-4),
+      budgetRevenue: 500, budgetMaterials: 50, budgetLaborHours: 8, budgetLaborRate: 28, budgetSubcontractors: 0, budgetOtherCosts: 40,
+      timeEntries: [
+        { id: 'jobtime_demo_3a', date: addDays(-31), hours: 3.5, costRate: 28, worker: 'Alex Rivera', description: 'Visit 1 — mowing and edging' },
+        { id: 'jobtime_demo_3b', date: addDays(-24), hours: 3.5, costRate: 28, worker: 'Alex Rivera', description: 'Visit 2 — mowing and hedge trim' },
+        { id: 'jobtime_demo_3c', date: addDays(-17), hours: 3.5, costRate: 28, worker: 'Alex Rivera', description: 'Visit 3 — mowing and weed treatment' },
+        { id: 'jobtime_demo_3d', date: addDays(-10), hours: 3.5, costRate: 28, worker: 'Alex Rivera', description: 'Visit 4 — mowing and cleanup' },
+      ],
     },
     {
       id: 'job_demo_4', title: 'Stanley Brand Identity', clientId: 'cli_demo_2', clientName: 'Sophia Stanley',
       description: 'Brand identity system including logo, palette and final brand guide.', status: 'completed' as const,
       startDate: addDays(-58), endDate: addDays(-23), createdAt: addDays(-64), updatedAt: addDays(-23),
+      budgetRevenue: 2400, budgetMaterials: 0, budgetLaborHours: 16, budgetLaborRate: 40, budgetSubcontractors: 0, budgetOtherCosts: 100,
+      timeEntries: [
+        { id: 'jobtime_demo_4a', date: addDays(-52), hours: 5, costRate: 40, worker: 'Alex Rivera', description: 'Discovery and visual direction' },
+        { id: 'jobtime_demo_4b', date: addDays(-43), hours: 8, costRate: 40, worker: 'Alex Rivera', description: 'Logo and identity design' },
+        { id: 'jobtime_demo_4c', date: addDays(-28), hours: 5, costRate: 40, worker: 'Alex Rivera', description: 'Brand guide and final delivery' },
+      ],
     },
   ];
 

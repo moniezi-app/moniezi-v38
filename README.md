@@ -1,25 +1,20 @@
-# MONIEZI v38.0.19
+# MONIEZI v38.0.20
 
-Source package for the v38.0.19 Job Dashboard & Quick Add Integration release.
+Source package for the v38.0.20 Complete Job Costing & Profitability release.
 
-## New in v38.0.19
+## New in v38.0.20
 
-- Adds **New Job / Project** to the Home/Activity Quick Add chooser.
-- Tapping a job now opens a purpose-built Job Dashboard instead of dropping directly into the edit form.
-- Job Dashboard separates Invoiced, Collected, Outstanding, Expenses, Estimated Job Profit, margin, and Cash Position.
-- Adds one-tap Invoice, Estimate, Expense, and Mileage actions from inside a job; new records are pre-linked to that job.
-- Adds a chronological Job Activity timeline for linked invoices, estimates, direct income, expenses, and mileage.
-- Editing job metadata is now a secondary **Edit Job Details** action.
-- Preserves the optimized 10-receipt U.S. demo gallery and the cleaned commercial-source structure from v38.0.18.
+- Completes Jobs / Projects with expected job budgets and actual-cost comparison.
+- Adds estimated labor hours, internal hourly labor cost, actual labor time entries, labor cost, and labor variance.
+- Adds materials, subcontractor, other-cost, total-cost, profit, margin, and cash-position views per job.
+- Adds Budget vs Actual and Profit vs Budget analysis.
+- Adds Log Time and Job Cost actions directly from the Job Dashboard.
+- Adds a one-tap Complete Job action and completed-job closeout summary.
+- Expands Job Activity to include labor time entries.
+- Expands Job Profitability Reports with ranking by profit, revenue, margin, total cost, outstanding balance, and labor hours.
+- Expands all four existing demo jobs with realistic budgets and labor entries so the complete workflow is visible immediately.
+- Preserves the optimized U.S. receipt demo, Reports, Tax Prep, Goals, Company Equity, backups, PWA behavior, and all earlier v38 functionality.
 
-MONIEZI v38.0.19 preserves the v38.0.18 data model and all earlier MONIEZI records. Existing installed v38 PWAs keep the same manifest application ID so updates continue normally.
+## Compatibility
 
-## Commercial source package
-
-This package intentionally excludes obsolete historical development docs, old release notes, `node_modules`, `dist`, and temporary test output.
-
-Current documentation includes:
-- `README.md`
-- `MONIEZI_v38.0.19_RELEASE_NOTE.md`
-- `docs/COMMERCIAL_REGRESSION_CHECKLIST.md`
-- `DEPLOYMENT_AND_LICENSE_SETUP.md`
+The new Job fields are optional and normalized on load, so jobs created in v38.0.19 and earlier remain valid. Job labor entries are stored inside the Job record and are included automatically in app-state storage and backups. Backup schema metadata is now version 3.

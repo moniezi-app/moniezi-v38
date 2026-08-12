@@ -87,7 +87,7 @@ import {
   Filter,
   Menu as MenuIcon
 } from 'lucide-react';
-import { Page, Transaction, Invoice, Estimate, Client, ClientStatus, Job, JobStatus, UserSettings, Notification, FilterPeriod, RecurrenceFrequency, FilingStatus, TaxPayment, TaxEstimationMethod, InvoiceItem, EstimateItem, CustomCategories, Receipt as ReceiptType, MileageTrip, CompanyEquityState } from './types';
+import { Page, Transaction, Invoice, Estimate, Client, ClientStatus, Job, JobStatus, JobTimeEntry, UserSettings, Notification, FilterPeriod, RecurrenceFrequency, FilingStatus, TaxPayment, TaxEstimationMethod, InvoiceItem, EstimateItem, CustomCategories, Receipt as ReceiptType, MileageTrip, CompanyEquityState } from './types';
 import { CATS_IN, CATS_OUT, CATS_BILLING, DEFAULT_PAY_PREFS, DB_KEY, STORAGE_NAMESPACE, TAX_CONSTANTS, TAX_PLANNER_2026, getFreshDemoData } from './constants';
 import InsightsDashboard from './InsightsDashboard';
 import { getInsightCount } from './services/insightsEngine';
@@ -797,8 +797,8 @@ class PageErrorBoundary extends React.Component<
   }
 }
 
-const CUSTOMER_VERSION = "38.0.19"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
-setReportAppVersion("38.0.19");
+const CUSTOMER_VERSION = "38.0.20"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
+setReportAppVersion("38.0.20");
 const LICENSE_STORAGE_KEY = `moniezi_license_v1_${STORAGE_NAMESPACE}`;
 const DEVICE_ID_STORAGE_KEY = `moniezi_device_id_v1_${STORAGE_NAMESPACE}`;
 const LICENSE_TOKEN_SALT = "moniezi_v35_offline_binding";
@@ -1266,11 +1266,15 @@ export default function App() {
 
   // Jobs / Projects
   const [jobFilter, setJobFilter] = useState<'all' | JobStatus>('active');
+  const [jobReportSort, setJobReportSort] = useState<'profit'|'revenue'|'margin'|'cost'|'outstanding'|'labor'>('profit');
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [showJobDrawer, setShowJobDrawer] = useState(false);
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
   const [jobAssignmentTarget, setJobAssignmentTarget] = useState<'record' | 'mileage' | null>(null);
   const [jobDraft, setJobDraft] = useState<Partial<Job>>({ status: 'active' });
+  const [showJobTimeModal, setShowJobTimeModal] = useState(false);
+  const [editingJobTimeEntryId, setEditingJobTimeEntryId] = useState<string | null>(null);
+  const [jobTimeDraft, setJobTimeDraft] = useState({ date: new Date().toISOString().split('T')[0], hours: '', costRate: '', worker: '', description: '' });
 
   // UI State
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -4418,11 +4422,12 @@ export default function App() {
   const selectedJobDashboard = selectedJobId ? (jobStatsById.get(selectedJobId) || null) : null;
   const selectedJobActivity = useMemo(() => selectedJobId ? buildJobActivityRows({
     jobId: selectedJobId,
+    job: jobs.find(job => job.id === selectedJobId),
     transactions,
     invoices,
     estimates,
     mileageTrips,
-  }) : [], [selectedJobId, transactions, invoices, estimates, mileageTrips]);
+  }) : [], [selectedJobId, jobs, transactions, invoices, estimates, mileageTrips]);
 
   const filteredJobRows = useMemo(() => jobProfitabilityAll
     .filter(row => jobFilter === 'all' || row.job.status === jobFilter)
@@ -4466,6 +4471,13 @@ export default function App() {
       clientName: linkedClient?.name || linkedClient?.company || clientName || undefined,
       startDate: today,
       description: '',
+      budgetRevenue: 0,
+      budgetMaterials: 0,
+      budgetLaborHours: 0,
+      budgetLaborRate: 0,
+      budgetSubcontractors: 0,
+      budgetOtherCosts: 0,
+      timeEntries: [],
     });
     setShowJobDrawer(true);
   };
@@ -4513,6 +4525,13 @@ export default function App() {
         description: String(jobDraft.description || '').trim() || undefined,
         startDate: jobDraft.startDate || undefined,
         endDate,
+        budgetRevenue: Number(jobDraft.budgetRevenue || 0),
+        budgetMaterials: Number(jobDraft.budgetMaterials || 0),
+        budgetLaborHours: Number(jobDraft.budgetLaborHours || 0),
+        budgetLaborRate: Number(jobDraft.budgetLaborRate || 0),
+        budgetSubcontractors: Number(jobDraft.budgetSubcontractors || 0),
+        budgetOtherCosts: Number(jobDraft.budgetOtherCosts || 0),
+        timeEntries: [],
         createdAt: now,
         updatedAt: now,
       };
@@ -4533,6 +4552,14 @@ export default function App() {
     setEditingJobId(null);
     setJobAssignmentTarget(null);
     setJobDraft({ status: 'active' });
+  };
+
+  const completeJob = (job: Job) => {
+    if (job.status === 'completed') return;
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date().toISOString();
+    setJobs(prev => prev.map(item => item.id === job.id ? ({ ...item, status: 'completed', endDate: item.endDate || today, updatedAt: now } as Job) : item));
+    showToast('Job completed — closeout summary is ready', 'success');
   };
 
   const deleteJob = (jobId: string) => {
@@ -4579,6 +4606,13 @@ export default function App() {
       description: job.description || '',
       startDate: today,
       endDate: undefined,
+      budgetRevenue: job.budgetRevenue || 0,
+      budgetMaterials: job.budgetMaterials || 0,
+      budgetLaborHours: job.budgetLaborHours || 0,
+      budgetLaborRate: job.budgetLaborRate || 0,
+      budgetSubcontractors: job.budgetSubcontractors || 0,
+      budgetOtherCosts: job.budgetOtherCosts || 0,
+      timeEntries: [],
     });
     setShowJobDrawer(true);
     showToast('Job repeated - review and create', 'success');
@@ -4590,7 +4624,7 @@ export default function App() {
     setDrawerMode('add');
     setActiveTab('expense');
     setCategorySearch('');
-    setActiveItem({ type: 'expense', date: today, name: '', amount: 0, category: CATS_OUT[0], jobId: job.id });
+    setActiveItem({ type: 'expense', date: today, name: '', amount: 0, category: CATS_OUT.includes('Equipment') ? 'Equipment' : CATS_OUT[0], jobId: job.id });
     setIsDrawerOpen(true);
   };
 
@@ -4675,7 +4709,67 @@ export default function App() {
     setIsDrawerOpen(true);
   };
 
-  const openJobActivityItem = (kind: 'invoice' | 'estimate' | 'income' | 'expense' | 'mileage', id: string) => {
+  const openJobTimeEntry = (job: Job, entry?: JobTimeEntry) => {
+    const today = new Date().toISOString().split('T')[0];
+    setSelectedJobId(job.id);
+    setEditingJobTimeEntryId(entry?.id || null);
+    setJobTimeDraft({
+      date: entry?.date || today,
+      hours: entry ? String(entry.hours) : '',
+      costRate: entry ? String(entry.costRate) : String(job.budgetLaborRate || ''),
+      worker: entry?.worker || settings.ownerName || '',
+      description: entry?.description || '',
+    });
+    setShowJobTimeModal(true);
+  };
+
+  const saveJobTimeEntry = () => {
+    if (!selectedJobId) return;
+    const hours = Number(jobTimeDraft.hours || 0);
+    const costRate = Number(jobTimeDraft.costRate || 0);
+    if (!Number.isFinite(hours) || hours <= 0) return showToast('Enter labor hours greater than 0', 'error');
+    if (!Number.isFinite(costRate) || costRate < 0) return showToast('Enter a valid internal hourly cost', 'error');
+    const now = new Date().toISOString();
+    setJobs(prev => prev.map(job => {
+      if (job.id !== selectedJobId) return job;
+      const existing = Array.isArray(job.timeEntries) ? job.timeEntries : [];
+      const entry: JobTimeEntry = {
+        id: editingJobTimeEntryId || generateId('jobtime'),
+        date: jobTimeDraft.date || new Date().toISOString().split('T')[0],
+        hours,
+        costRate,
+        worker: String(jobTimeDraft.worker || '').trim() || undefined,
+        description: String(jobTimeDraft.description || '').trim() || undefined,
+      };
+      const timeEntries = editingJobTimeEntryId
+        ? existing.map(item => item.id === editingJobTimeEntryId ? entry : item)
+        : [entry, ...existing];
+      return { ...job, timeEntries, updatedAt: now };
+    }));
+    setShowJobTimeModal(false);
+    setEditingJobTimeEntryId(null);
+    showToast(editingJobTimeEntryId ? 'Labor entry updated' : 'Labor time logged', 'success');
+  };
+
+  const deleteJobTimeEntry = () => {
+    if (!selectedJobId || !editingJobTimeEntryId) return;
+    if (!confirm('Delete this labor time entry?')) return;
+    const now = new Date().toISOString();
+    setJobs(prev => prev.map(job => job.id === selectedJobId
+      ? { ...job, timeEntries: (job.timeEntries || []).filter(entry => entry.id !== editingJobTimeEntryId), updatedAt: now }
+      : job));
+    setShowJobTimeModal(false);
+    setEditingJobTimeEntryId(null);
+    showToast('Labor entry deleted', 'info');
+  };
+
+  const openJobActivityItem = (kind: 'invoice' | 'estimate' | 'income' | 'expense' | 'mileage' | 'labor', id: string) => {
+    if (kind === 'labor') {
+      const job = selectedJobDashboard?.job;
+      const entry = job?.timeEntries?.find(item => item.id === id);
+      if (job && entry) openJobTimeEntry(job, entry);
+      return;
+    }
     setSelectedJobId(null);
     if (kind === 'invoice') {
       const invoice = invoices.find(item => item.id === id);
@@ -6563,7 +6657,7 @@ export default function App() {
         metadata: {
           appName: "MONIEZI",
           version: CUSTOMER_VERSION,
-          schemaVersion: 2,
+          schemaVersion: 3,
           timestamp: new Date().toISOString(),
         },
         data: {
@@ -10206,53 +10300,28 @@ html, body, #root {
               <div style={{ display: reportsMenuSection === 'jobs' ? undefined : 'none' }} id="report-jobs" className="space-y-5">
                 <div className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300"><Briefcase size={20} /></div>
-                      <div>
-                        <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Job Profitability</h3>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">Job revenue and direct expenses recorded in {taxPrepYear}. Mileage is shown separately as a tax-deduction reference.</p>
-                      </div>
-                    </div>
-                    <MonieziSelect value={String(taxPrepYear)} onChange={next => setTaxPrepYear(Number(next))} ariaLabel="Report year" options={Array.from({ length: 6 }).map((_, i) => { const y = new Date().getFullYear() - i; return { value: String(y), label: String(y) }; })} className="w-full sm:w-32 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm font-extrabold" />
+                    <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300"><Briefcase size={20} /></div><div><h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Job Profitability</h3><p className="text-sm text-slate-500 dark:text-slate-400">Budget, actual job costs, internal labor, profit, outstanding invoices and mileage for {taxPrepYear}.</p></div></div>
+                    <div className="flex flex-col gap-2 sm:flex-row"><MonieziSelect value={jobReportSort} onChange={next => setJobReportSort(next as typeof jobReportSort)} ariaLabel="Rank jobs by" options={[{value:'profit',label:'Rank: Profit'},{value:'revenue',label:'Rank: Revenue'},{value:'margin',label:'Rank: Margin'},{value:'cost',label:'Rank: Total Cost'},{value:'outstanding',label:'Rank: Outstanding'},{value:'labor',label:'Rank: Labor Hours'}]} className="w-full sm:w-44 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm font-extrabold" /><MonieziSelect value={String(taxPrepYear)} onChange={next => setTaxPrepYear(Number(next))} ariaLabel="Report year" options={Array.from({ length: 6 }).map((_, i) => { const y = new Date().getFullYear() - i; return { value: String(y), label: String(y) }; })} className="w-full sm:w-32 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm font-extrabold" /></div>
                   </div>
                 </div>
 
-                {jobs.length === 0 ? (
-                  <div className="rounded-xl border border-slate-300 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                    <EmptyState icon={<Briefcase size={32} />} title="No Jobs Yet" subtitle="Create Jobs / Projects and link business records to see profitability here." action={() => setCurrentPage(Page.Jobs)} actionLabel="Create Job" />
+                {jobs.length === 0 ? <div className="rounded-xl border border-slate-300 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900"><EmptyState icon={<Briefcase size={32} />} title="No Jobs Yet" subtitle="Create Jobs / Projects and link business records to see complete job costing here." action={() => setCurrentPage(Page.Jobs)} actionLabel="Create Job" /></div> : <>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                    <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Revenue</div><div className="mt-1 text-lg font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(jobProfitabilityReport.reduce((s,r)=>s+r.revenue,0))}</div></div>
+                    <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Actual Cost</div><div className="mt-1 text-lg font-extrabold text-red-700 dark:text-red-300">{formatCurrency.format(jobProfitabilityReport.reduce((s,r)=>s+r.totalActualCost,0))}</div></div>
+                    <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Job Profit</div><div className="mt-1 text-lg font-extrabold text-emerald-700 dark:text-emerald-300">{formatCurrency.format(jobProfitabilityReport.reduce((s,r)=>s+r.estimatedProfit,0))}</div></div>
+                    <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Outstanding</div><div className="mt-1 text-lg font-extrabold text-amber-700 dark:text-amber-300">{formatCurrency.format(jobProfitabilityReport.reduce((s,r)=>s+r.outstanding,0))}</div></div>
+                    <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Labor Hours</div><div className="mt-1 text-lg font-extrabold text-violet-700 dark:text-violet-300">{jobProfitabilityReport.reduce((s,r)=>s+r.actualLaborHours,0).toFixed(1)}</div></div>
+                    <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Labor Cost</div><div className="mt-1 text-lg font-extrabold text-violet-700 dark:text-violet-300">{formatCurrency.format(jobProfitabilityReport.reduce((s,r)=>s+r.actualLaborCost,0))}</div></div>
                   </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                      <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Revenue</div><div className="mt-1 text-lg font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(jobProfitabilityReport.reduce((sum, row) => sum + row.revenue, 0))}</div></div>
-                      <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Expenses</div><div className="mt-1 text-lg font-extrabold text-red-700 dark:text-red-300">{formatCurrency.format(jobProfitabilityReport.reduce((sum, row) => sum + row.expenses, 0))}</div></div>
-                      <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Est. Profit</div><div className="mt-1 text-lg font-extrabold text-emerald-700 dark:text-emerald-300">{formatCurrency.format(jobProfitabilityReport.reduce((sum, row) => sum + row.estimatedProfit, 0))}</div></div>
-                      <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Outstanding</div><div className="mt-1 text-lg font-extrabold text-amber-700 dark:text-amber-300">{formatCurrency.format(jobProfitabilityReport.reduce((sum, row) => sum + row.outstanding, 0))}</div></div>
-                    </div>
 
-                    <div className="space-y-3">
-                      {jobProfitabilityReport
-                        .slice()
-                        .sort((a, b) => b.estimatedProfit - a.estimatedProfit)
-                        .map(row => (
-                          <button key={row.job.id} type="button" onClick={() => { setCurrentPage(Page.Jobs); window.setTimeout(() => openJobDashboard(row.job), 0); }} className="w-full rounded-xl border border-slate-300 bg-white p-4 text-left shadow-sm transition hover:border-cyan-400 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-cyan-600">
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                              <div className="min-w-0"><div className="font-extrabold text-slate-950 dark:text-white">{row.job.title}</div><div className="mt-0.5 text-xs font-semibold text-slate-500 dark:text-slate-400">{row.clientName}</div></div>
-                              <div className={`text-lg font-extrabold ${row.estimatedProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(row.estimatedProfit)}</div>
-                            </div>
-                            <div className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-800 sm:grid-cols-5">
-                              <div><span className="block font-bold text-slate-500 dark:text-slate-400">Revenue</span><span className="font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.revenue)}</span></div>
-                              <div><span className="block font-bold text-slate-500 dark:text-slate-400">Expenses</span><span className="font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.expenses)}</span></div>
-                              <div><span className="block font-bold text-slate-500 dark:text-slate-400">Margin</span><span className="font-extrabold text-slate-900 dark:text-white">{row.revenue > 0 ? `${row.marginPct.toFixed(1)}%` : '—'}</span></div>
-                              <div><span className="block font-bold text-slate-500 dark:text-slate-400">Miles</span><span className="font-extrabold text-slate-900 dark:text-white">{row.miles.toFixed(1)}</span></div>
-                              <div><span className="block font-bold text-slate-500 dark:text-slate-400">Mileage deduction</span><span className="font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.mileageDeduction)}</span></div>
-                            </div>
-                          </button>
-                        ))}
-                    </div>
-                    <p className="text-xs font-medium leading-5 text-slate-500 dark:text-slate-400">Estimated profit = linked invoice value + non-invoice income − linked expenses. Unpaid invoices are included in revenue and shown separately as outstanding. Mileage deduction is a tax reference and is not subtracted as an operating expense.</p>
-                  </>
-                )}
+                  <div className="space-y-3">{jobProfitabilityReport.slice().sort((a,b) => { const metric = (row: typeof a) => jobReportSort === 'revenue' ? row.revenue : jobReportSort === 'margin' ? row.marginPct : jobReportSort === 'cost' ? row.totalActualCost : jobReportSort === 'outstanding' ? row.outstanding : jobReportSort === 'labor' ? row.actualLaborHours : row.estimatedProfit; return metric(b)-metric(a); }).map((row,index)=><button key={row.job.id} type="button" onClick={() => { setCurrentPage(Page.Jobs); window.setTimeout(() => openJobDashboard(row.job), 0); }} className="w-full rounded-xl border border-slate-300 bg-white p-4 text-left shadow-sm transition hover:border-cyan-400 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-cyan-600">
+                    <div className="flex items-start gap-3"><div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan-50 text-xs font-extrabold text-cyan-800 dark:bg-cyan-500/10 dark:text-cyan-200">{index+1}</div><div className="min-w-0 flex-1"><div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><div className="font-extrabold text-slate-950 dark:text-white">{row.job.title}</div><div className="mt-0.5 text-xs font-semibold text-slate-500 dark:text-slate-400">{row.clientName} · {row.job.status}</div></div><div className="text-right"><div className={`text-lg font-extrabold ${row.estimatedProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(row.estimatedProfit)}</div><div className="text-[10px] font-bold text-slate-500">{row.revenue>0 ? `${row.marginPct.toFixed(1)}% margin` : 'No revenue'}</div></div></div>
+                    <div className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-800 sm:grid-cols-4 lg:grid-cols-8"><div><span className="block font-bold text-slate-500">Revenue</span><span className="font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.revenue)}</span></div><div><span className="block font-bold text-slate-500">Total Cost</span><span className="font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.totalActualCost)}</span></div><div><span className="block font-bold text-slate-500">Materials</span><span className="font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.materialsExpenses)}</span></div><div><span className="block font-bold text-slate-500">Labor</span><span className="font-extrabold text-slate-900 dark:text-white">{row.actualLaborHours.toFixed(1)} hr · {formatCurrency.format(row.actualLaborCost)}</span></div><div><span className="block font-bold text-slate-500">Subcontractors</span><span className="font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.subcontractorExpenses)}</span></div><div><span className="block font-bold text-slate-500">Outstanding</span><span className="font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.outstanding)}</span></div><div><span className="block font-bold text-slate-500">Profit vs Budget</span>{row.hasBudget ? <span className={`font-extrabold ${row.profitVariance >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{row.profitVariance>=0?'+':''}{formatCurrency.format(row.profitVariance)}</span> : <span className="font-extrabold text-slate-400">—</span>}</div><div><span className="block font-bold text-slate-500">Miles</span><span className="font-extrabold text-slate-900 dark:text-white">{row.miles.toFixed(1)}</span></div></div>
+                    </div></div>
+                  </button>)}</div>
+                  <p className="text-xs font-medium leading-5 text-slate-500 dark:text-slate-400">Job profit = linked invoice value + direct job income − linked expense transactions − tracked internal labor cost. Cash Position uses collected cash minus recorded expense transactions; internal labor is not treated as a cash payment. Mileage remains a tax reference and is not subtracted from job profit.</p>
+                </>}
               </div>
 
               {/* Money In & Out */}
@@ -11127,7 +11196,7 @@ html, body, #root {
                 </div>
                 <div className="min-w-0">
                   <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950 dark:text-white font-brand">Jobs / Projects</h2>
-                  <p className="mt-1 text-sm font-medium text-slate-600 dark:text-slate-300">See what each job earned, cost, and still has outstanding.</p>
+                  <p className="mt-1 text-sm font-medium text-slate-600 dark:text-slate-300">See budget, actual costs, labor, profit, cash position, and what is still outstanding.</p>
                 </div>
               </div>
               <button
@@ -11170,11 +11239,11 @@ html, body, #root {
                   <div className="mt-1 text-xl font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(jobProfitabilityAll.filter(row => row.job.status !== 'archived').reduce((sum, row) => sum + row.revenue, 0))}</div>
                 </div>
                 <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Expenses</div>
-                  <div className="mt-1 text-xl font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(jobProfitabilityAll.filter(row => row.job.status !== 'archived').reduce((sum, row) => sum + row.expenses, 0))}</div>
+                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Cost</div>
+                  <div className="mt-1 text-xl font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(jobProfitabilityAll.filter(row => row.job.status !== 'archived').reduce((sum, row) => sum + row.totalActualCost, 0))}</div>
                 </div>
                 <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Est. Profit</div>
+                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Job Profit</div>
                   <div className="mt-1 text-xl font-extrabold text-emerald-700 dark:text-emerald-300">{formatCurrency.format(jobProfitabilityAll.filter(row => row.job.status !== 'archived').reduce((sum, row) => sum + row.estimatedProfit, 0))}</div>
                 </div>
               </div>
@@ -11185,7 +11254,7 @@ html, body, #root {
                 <EmptyState
                   icon={<Briefcase size={32} />}
                   title={jobs.length === 0 ? 'No Jobs Yet' : 'No Jobs in This View'}
-                  subtitle={jobs.length === 0 ? 'Create a job or project, then link invoices, estimates, expenses, income, and mileage to see profitability.' : 'Choose another status or create a new job.'}
+                  subtitle={jobs.length === 0 ? 'Create a job or project, set its budget, then link invoices, costs, labor, income, and mileage to see complete job profitability.' : 'Choose another status or create a new job.'}
                   action={() => openNewJob()}
                   actionLabel="Create Job"
                 />
@@ -11210,8 +11279,8 @@ html, body, #root {
 
                   <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-200 pt-4 dark:border-slate-800 sm:grid-cols-5">
                     <div><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Revenue</div><div className="mt-1 text-sm font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(row.revenue)}</div></div>
-                    <div><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Expenses</div><div className="mt-1 text-sm font-extrabold text-red-700 dark:text-red-300">{formatCurrency.format(row.expenses)}</div></div>
-                    <div><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Est. Profit</div><div className={`mt-1 text-sm font-extrabold ${row.estimatedProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(row.estimatedProfit)}</div></div>
+                    <div><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Cost</div><div className="mt-1 text-sm font-extrabold text-red-700 dark:text-red-300">{formatCurrency.format(row.totalActualCost)}</div></div>
+                    <div><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Job Profit</div><div className={`mt-1 text-sm font-extrabold ${row.estimatedProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(row.estimatedProfit)}</div></div>
                     <div><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Outstanding</div><div className="mt-1 text-sm font-extrabold text-amber-700 dark:text-amber-300">{formatCurrency.format(row.outstanding)}</div></div>
                     <div><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Margin</div><div className="mt-1 text-sm font-extrabold text-slate-950 dark:text-white">{row.revenue > 0 ? `${row.marginPct.toFixed(1)}%` : '—'}</div></div>
                   </div>
@@ -11219,6 +11288,8 @@ html, body, #root {
                   <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
                     <span>{row.invoiceCount} invoice{row.invoiceCount === 1 ? '' : 's'}</span>
                     <span>{row.expenseCount} expense{row.expenseCount === 1 ? '' : 's'}</span>
+                    <span>{row.actualLaborHours.toFixed(1)} labor hr</span>
+                    <span>{formatCurrency.format(row.actualLaborCost)} labor cost</span>
                     <span>{row.miles.toFixed(1)} mi</span>
                     {row.miles > 0 && <span>{formatCurrency.format(row.mileageDeduction)} mileage deduction</span>}
                     {row.estimateValue > 0 && <span>{formatCurrency.format(row.estimateValue)} quoted</span>}
@@ -12702,8 +12773,13 @@ html, body, #root {
       >
         {selectedJobDashboard && (() => {
           const row = selectedJobDashboard;
-          const cashPosition = row.collected - row.expenses;
           const job = row.job;
+          const hasBudget = row.hasBudget;
+          const varianceTone = (value: number, inverse = false) => {
+            const good = inverse ? value <= 0 : value >= 0;
+            return good ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300';
+          };
+          const costLabel = job.status === 'completed' ? 'Final Job Profit' : 'Current Est. Profit';
           return (
             <div className="space-y-5">
               <div className="rounded-xl border border-cyan-300 bg-cyan-50/80 p-5 shadow-sm dark:border-cyan-700/50 dark:bg-cyan-500/10">
@@ -12712,6 +12788,7 @@ html, body, #root {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${job.status === 'active' ? 'bg-cyan-100 text-cyan-800 dark:bg-cyan-500/15 dark:text-cyan-200' : job.status === 'completed' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200' : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}>{job.status}</span>
                       {job.startDate && <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Started {job.startDate}</span>}
+                      {job.status === 'completed' && job.endDate && <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">Completed {job.endDate}</span>}
                     </div>
                     <div className="mt-3 text-lg font-extrabold text-slate-950 dark:text-white">{row.clientName}</div>
                     {job.description && <p className="mt-2 text-sm font-medium leading-6 text-slate-600 dark:text-slate-300">{job.description}</p>}
@@ -12720,53 +12797,90 @@ html, body, #root {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Invoiced</div><div className="mt-1 text-lg font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(row.invoiced)}</div>{row.directIncome > 0 && <div className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">+ {formatCurrency.format(row.directIncome)} direct income</div>}</div>
-                <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Collected</div><div className="mt-1 text-lg font-extrabold text-emerald-700 dark:text-emerald-300">{formatCurrency.format(row.collected)}</div></div>
-                <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Outstanding</div><div className="mt-1 text-lg font-extrabold text-amber-700 dark:text-amber-300">{formatCurrency.format(row.outstanding)}</div></div>
-                <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Expenses</div><div className="mt-1 text-lg font-extrabold text-red-700 dark:text-red-300">{formatCurrency.format(row.expenses)}</div></div>
-                <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Est. Job Profit</div><div className={`mt-1 text-lg font-extrabold ${row.estimatedProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(row.estimatedProfit)}</div><div className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">{row.revenue > 0 ? `${row.marginPct.toFixed(1)}% margin` : 'No revenue yet'}</div></div>
-                <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Cash Position</div><div className={`mt-1 text-lg font-extrabold ${cashPosition >= 0 ? 'text-cyan-700 dark:text-cyan-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(cashPosition)}</div><div className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">Collected minus expenses</div></div>
-              </div>
+              <section className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <div className="mb-3"><div className="text-sm font-extrabold text-slate-950 dark:text-white">Financial Summary</div><div className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">What was billed, collected, spent, and earned on this job.</div></div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/60"><div className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Invoiced</div><div className="mt-1 text-lg font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(row.invoiced)}</div>{row.directIncome > 0 && <div className="mt-1 text-[9px] font-semibold text-slate-500">+ {formatCurrency.format(row.directIncome)} direct income</div>}</div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/60"><div className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Collected</div><div className="mt-1 text-lg font-extrabold text-emerald-700 dark:text-emerald-300">{formatCurrency.format(row.collected)}</div></div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/60"><div className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Outstanding</div><div className="mt-1 text-lg font-extrabold text-amber-700 dark:text-amber-300">{formatCurrency.format(row.outstanding)}</div></div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/60"><div className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Total Actual Cost</div><div className="mt-1 text-lg font-extrabold text-red-700 dark:text-red-300">{formatCurrency.format(row.totalActualCost)}</div><div className="mt-1 text-[9px] font-semibold text-slate-500">{formatCurrency.format(row.expenses)} expenses + {formatCurrency.format(row.actualLaborCost)} labor</div></div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/60"><div className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500">{costLabel}</div><div className={`mt-1 text-lg font-extrabold ${row.estimatedProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(row.estimatedProfit)}</div><div className="mt-1 text-[9px] font-semibold text-slate-500">{row.revenue > 0 ? `${row.marginPct.toFixed(1)}% margin` : 'No revenue yet'}</div></div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/60"><div className="text-[9px] font-extrabold uppercase tracking-wider text-slate-500">Cash Position</div><div className={`mt-1 text-lg font-extrabold ${row.cashPosition >= 0 ? 'text-cyan-700 dark:text-cyan-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(row.cashPosition)}</div><div className="mt-1 text-[9px] font-semibold text-slate-500">Collected minus cash expenses</div></div>
+                </div>
+              </section>
 
-              <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                <div className="mb-3 flex items-center justify-between gap-3"><div><div className="text-sm font-extrabold text-slate-950 dark:text-white">Add to This Job</div><div className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">New records are linked automatically.</div></div></div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <section className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <div className="mb-3 flex items-start justify-between gap-3"><div><div className="text-sm font-extrabold text-slate-950 dark:text-white">Budget vs Actual</div><div className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">See where the job is ahead of plan or drifting off budget.</div></div><button type="button" onClick={() => openEditJob(job)} className="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">Edit Budget</button></div>
+                {!hasBudget ? <div className="rounded-lg border border-dashed border-slate-300 px-4 py-5 text-center text-xs font-semibold text-slate-500 dark:border-slate-700 dark:text-slate-400">No job budget yet. Add expected revenue, labor, materials, subcontractors, and other costs to compare plan vs actual.</div> : (
+                  <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
+                    <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 bg-slate-50 px-3 py-2 text-[9px] font-extrabold uppercase tracking-wider text-slate-500 dark:bg-slate-950/60"><span>Measure</span><span className="text-right">Budget</span><span className="text-right">Actual</span><span className="text-right">Variance</span></div>
+                    {[
+                      ['Revenue', row.budgetRevenue, row.revenue, row.revenueVariance, false],
+                      ['Materials', row.budgetMaterials, row.materialsExpenses, row.materialsExpenses - row.budgetMaterials, true],
+                      ['Labor', row.budgetLaborCost, row.actualLaborCost, row.actualLaborCost - row.budgetLaborCost, true],
+                      ['Subcontractors', row.budgetSubcontractors, row.subcontractorExpenses, row.subcontractorExpenses - row.budgetSubcontractors, true],
+                      ['Other costs', row.budgetOtherCosts, row.otherExpenses, row.otherExpenses - row.budgetOtherCosts, true],
+                      ['Total cost', row.budgetTotalCost, row.totalActualCost, row.costVariance, true],
+                      ['Profit', row.budgetProfit, row.estimatedProfit, row.profitVariance, false],
+                    ].map(([label, budget, actual, variance, inverse]) => <div key={String(label)} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 border-t border-slate-200 px-3 py-2.5 text-xs dark:border-slate-800"><span className="font-bold text-slate-700 dark:text-slate-200">{label}</span><span className="text-right font-semibold tabular-nums text-slate-500">{formatCurrency.format(Number(budget))}</span><span className="text-right font-extrabold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(Number(actual))}</span><span className={`text-right font-extrabold tabular-nums ${varianceTone(Number(variance), Boolean(inverse))}`}>{Number(variance) >= 0 ? '+' : ''}{formatCurrency.format(Number(variance))}</span></div>)}
+                  </div>
+                )}
+              </section>
+
+              <section className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <div className="mb-3 flex items-start justify-between gap-3"><div><div className="text-sm font-extrabold text-slate-950 dark:text-white">Labor</div><div className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">Track actual hours and internal labor cost without changing payroll or cash records.</div></div><button type="button" onClick={() => openJobTimeEntry(job)} className="shrink-0 rounded-lg bg-violet-600 px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider text-white hover:bg-violet-500"><Clock3 size={13} className="mr-1 inline" />Log Time</button></div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Budget Hours</div><div className="mt-1 text-base font-extrabold text-slate-900 dark:text-white">{row.budgetLaborHours.toFixed(1)}</div></div>
+                  <div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Actual Hours</div><div className="mt-1 text-base font-extrabold text-slate-900 dark:text-white">{row.actualLaborHours.toFixed(1)}</div></div>
+                  <div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Hours Variance</div><div className={`mt-1 text-base font-extrabold ${varianceTone(row.laborHoursVariance, true)}`}>{row.laborHoursVariance >= 0 ? '+' : ''}{row.laborHoursVariance.toFixed(1)}</div></div>
+                  <div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Actual Labor Cost</div><div className="mt-1 text-base font-extrabold text-violet-700 dark:text-violet-300">{formatCurrency.format(row.actualLaborCost)}</div></div>
+                </div>
+                {(job.timeEntries || []).length > 0 && <div className="mt-4 divide-y divide-slate-200 border-t border-slate-200 dark:divide-slate-800 dark:border-slate-800">{(job.timeEntries || []).slice().sort((a,b) => b.date.localeCompare(a.date)).slice(0, 4).map(entry => <button type="button" key={entry.id} onClick={() => openJobTimeEntry(job, entry)} className="flex w-full items-center justify-between gap-3 py-2.5 text-left"><div className="min-w-0"><div className="truncate text-xs font-bold text-slate-900 dark:text-white">{entry.description || 'Labor time'}{entry.worker ? ` · ${entry.worker}` : ''}</div><div className="mt-0.5 text-[10px] font-semibold text-slate-500">{entry.date} · {entry.hours.toFixed(1)} hr @ {formatCurrency.format(entry.costRate)}/hr</div></div><div className="shrink-0 text-xs font-extrabold text-violet-700 dark:text-violet-300">{formatCurrency.format(entry.hours * entry.costRate)}</div></button>)}</div>}
+              </section>
+
+              <section className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <div className="mb-3"><div className="text-sm font-extrabold text-slate-950 dark:text-white">Actual Cost Breakdown</div><div className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">Recorded job expenses plus tracked internal labor.</div></div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Materials</div><div className="mt-1 text-base font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.materialsExpenses)}</div></div>
+                  <div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Labor</div><div className="mt-1 text-base font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.actualLaborCost)}</div></div>
+                  <div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Subcontractors</div><div className="mt-1 text-base font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.subcontractorExpenses)}</div></div>
+                  <div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Other</div><div className="mt-1 text-base font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.otherExpenses)}</div></div>
+                </div>
+              </section>
+
+              <section className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <div className="mb-3"><div className="text-sm font-extrabold text-slate-950 dark:text-white">Add to This Job</div><div className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">New records are linked automatically.</div></div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   <button type="button" onClick={() => openJobBillingAction(job, 'invoice')} className="rounded-lg border border-blue-300 bg-blue-50 px-3 py-3 text-left text-xs font-extrabold text-blue-800 hover:bg-blue-100 dark:border-blue-700/60 dark:bg-blue-500/10 dark:text-blue-200"><FileText size={17} className="mb-2" />Invoice</button>
                   <button type="button" onClick={() => openJobBillingAction(job, 'estimate')} className="rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-3 text-left text-xs font-extrabold text-indigo-800 hover:bg-indigo-100 dark:border-indigo-700/60 dark:bg-indigo-500/10 dark:text-indigo-200"><ClipboardList size={17} className="mb-2" />Estimate</button>
-                  <button type="button" onClick={() => addExpenseToJob(job)} className="rounded-lg border border-red-300 bg-red-50 px-3 py-3 text-left text-xs font-extrabold text-red-800 hover:bg-red-100 dark:border-red-700/60 dark:bg-red-500/10 dark:text-red-200"><Receipt size={17} className="mb-2" />Expense</button>
+                  <button type="button" onClick={() => addExpenseToJob(job)} className="rounded-lg border border-red-300 bg-red-50 px-3 py-3 text-left text-xs font-extrabold text-red-800 hover:bg-red-100 dark:border-red-700/60 dark:bg-red-500/10 dark:text-red-200"><Receipt size={17} className="mb-2" />Job Cost</button>
                   <button type="button" onClick={() => openJobMileageAction(job)} className="rounded-lg border border-teal-300 bg-teal-50 px-3 py-3 text-left text-xs font-extrabold text-teal-800 hover:bg-teal-100 dark:border-teal-700/60 dark:bg-teal-500/10 dark:text-teal-200"><Car size={17} className="mb-2" />Mileage</button>
+                  <button type="button" onClick={() => openJobTimeEntry(job)} className="rounded-lg border border-violet-300 bg-violet-50 px-3 py-3 text-left text-xs font-extrabold text-violet-800 hover:bg-violet-100 dark:border-violet-700/60 dark:bg-violet-500/10 dark:text-violet-200"><Clock3 size={17} className="mb-2" />Log Time</button>
+                  <button type="button" onClick={() => openEditJob(job)} className="rounded-lg border border-cyan-300 bg-cyan-50 px-3 py-3 text-left text-xs font-extrabold text-cyan-800 hover:bg-cyan-100 dark:border-cyan-700/60 dark:bg-cyan-500/10 dark:text-cyan-200"><Edit3 size={17} className="mb-2" />Budget / Details</button>
                 </div>
-              </div>
+              </section>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Quoted</div><div className="mt-1 text-base font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(row.estimateValue)}</div><div className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">{row.acceptedEstimateValue > 0 ? `${formatCurrency.format(row.acceptedEstimateValue)} accepted` : 'All linked estimates'}</div></div>
                 <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Mileage</div><div className="mt-1 text-base font-extrabold text-slate-950 dark:text-white">{row.miles.toFixed(1)} mi</div><div className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">{formatCurrency.format(row.mileageDeduction)} deduction reference</div></div>
               </div>
 
-              <div className="rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800"><div className="text-sm font-extrabold text-slate-950 dark:text-white">Job Activity</div><div className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">Invoices, estimates, money, expenses, and mileage in one timeline.</div></div>
-                {selectedJobActivity.length === 0 ? (
-                  <div className="px-4 py-8 text-center text-sm font-medium text-slate-500 dark:text-slate-400">No linked activity yet. Use the actions above to add the first record.</div>
-                ) : (
-                  <div className="divide-y divide-slate-200 dark:divide-slate-800">
-                    {selectedJobActivity.map(item => {
-                      const tone = item.kind === 'invoice' ? 'text-blue-700 dark:text-blue-300' : item.kind === 'estimate' ? 'text-indigo-700 dark:text-indigo-300' : item.kind === 'income' ? 'text-emerald-700 dark:text-emerald-300' : item.kind === 'expense' ? 'text-red-700 dark:text-red-300' : 'text-teal-700 dark:text-teal-300';
-                      return (
-                        <button key={`${item.kind}-${item.id}`} type="button" onClick={() => openJobActivityItem(item.kind, item.id)} className="flex w-full items-start justify-between gap-3 px-4 py-3.5 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                          <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><div className={`text-sm font-extrabold ${tone}`}>{item.title}</div>{item.status && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-slate-600 dark:bg-slate-800 dark:text-slate-300">{item.status}</span>}</div><div className="mt-1 truncate text-xs font-medium text-slate-500 dark:text-slate-400">{item.date} · {item.detail}</div></div>
-                          <div className="flex shrink-0 items-center gap-2">{typeof item.amount === 'number' && <div className="text-sm font-extrabold tabular-nums text-slate-900 dark:text-white">{item.kind === 'expense' ? '-' : ''}{formatCurrency.format(item.amount)}</div>}<ChevronRight size={16} className="text-slate-400" /></div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              {job.status === 'completed' && (
+                <section className="rounded-xl border border-emerald-300 bg-emerald-50 p-5 shadow-sm dark:border-emerald-700/60 dark:bg-emerald-500/10">
+                  <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300"><CheckCircle size={18} /><div className="text-sm font-extrabold uppercase tracking-wider">Job Closeout</div></div>
+                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3"><div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Quoted / Budget</div><div className="mt-1 font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.budgetRevenue || row.estimateValue)}</div></div><div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Collected</div><div className="mt-1 font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.collected)}</div></div><div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Total Cost</div><div className="mt-1 font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.totalActualCost)}</div></div><div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Final Profit</div><div className={`mt-1 font-extrabold ${row.estimatedProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(row.estimatedProfit)}</div></div><div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Final Margin</div><div className="mt-1 font-extrabold text-slate-900 dark:text-white">{row.revenue > 0 ? `${row.marginPct.toFixed(1)}%` : '—'}</div></div><div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Labor</div><div className="mt-1 font-extrabold text-slate-900 dark:text-white">{row.actualLaborHours.toFixed(1)} hr</div></div></div>
+                </section>
+              )}
 
-              <div className="flex gap-3">
-                <button type="button" onClick={() => { setSelectedJobId(null); repeatJob(job); }} className="rounded-lg border border-cyan-300 bg-cyan-50 px-4 py-3 text-xs font-extrabold uppercase tracking-wider text-cyan-800 hover:bg-cyan-100 dark:border-cyan-700/60 dark:bg-cyan-500/10 dark:text-cyan-200"><Repeat size={14} className="mr-1 inline" />Repeat</button>
-                <button type="button" onClick={() => openEditJob(job)} className="flex-1 rounded-lg bg-cyan-700 px-4 py-3 text-xs font-extrabold uppercase tracking-wider text-white shadow-sm hover:bg-cyan-600"><Edit3 size={14} className="mr-1 inline" />Edit Job Details</button>
-              </div>
+              <section className="rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800"><div className="text-sm font-extrabold text-slate-950 dark:text-white">Job Activity</div><div className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">Invoices, estimates, money, costs, labor, and mileage in one timeline.</div></div>
+                {selectedJobActivity.length === 0 ? <div className="px-4 py-8 text-center text-sm font-medium text-slate-500 dark:text-slate-400">No linked activity yet. Use the actions above to add the first record.</div> : <div className="divide-y divide-slate-200 dark:divide-slate-800">{selectedJobActivity.map(item => {
+                  const tone = item.kind === 'invoice' ? 'text-blue-700 dark:text-blue-300' : item.kind === 'estimate' ? 'text-indigo-700 dark:text-indigo-300' : item.kind === 'income' ? 'text-emerald-700 dark:text-emerald-300' : item.kind === 'expense' ? 'text-red-700 dark:text-red-300' : item.kind === 'labor' ? 'text-violet-700 dark:text-violet-300' : 'text-teal-700 dark:text-teal-300';
+                  return <button key={`${item.kind}-${item.id}`} type="button" onClick={() => openJobActivityItem(item.kind, item.id)} className="flex w-full items-start justify-between gap-3 px-4 py-3.5 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/50"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><div className={`text-sm font-extrabold ${tone}`}>{item.title}</div>{item.status && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-slate-600 dark:bg-slate-800 dark:text-slate-300">{item.status}</span>}</div><div className="mt-1 truncate text-xs font-medium text-slate-500 dark:text-slate-400">{item.date} · {item.detail}</div></div><div className="flex shrink-0 items-center gap-2">{typeof item.amount === 'number' && <div className="text-sm font-extrabold tabular-nums text-slate-900 dark:text-white">{item.kind === 'expense' ? '-' : ''}{formatCurrency.format(item.amount)}</div>}<ChevronRight size={16} className="text-slate-400" /></div></button>;
+                })}</div>}
+              </section>
+
+              <div className="flex flex-wrap gap-3"><button type="button" onClick={() => { setSelectedJobId(null); repeatJob(job); }} className="rounded-lg border border-cyan-300 bg-cyan-50 px-4 py-3 text-xs font-extrabold uppercase tracking-wider text-cyan-800 hover:bg-cyan-100 dark:border-cyan-700/60 dark:bg-cyan-500/10 dark:text-cyan-200"><Repeat size={14} className="mr-1 inline" />Repeat</button>{job.status === 'active' && <button type="button" onClick={() => completeJob(job)} className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-xs font-extrabold uppercase tracking-wider text-emerald-800 hover:bg-emerald-100 dark:border-emerald-700/60 dark:bg-emerald-500/10 dark:text-emerald-200"><CheckCircle size={14} className="mr-1 inline" />Complete Job</button>}<button type="button" onClick={() => openEditJob(job)} className="min-w-[160px] flex-1 rounded-lg bg-cyan-700 px-4 py-3 text-xs font-extrabold uppercase tracking-wider text-white shadow-sm hover:bg-cyan-600"><Edit3 size={14} className="mr-1 inline" />Edit Job Details</button></div>
             </div>
           );
         })()}
@@ -12785,8 +12899,8 @@ html, body, #root {
                 <div className="mb-3 text-xs font-extrabold uppercase tracking-[0.14em] text-cyan-800 dark:text-cyan-300">Profitability Snapshot</div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Revenue</div><div className="mt-1 text-lg font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(row.revenue)}</div></div>
-                  <div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Expenses</div><div className="mt-1 text-lg font-extrabold text-red-700 dark:text-red-300">{formatCurrency.format(row.expenses)}</div></div>
-                  <div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Est. Profit</div><div className={`mt-1 text-lg font-extrabold ${row.estimatedProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(row.estimatedProfit)}</div></div>
+                  <div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Cost</div><div className="mt-1 text-lg font-extrabold text-red-700 dark:text-red-300">{formatCurrency.format(row.totalActualCost)}</div><div className="mt-1 text-[9px] font-semibold text-slate-500">Includes {formatCurrency.format(row.actualLaborCost)} labor</div></div>
+                  <div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Job Profit</div><div className={`mt-1 text-lg font-extrabold ${row.estimatedProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(row.estimatedProfit)}</div></div>
                   <div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Outstanding</div><div className="mt-1 text-lg font-extrabold text-amber-700 dark:text-amber-300">{formatCurrency.format(row.outstanding)}</div></div>
                 </div>
                 <div className="mt-3 border-t border-cyan-200 pt-3 text-xs font-semibold leading-5 text-slate-600 dark:border-cyan-800/40 dark:text-slate-300">
@@ -12834,6 +12948,19 @@ html, body, #root {
                 <DateInput label="End Date" value={jobDraft.endDate || ''} onChange={value => setJobDraft(prev => ({ ...prev, endDate: value }))} />
               </div>
 
+              <div className="rounded-xl border border-cyan-200 bg-cyan-50/60 p-4 dark:border-cyan-800/50 dark:bg-cyan-500/5">
+                <div className="mb-3"><div className="text-xs font-extrabold uppercase tracking-wider text-cyan-800 dark:text-cyan-300">Job Budget / Expected Cost</div><div className="mt-1 text-xs font-medium leading-5 text-slate-500 dark:text-slate-400">Set the expected revenue and costs before or during the job. MONIEZI compares this baseline with actual results.</div></div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div><label className="mb-1.5 block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Expected Revenue</label><input type="number" min="0" step="0.01" inputMode="decimal" value={jobDraft.budgetRevenue ?? ''} onChange={event => setJobDraft(prev => ({ ...prev, budgetRevenue: Number(event.target.value || 0) }))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm font-bold text-slate-900 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white" placeholder="8500" /></div>
+                  <div><label className="mb-1.5 block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Materials Budget</label><input type="number" min="0" step="0.01" inputMode="decimal" value={jobDraft.budgetMaterials ?? ''} onChange={event => setJobDraft(prev => ({ ...prev, budgetMaterials: Number(event.target.value || 0) }))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm font-bold text-slate-900 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white" placeholder="2200" /></div>
+                  <div><label className="mb-1.5 block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Estimated Labor Hours</label><input type="number" min="0" step="0.25" inputMode="decimal" value={jobDraft.budgetLaborHours ?? ''} onChange={event => setJobDraft(prev => ({ ...prev, budgetLaborHours: Number(event.target.value || 0) }))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm font-bold text-slate-900 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white" placeholder="32" /></div>
+                  <div><label className="mb-1.5 block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Internal Labor Cost / Hr</label><input type="number" min="0" step="0.01" inputMode="decimal" value={jobDraft.budgetLaborRate ?? ''} onChange={event => setJobDraft(prev => ({ ...prev, budgetLaborRate: Number(event.target.value || 0) }))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm font-bold text-slate-900 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white" placeholder="40" /></div>
+                  <div><label className="mb-1.5 block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Subcontractor Budget</label><input type="number" min="0" step="0.01" inputMode="decimal" value={jobDraft.budgetSubcontractors ?? ''} onChange={event => setJobDraft(prev => ({ ...prev, budgetSubcontractors: Number(event.target.value || 0) }))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm font-bold text-slate-900 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white" placeholder="500" /></div>
+                  <div><label className="mb-1.5 block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Other Cost Budget</label><input type="number" min="0" step="0.01" inputMode="decimal" value={jobDraft.budgetOtherCosts ?? ''} onChange={event => setJobDraft(prev => ({ ...prev, budgetOtherCosts: Number(event.target.value || 0) }))} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm font-bold text-slate-900 outline-none focus:border-cyan-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white" placeholder="250" /></div>
+                </div>
+                {(() => { const labor = Number(jobDraft.budgetLaborHours || 0) * Number(jobDraft.budgetLaborRate || 0); const costs = Number(jobDraft.budgetMaterials || 0) + labor + Number(jobDraft.budgetSubcontractors || 0) + Number(jobDraft.budgetOtherCosts || 0); const revenue = Number(jobDraft.budgetRevenue || 0); const profit = revenue - costs; return <div className="mt-4 grid grid-cols-3 gap-2 border-t border-cyan-200 pt-3 text-center dark:border-cyan-800/40"><div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Expected Cost</div><div className="mt-1 text-sm font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(costs)}</div></div><div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Expected Profit</div><div className={`mt-1 text-sm font-extrabold ${profit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(profit)}</div></div><div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Expected Margin</div><div className="mt-1 text-sm font-extrabold text-slate-900 dark:text-white">{revenue > 0 ? `${((profit / revenue) * 100).toFixed(1)}%` : '—'}</div></div></div>; })()}
+              </div>
+
               <div>
                 <label className="mb-2 block text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">Description / Scope</label>
                 <textarea value={jobDraft.description || ''} onChange={event => setJobDraft(prev => ({ ...prev, description: event.target.value }))} className="min-h-[110px] w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-900 shadow-sm outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white" placeholder="Optional notes about the job or project" />
@@ -12842,7 +12969,7 @@ html, body, #root {
           </div>
 
           <div className="rounded-xl border border-slate-300 bg-white p-4 text-xs font-medium leading-5 text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-            Link invoices, estimates, income, expenses, and mileage to this job. MONIEZI calculates estimated profit from linked revenue minus linked expenses. Mileage is shown separately as a tax-deduction reference.
+            Link invoices, estimates, expenses, income, mileage, and labor time to this job. MONIEZI compares the budget with actual recorded costs and internal labor cost. Mileage remains a tax-deduction reference and is not subtracted from job profit.
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -12852,6 +12979,25 @@ html, body, #root {
           </div>
         </div>
       </AppDrawer>
+
+      {showJobTimeModal && selectedJobDashboard && (
+        <div className="fixed inset-0 z-[145] flex items-end justify-center bg-slate-950/80 p-4 backdrop-blur-sm sm:items-center modal-overlay" onClick={() => { setShowJobTimeModal(false); setEditingJobTimeEntryId(null); }}>
+          <div className="w-full max-w-md overflow-hidden rounded-xl border border-violet-300 bg-white shadow-2xl dark:border-violet-700/60 dark:bg-slate-900" onClick={event => event.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800"><div><div className="text-lg font-extrabold text-slate-950 dark:text-white">{editingJobTimeEntryId ? 'Edit Labor Time' : 'Log Labor Time'}</div><div className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">{selectedJobDashboard.job.title}</div></div><button type="button" onClick={() => { setShowJobTimeModal(false); setEditingJobTimeEntryId(null); }} className="rounded-full p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"><X size={18} /></button></div>
+            <div className="space-y-4 p-5">
+              <DateInput label="Work Date" value={jobTimeDraft.date} onChange={date => setJobTimeDraft(prev => ({ ...prev, date }))} />
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="mb-2 block text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">Hours Worked</label><input type="number" min="0" step="0.25" inputMode="decimal" value={jobTimeDraft.hours} onChange={event => setJobTimeDraft(prev => ({ ...prev, hours: event.target.value }))} className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-base font-bold text-slate-900 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white" placeholder="4.5" /></div>
+                <div><label className="mb-2 block text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">Internal Cost / Hr</label><input type="number" min="0" step="0.01" inputMode="decimal" value={jobTimeDraft.costRate} onChange={event => setJobTimeDraft(prev => ({ ...prev, costRate: event.target.value }))} className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-base font-bold text-slate-900 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white" placeholder="40" /></div>
+              </div>
+              <div><label className="mb-2 block text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">Worker / Person</label><input type="text" value={jobTimeDraft.worker} onChange={event => setJobTimeDraft(prev => ({ ...prev, worker: event.target.value }))} className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-sm font-bold text-slate-900 outline-none focus:border-violet-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white" placeholder="Owner, employee, crew member" /></div>
+              <div><label className="mb-2 block text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">Work Performed</label><textarea value={jobTimeDraft.description} onChange={event => setJobTimeDraft(prev => ({ ...prev, description: event.target.value }))} className="min-h-[90px] w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-900 outline-none focus:border-violet-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white" placeholder="Installation, prep work, client meeting..." /></div>
+              <div className="rounded-lg border border-violet-200 bg-violet-50 p-3 text-xs font-semibold text-violet-900 dark:border-violet-800/50 dark:bg-violet-500/10 dark:text-violet-200">Labor cost for this entry: <strong>{formatCurrency.format(Math.max(0, Number(jobTimeDraft.hours || 0)) * Math.max(0, Number(jobTimeDraft.costRate || 0)))}</strong>. This is an internal job-cost calculation and does not create a payroll or cash transaction.</div>
+            </div>
+            <div className="flex gap-3 border-t border-slate-200 px-5 py-4 dark:border-slate-800">{editingJobTimeEntryId && <button type="button" onClick={deleteJobTimeEntry} className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-xs font-extrabold uppercase tracking-wider text-red-700 dark:border-red-800/60 dark:bg-red-500/10 dark:text-red-300">Delete</button>}<button type="button" onClick={saveJobTimeEntry} className="flex-1 rounded-lg bg-violet-600 px-4 py-3 text-xs font-extrabold uppercase tracking-wider text-white shadow-sm hover:bg-violet-500">{editingJobTimeEntryId ? 'Save Labor Entry' : 'Log Time'}</button></div>
+          </div>
+        </div>
+      )}
 
       {showGoalsEditor && (
         <div className="fixed inset-0 z-[130] flex items-end justify-center bg-slate-950/75 p-4 backdrop-blur-sm sm:items-center modal-overlay" onClick={() => setShowGoalsEditor(false)}>

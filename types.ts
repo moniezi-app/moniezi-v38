@@ -212,6 +212,15 @@ export interface MileageTrip {
 // --- Jobs / Projects ---
 export type JobStatus = 'active' | 'completed' | 'archived';
 
+export interface JobTimeEntry {
+  id: string;
+  date: string; // YYYY-MM-DD
+  hours: number;
+  costRate: number; // internal labor cost per hour captured when the time is logged
+  worker?: string;
+  description?: string;
+}
+
 export interface Job {
   id: string;
   title: string;
@@ -221,6 +230,18 @@ export interface Job {
   status: JobStatus;
   startDate?: string;
   endDate?: string;
+
+  // Job budget / estimate baseline. Optional so every pre-v38.0.20 job remains valid.
+  budgetRevenue?: number;
+  budgetMaterials?: number;
+  budgetLaborHours?: number;
+  budgetLaborRate?: number;
+  budgetSubcontractors?: number;
+  budgetOtherCosts?: number;
+
+  // Internal time tracking used for actual labor cost and labor variance.
+  timeEntries?: JobTimeEntry[];
+
   createdAt: string;
   updatedAt: string;
 }

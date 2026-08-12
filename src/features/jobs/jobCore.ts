@@ -1,4 +1,4 @@
-import type { Client, Estimate, Invoice, Job, MileageTrip, Transaction } from '../../../types';
+import type { Client, Estimate, Invoice, Job, JobTimeEntry, MileageTrip, Transaction } from '../../../types';
 
 export type JobProfitabilityRow = {
   job: Job;
@@ -8,9 +8,39 @@ export type JobProfitabilityRow = {
   revenue: number;
   collected: number;
   outstanding: number;
+
+  // Recorded expense transactions linked to the job.
   expenses: number;
+  materialsExpenses: number;
+  subcontractorExpenses: number;
+  otherExpenses: number;
+
+  // Internal labor tracking (kept separate from cash expenses).
+  actualLaborHours: number;
+  actualLaborCost: number;
+  totalActualCost: number;
+
   estimatedProfit: number;
   marginPct: number;
+  cashPosition: number;
+
+  // Budget / expected baseline.
+  hasBudget: boolean;
+  budgetRevenue: number;
+  budgetMaterials: number;
+  budgetLaborHours: number;
+  budgetLaborRate: number;
+  budgetLaborCost: number;
+  budgetSubcontractors: number;
+  budgetOtherCosts: number;
+  budgetTotalCost: number;
+  budgetProfit: number;
+  budgetMarginPct: number;
+  revenueVariance: number;
+  costVariance: number;
+  profitVariance: number;
+  laborHoursVariance: number;
+
   miles: number;
   mileageDeduction: number;
   estimateValue: number;
@@ -18,11 +48,11 @@ export type JobProfitabilityRow = {
   invoiceCount: number;
   expenseCount: number;
   mileageCount: number;
+  timeEntryCount: number;
 };
 
-
 export type JobActivityRow = {
-  kind: 'invoice' | 'estimate' | 'income' | 'expense' | 'mileage';
+  kind: 'invoice' | 'estimate' | 'income' | 'expense' | 'mileage' | 'labor';
   id: string;
   date: string;
   title: string;
@@ -31,14 +61,44 @@ export type JobActivityRow = {
   status?: string;
 };
 
+const finiteNonNegative = (value: unknown) => {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+};
+
+const optionalFiniteNonNegative = (value: unknown): number | undefined => {
+  if (value === undefined || value === null || value === '') return undefined;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : undefined;
+};
+
+export function normalizeJobTimeEntries(raw: unknown): JobTimeEntry[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(entry => entry && typeof entry === 'object')
+    .map((entry, index) => {
+      const src = entry as any;
+      return {
+        id: String(src.id || `legacy_time_${index + 1}`),
+        date: String(src.date || new Date().toISOString().split('T')[0]),
+        hours: finiteNonNegative(src.hours),
+        costRate: finiteNonNegative(src.costRate),
+        worker: src.worker ? String(src.worker) : undefined,
+        description: src.description ? String(src.description) : undefined,
+      } satisfies JobTimeEntry;
+    })
+    .filter(entry => entry.hours > 0);
+}
+
 export function buildJobActivityRows(input: {
   jobId: string;
+  job?: Job;
   transactions: Transaction[];
   invoices: Invoice[];
   estimates: Estimate[];
   mileageTrips: MileageTrip[];
 }): JobActivityRow[] {
-  const { jobId, transactions, invoices, estimates, mileageTrips } = input;
+  const { jobId, job, transactions, invoices, estimates, mileageTrips } = input;
   const linkedInvoicePaymentIds = new Set(
     invoices
       .filter(invoice => invoice.jobId === jobId)
@@ -94,8 +154,19 @@ export function buildJobActivityRows(input: {
       status: 'mileage',
     }));
 
-  const kindRank: Record<JobActivityRow['kind'], number> = { invoice: 0, estimate: 1, income: 2, expense: 3, mileage: 4 };
-  return [...invoiceRows, ...estimateRows, ...transactionRows, ...mileageRows]
+  const laborRows: JobActivityRow[] = normalizeJobTimeEntries(job?.timeEntries)
+    .map(entry => ({
+      kind: 'labor',
+      id: entry.id,
+      date: entry.date,
+      title: entry.description || 'Labor time',
+      detail: `${entry.hours.toFixed(1)} hr${entry.worker ? ` · ${entry.worker}` : ''} · $${entry.costRate.toFixed(2)}/hr internal cost`,
+      amount: entry.hours * entry.costRate,
+      status: 'labor',
+    }));
+
+  const kindRank: Record<JobActivityRow['kind'], number> = { invoice: 0, estimate: 1, income: 2, expense: 3, labor: 4, mileage: 5 };
+  return [...invoiceRows, ...estimateRows, ...transactionRows, ...laborRows, ...mileageRows]
     .sort((a, b) => b.date.localeCompare(a.date) || kindRank[a.kind] - kindRank[b.kind]);
 }
 
@@ -123,10 +194,27 @@ export function normalizeJobs(raw: unknown): Job[] {
         status,
         startDate: src.startDate ? String(src.startDate) : undefined,
         endDate: src.endDate ? String(src.endDate) : undefined,
+        budgetRevenue: optionalFiniteNonNegative(src.budgetRevenue),
+        budgetMaterials: optionalFiniteNonNegative(src.budgetMaterials),
+        budgetLaborHours: optionalFiniteNonNegative(src.budgetLaborHours),
+        budgetLaborRate: optionalFiniteNonNegative(src.budgetLaborRate),
+        budgetSubcontractors: optionalFiniteNonNegative(src.budgetSubcontractors),
+        budgetOtherCosts: optionalFiniteNonNegative(src.budgetOtherCosts),
+        timeEntries: normalizeJobTimeEntries(src.timeEntries),
         createdAt: src.createdAt ? String(src.createdAt) : now,
         updatedAt: src.updatedAt ? String(src.updatedAt) : now,
       } as Job;
     });
+}
+
+const MATERIAL_CATEGORIES = new Set(['Equipment', 'Office Supplies', 'Shipping / Delivery']);
+const SUBCONTRACTOR_CATEGORIES = new Set(['Contractors', 'Professional Services']);
+
+export function classifyJobExpense(category: string | undefined): 'materials' | 'subcontractors' | 'other' {
+  const normalized = String(category || '').trim();
+  if (MATERIAL_CATEGORIES.has(normalized)) return 'materials';
+  if (SUBCONTRACTOR_CATEGORIES.has(normalized)) return 'subcontractors';
+  return 'other';
 }
 
 export function buildJobProfitabilityRows(input: {
@@ -153,19 +241,51 @@ export function buildJobProfitabilityRows(input: {
     const directIncomeTransactions = jobTransactions.filter(tx => tx.type === 'income' && !invoicePaymentTransactionIds.has(tx.id));
     const expenseTransactions = jobTransactions.filter(tx => tx.type === 'expense');
     const jobMileage = mileageTrips.filter(trip => trip.jobId === job.id && inYear(trip.date, year));
+    const timeEntries = normalizeJobTimeEntries(job.timeEntries).filter(entry => inYear(entry.date, year));
 
-    const invoiced = jobInvoices.reduce((sum, inv) => sum + Number(inv.amount || 0), 0);
-    const directIncome = directIncomeTransactions.reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+    const invoiced = jobInvoices.reduce((sum, inv) => sum + finiteNonNegative(inv.amount), 0);
+    const directIncome = directIncomeTransactions.reduce((sum, tx) => sum + finiteNonNegative(tx.amount), 0);
     const revenue = invoiced + directIncome;
-    const collectedInvoices = jobInvoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + Number(inv.amount || 0), 0);
+    const collectedInvoices = jobInvoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + finiteNonNegative(inv.amount), 0);
     const collected = collectedInvoices + directIncome;
-    const outstanding = jobInvoices.filter(inv => inv.status === 'unpaid').reduce((sum, inv) => sum + Number(inv.amount || 0), 0);
-    const expenses = expenseTransactions.reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
-    const estimatedProfit = revenue - expenses;
+    const outstanding = jobInvoices.filter(inv => inv.status === 'unpaid').reduce((sum, inv) => sum + finiteNonNegative(inv.amount), 0);
+
+    let materialsExpenses = 0;
+    let subcontractorExpenses = 0;
+    let otherExpenses = 0;
+    for (const tx of expenseTransactions) {
+      const amount = finiteNonNegative(tx.amount);
+      const bucket = classifyJobExpense(tx.category);
+      if (bucket === 'materials') materialsExpenses += amount;
+      else if (bucket === 'subcontractors') subcontractorExpenses += amount;
+      else otherExpenses += amount;
+    }
+    const expenses = materialsExpenses + subcontractorExpenses + otherExpenses;
+
+    const actualLaborHours = timeEntries.reduce((sum, entry) => sum + finiteNonNegative(entry.hours), 0);
+    const actualLaborCost = timeEntries.reduce((sum, entry) => sum + finiteNonNegative(entry.hours) * finiteNonNegative(entry.costRate), 0);
+    const totalActualCost = expenses + actualLaborCost;
+    const estimatedProfit = revenue - totalActualCost;
     const marginPct = revenue > 0 ? (estimatedProfit / revenue) * 100 : 0;
-    const miles = jobMileage.reduce((sum, trip) => sum + Number(trip.miles || 0), 0);
-    const estimateValue = jobEstimates.reduce((sum, est) => sum + Number(est.amount || 0), 0);
-    const acceptedEstimateValue = jobEstimates.filter(est => est.status === 'accepted').reduce((sum, est) => sum + Number(est.amount || 0), 0);
+    const cashPosition = collected - expenses;
+
+    const miles = jobMileage.reduce((sum, trip) => sum + finiteNonNegative(trip.miles), 0);
+    const estimateValue = jobEstimates.reduce((sum, est) => sum + finiteNonNegative(est.amount), 0);
+    const acceptedEstimateValue = jobEstimates.filter(est => est.status === 'accepted').reduce((sum, est) => sum + finiteNonNegative(est.amount), 0);
+
+    const hasBudget = [job.budgetRevenue, job.budgetMaterials, job.budgetLaborHours, job.budgetLaborRate, job.budgetSubcontractors, job.budgetOtherCosts]
+      .some(value => optionalFiniteNonNegative(value) !== undefined && finiteNonNegative(value) > 0);
+    const budgetRevenue = optionalFiniteNonNegative(job.budgetRevenue) ?? (acceptedEstimateValue > 0 ? acceptedEstimateValue : estimateValue);
+    const budgetMaterials = finiteNonNegative(job.budgetMaterials);
+    const budgetLaborHours = finiteNonNegative(job.budgetLaborHours);
+    const budgetLaborRate = finiteNonNegative(job.budgetLaborRate);
+    const budgetLaborCost = budgetLaborHours * budgetLaborRate;
+    const budgetSubcontractors = finiteNonNegative(job.budgetSubcontractors);
+    const budgetOtherCosts = finiteNonNegative(job.budgetOtherCosts);
+    const budgetTotalCost = budgetMaterials + budgetLaborCost + budgetSubcontractors + budgetOtherCosts;
+    const budgetProfit = budgetRevenue - budgetTotalCost;
+    const budgetMarginPct = budgetRevenue > 0 ? (budgetProfit / budgetRevenue) * 100 : 0;
+
     const client = job.clientId ? clientMap.get(job.clientId) : undefined;
 
     return {
@@ -177,8 +297,30 @@ export function buildJobProfitabilityRows(input: {
       collected,
       outstanding,
       expenses,
+      materialsExpenses,
+      subcontractorExpenses,
+      otherExpenses,
+      actualLaborHours,
+      actualLaborCost,
+      totalActualCost,
       estimatedProfit,
       marginPct,
+      cashPosition,
+      hasBudget,
+      budgetRevenue,
+      budgetMaterials,
+      budgetLaborHours,
+      budgetLaborRate,
+      budgetLaborCost,
+      budgetSubcontractors,
+      budgetOtherCosts,
+      budgetTotalCost,
+      budgetProfit,
+      budgetMarginPct,
+      revenueVariance: revenue - budgetRevenue,
+      costVariance: totalActualCost - budgetTotalCost,
+      profitVariance: estimatedProfit - budgetProfit,
+      laborHoursVariance: actualLaborHours - budgetLaborHours,
       miles,
       mileageDeduction: miles * mileageRate,
       estimateValue,
@@ -186,6 +328,7 @@ export function buildJobProfitabilityRows(input: {
       invoiceCount: jobInvoices.length,
       expenseCount: expenseTransactions.length,
       mileageCount: jobMileage.length,
+      timeEntryCount: timeEntries.length,
     };
   });
 }

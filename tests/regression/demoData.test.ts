@@ -86,8 +86,20 @@ export function runDemoDataRegressionTests() {
   assert.ok(bathroom, 'bathroom demo job should exist in Job Profitability');
   assert.equal(bathroom?.revenue, 6850);
   assert.equal(bathroom?.expenses, 2310);
-  assert.equal(bathroom?.estimatedProfit, 4540);
+  assert.equal(bathroom?.actualLaborHours, 30);
+  assert.equal(bathroom?.actualLaborCost, 1050);
+  assert.equal(bathroom?.totalActualCost, 3360);
+  assert.equal(bathroom?.estimatedProfit, 3490);
+  assert.equal(bathroom?.budgetProfit, 3420);
+  assert.equal(bathroom?.profitVariance, 70);
   assert.ok(Math.abs((bathroom?.miles || 0) - 84.6) < 0.001, 'bathroom demo job should show 84.6 business miles');
+
+  const lawn = rows.find(row => row.job.id === 'job_demo_3');
+  assert.ok(lawn, 'lawn-care demo job should exist');
+  assert.ok((lawn?.marginPct || 0) < 15, 'demo should include a visibly weak-margin job for the job-costing story');
+  const completed = rows.find(row => row.job.id === 'job_demo_4');
+  assert.equal(completed?.job.status, 'completed', 'demo should include a completed job for closeout');
+  assert.ok((completed?.actualLaborHours || 0) > 0, 'completed demo job should include actual labor time');
 
   // Historical density must not pollute the intentionally simple current-month
   // Goals example used on Home.
