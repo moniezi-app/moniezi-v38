@@ -8015,17 +8015,16 @@ html, body, #root {
           <div className="relative px-5 py-6 sm:px-6 sm:py-7">
             {!hasTriedSampleData ? (
               <>
-                {/* Business Preview: one visual invitation, one supporting line, one primary CTA. */}
-                <button
-                  type="button"
-                  onClick={handleLoadSampleData}
-                  aria-label="Load the MONIEZI demo business"
-                  className="group relative w-full overflow-hidden rounded-xl border border-blue-300/30 bg-gradient-to-br from-blue-700/85 via-blue-900/90 to-indigo-950 p-4 text-left shadow-[0_18px_38px_rgba(2,6,23,0.32)] transition-transform active:scale-[0.995] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/80"
-                >
+                {/* Business Preview: show what the demo lets the buyer experience,
+                    rather than leading with abstract record counts. */}
+                <div className="relative overflow-hidden rounded-xl border border-blue-300/30 bg-gradient-to-br from-blue-700/85 via-blue-900/90 to-indigo-950 p-4 shadow-[0_18px_38px_rgba(2,6,23,0.32)]">
                   <div className="pointer-events-none absolute -right-12 -top-14 h-40 w-40 rounded-full bg-cyan-300/15 blur-2xl" />
                   <div className="relative flex items-center justify-between gap-3">
-                    <div className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-blue-100">Try the demo</div>
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sky-300/25 bg-slate-950/35 text-sky-200 transition-colors group-hover:bg-slate-950/50">
+                    <div>
+                      <div className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-blue-200">Sample Business</div>
+                      <div className="mt-1 text-sm font-bold text-white">See MONIEZI already working</div>
+                    </div>
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sky-300/25 bg-slate-950/35 text-sky-200">
                       <PlayCircle size={22} strokeWidth={2} />
                     </div>
                   </div>
@@ -8072,23 +8071,26 @@ html, body, #root {
                       <div className="mt-1 text-[9px] font-bold text-blue-100">Reports</div>
                     </div>
                   </div>
-                </button>
+                </div>
 
-                <p className={`mx-auto mt-4 max-w-[40ch] text-center text-[14px] leading-6 ${theme === 'dark' ? 'text-slate-200/90' : 'text-slate-800'}`}>
-                  Explore a ready-made business with real workflows already filled in.
+                <div className={`mt-5 text-center text-2xl font-extrabold leading-tight tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                  Load the demo
+                </div>
+                <p className={`mx-auto mt-2.5 max-w-[38ch] text-center text-[14px] leading-6 ${theme === 'dark' ? 'text-slate-200/90' : 'text-slate-800'}`}>
+                  Explore a complete sample business and see how MONIEZI works before entering your own records.
                 </p>
 
-                <div className="mx-auto mt-4 max-w-md divide-y divide-slate-200/80 dark:divide-blue-300/15">
+                <div className="mt-5 space-y-2.5">
                   {[
-                    { icon: <Wallet size={16} />, title: 'Money', detail: 'Income, expenses & invoices' },
-                    { icon: <Briefcase size={16} />, title: 'Work', detail: 'Clients, jobs & mileage' },
-                    { icon: <BarChart3 size={16} />, title: 'Reports', detail: 'Receipts, profit & tax readiness' },
+                    { icon: <Wallet size={17} />, title: 'Money', detail: 'Income, expenses, invoices and collections' },
+                    { icon: <Briefcase size={17} />, title: 'Work', detail: 'Clients, estimates, jobs and mileage' },
+                    { icon: <BarChart3 size={17} />, title: 'Records & Reports', detail: 'Receipts, profit, tax readiness and reports' },
                   ].map((item) => (
-                    <div key={item.title} className="flex items-center gap-3 py-2.5 text-left">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-cyan-200">{item.icon}</div>
+                    <div key={item.title} className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-white/60 px-3.5 py-3 text-left dark:border-blue-300/15 dark:bg-slate-950/25">
+                      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-cyan-200">{item.icon}</div>
                       <div className="min-w-0">
                         <div className="text-sm font-extrabold text-slate-900 dark:text-white">{item.title}</div>
-                        <div className="text-xs font-medium leading-5 text-slate-600 dark:text-slate-300">{item.detail}</div>
+                        <div className="mt-0.5 text-xs font-medium leading-5 text-slate-600 dark:text-slate-300">{item.detail}</div>
                       </div>
                     </div>
                   ))}

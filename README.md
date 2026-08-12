@@ -13,11 +13,3 @@ Source package for the v38.0.22 Jobs Information Architecture & Progressive Disc
 - Preserves all v38.0.21 Job Costing, labor, budget, demo, reports, footer Jobs navigation, receipt workflow, and commercial-source cleanup.
 
 MONIEZI v38.0.22 preserves the v38.0.21 data model and remains compatible with existing v38 backups and installed PWAs.
-
-
-## Demo-card simplification correction
-
-- Keeps the approved Business Preview graphic while removing repeated demo explanations.
-- Makes the preview card itself load the demo when tapped.
-- Uses one short supporting sentence and three compact value rows instead of large duplicate benefit cards.
-- Keeps one visually dominant Load Demo button plus the secondary skip action.
