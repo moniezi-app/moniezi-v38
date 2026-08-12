@@ -804,8 +804,8 @@ class PageErrorBoundary extends React.Component<
   }
 }
 
-const CUSTOMER_VERSION = "38.0.21"; // Clean v38 branch based on Claude v37.12.1, with zoom enabled and clickable Home In/Out
-setReportAppVersion("38.0.21");
+const CUSTOMER_VERSION = "38.0.22";
+setReportAppVersion("38.0.22");
 const LICENSE_STORAGE_KEY = `moniezi_license_v1_${STORAGE_NAMESPACE}`;
 const DEVICE_ID_STORAGE_KEY = `moniezi_device_id_v1_${STORAGE_NAMESPACE}`;
 const LICENSE_TOKEN_SALT = "moniezi_v35_offline_binding";
@@ -1282,6 +1282,8 @@ export default function App() {
   const [showJobTimeModal, setShowJobTimeModal] = useState(false);
   const [editingJobTimeEntryId, setEditingJobTimeEntryId] = useState<string | null>(null);
   const [jobTimeDraft, setJobTimeDraft] = useState({ date: new Date().toISOString().split('T')[0], hours: '', costRate: '', worker: '', description: '' });
+  const [showJobAddMenu, setShowJobAddMenu] = useState(false);
+  const [expandedJobSection, setExpandedJobSection] = useState<'budget' | 'labor' | 'costs' | 'activity' | null>(null);
 
   // UI State
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -4490,6 +4492,8 @@ export default function App() {
   };
 
   const openJobDashboard = (job: Job) => {
+    setShowJobAddMenu(false);
+    setExpandedJobSection(null);
     setSelectedJobId(job.id);
   };
 
@@ -11217,44 +11221,62 @@ html, body, #root {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 rounded-xl border border-slate-300 bg-slate-100 p-1.5 dark:border-slate-700 dark:bg-slate-900">
-              {(['all', 'active', 'completed', 'archived'] as const).map(filter => {
-                const count = filter === 'all' ? jobs.length : jobs.filter(job => job.status === filter).length;
-                const label = filter === 'all' ? 'All' : filter.charAt(0).toUpperCase() + filter.slice(1);
-                return (
-                  <button
-                    key={filter}
-                    type="button"
-                    onClick={() => setJobFilter(filter)}
-                    className={`min-h-12 rounded-lg px-2 py-2 text-xs font-extrabold transition-all ${jobFilter === filter ? 'bg-cyan-700 text-white shadow-sm' : 'text-slate-600 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white'}`}
-                  >
-                    <span className="block">{label}</span>
-                    <span className={`mt-0.5 block text-[10px] ${jobFilter === filter ? 'text-cyan-100' : 'text-slate-400 dark:text-slate-500'}`}>{count}</span>
-                  </button>
-                );
-              })}
-            </div>
+            {jobs.length > 0 && (() => {
+              const visibleRows = jobProfitabilityAll.filter(row => row.job.status !== 'archived');
+              const totalRevenue = visibleRows.reduce((sum, row) => sum + row.revenue, 0);
+              const totalCost = visibleRows.reduce((sum, row) => sum + row.totalActualCost, 0);
+              const totalProfit = visibleRows.reduce((sum, row) => sum + row.estimatedProfit, 0);
+              const activeCount = jobs.filter(job => job.status === 'active').length;
+              return (
+                <section className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <div className="p-5 sm:p-6">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <div className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Jobs Overview</div>
+                        <div className="mt-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Profit across active and completed work</div>
+                      </div>
+                      <div className="rounded-full bg-cyan-100 px-3 py-1.5 text-xs font-extrabold text-cyan-800 dark:bg-cyan-500/15 dark:text-cyan-200">{activeCount} active</div>
+                    </div>
 
-            {jobs.length > 0 && (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Active Jobs</div>
-                  <div className="mt-1 text-xl font-extrabold text-slate-950 dark:text-white">{jobs.filter(job => job.status === 'active').length}</div>
-                </div>
-                <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Revenue</div>
-                  <div className="mt-1 text-xl font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(jobProfitabilityAll.filter(row => row.job.status !== 'archived').reduce((sum, row) => sum + row.revenue, 0))}</div>
-                </div>
-                <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Cost</div>
-                  <div className="mt-1 text-xl font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(jobProfitabilityAll.filter(row => row.job.status !== 'archived').reduce((sum, row) => sum + row.totalActualCost, 0))}</div>
-                </div>
-                <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Job Profit</div>
-                  <div className="mt-1 text-xl font-extrabold text-emerald-700 dark:text-emerald-300">{formatCurrency.format(jobProfitabilityAll.filter(row => row.job.status !== 'archived').reduce((sum, row) => sum + row.estimatedProfit, 0))}</div>
-                </div>
-              </div>
-            )}
+                    <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50/80 p-5 dark:border-emerald-800/50 dark:bg-emerald-500/10">
+                      <div className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Job Profit</div>
+                      <div className={`mt-2 text-3xl font-extrabold tabular-nums ${totalProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(totalProfit)}</div>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/45">
+                        <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Revenue</div>
+                        <div className="mt-1.5 text-lg font-extrabold tabular-nums text-slate-950 dark:text-white">{formatCurrency.format(totalRevenue)}</div>
+                      </div>
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/45">
+                        <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Cost</div>
+                        <div className="mt-1.5 text-lg font-extrabold tabular-nums text-slate-950 dark:text-white">{formatCurrency.format(totalCost)}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-slate-200 p-2 dark:border-slate-800">
+                    <div className="grid grid-cols-4 gap-1">
+                      {(['all', 'active', 'completed', 'archived'] as const).map(filter => {
+                        const count = filter === 'all' ? jobs.length : jobs.filter(job => job.status === filter).length;
+                        const label = filter === 'all' ? 'All' : filter.charAt(0).toUpperCase() + filter.slice(1);
+                        return (
+                          <button
+                            key={filter}
+                            type="button"
+                            onClick={() => setJobFilter(filter)}
+                            className={`min-h-14 rounded-lg px-1.5 py-2 text-[11px] font-extrabold transition-all ${jobFilter === filter ? 'bg-cyan-700 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'}`}
+                          >
+                            <span className="block leading-tight">{label}</span>
+                            <span className={`mt-1 block text-[10px] ${jobFilter === filter ? 'text-cyan-100' : 'text-slate-400 dark:text-slate-500'}`}>{count}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </section>
+              );
+            })()}
 
             <div className="space-y-4">
               {filteredJobRows.length === 0 ? (
@@ -11270,70 +11292,65 @@ html, body, #root {
                   key={row.job.id}
                   type="button"
                   onClick={() => openJobDashboard(row.job)}
-                  className="w-full rounded-xl border border-slate-300 bg-white p-5 text-left shadow-sm transition-all hover:border-cyan-400 hover:shadow-md active:scale-[0.995] dark:border-slate-700 dark:bg-slate-900 dark:hover:border-cyan-600"
+                  className="w-full overflow-hidden rounded-xl border border-slate-300 bg-white text-left shadow-sm transition-all hover:border-cyan-400 hover:shadow-md active:scale-[0.995] dark:border-slate-700 dark:bg-slate-900 dark:hover:border-cyan-600"
                 >
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-lg font-extrabold text-slate-950 dark:text-white">{row.job.title}</h3>
-                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${row.job.status === 'active' ? 'bg-cyan-100 text-cyan-800 dark:bg-cyan-500/15 dark:text-cyan-200' : row.job.status === 'completed' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200' : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}>{row.job.status}</span>
+                  <div className="p-5 sm:p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300">
+                        <Briefcase size={21} strokeWidth={1.8} />
                       </div>
-                      <div className="mt-1 text-sm font-semibold text-slate-600 dark:text-slate-300">{row.clientName}</div>
-                      {row.job.description && <div className="mt-2 line-clamp-2 text-sm text-slate-500 dark:text-slate-400">{row.job.description}</div>}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-lg font-extrabold leading-6 text-slate-950 dark:text-white">{row.job.title}</h3>
+                          <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${row.job.status === 'active' ? 'bg-cyan-100 text-cyan-800 dark:bg-cyan-500/15 dark:text-cyan-200' : row.job.status === 'completed' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200' : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}>{row.job.status}</span>
+                        </div>
+                        <div className="mt-1.5 text-sm font-bold text-slate-700 dark:text-slate-200">{row.clientName}</div>
+                        {row.job.description && <div className="mt-2 text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">{row.job.description}</div>}
+                      </div>
                     </div>
-                    <ChevronRight size={19} className="hidden shrink-0 text-slate-400 sm:block" />
-                  </div>
 
-                  <div className="mt-5 border-t border-slate-200 pt-5 dark:border-slate-800">
-                    <div className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Financial Summary</div>
-                    <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-5">
-                      <div>
+                    <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-800/50 dark:bg-emerald-500/10">
+                      <div className="flex items-end justify-between gap-4">
+                        <div>
+                          <div className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Job Profit</div>
+                          <div className={`mt-1.5 text-2xl font-extrabold tabular-nums ${row.estimatedProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(row.estimatedProfit)}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Margin</div>
+                          <div className="mt-1.5 text-lg font-extrabold text-slate-950 dark:text-white">{row.revenue > 0 ? `${row.marginPct.toFixed(1)}%` : '—'}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3.5 dark:border-slate-800 dark:bg-slate-950/45">
                         <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Revenue</div>
-                        <div className="mt-1.5 text-base font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(row.revenue)}</div>
+                        <div className="mt-1 text-base font-extrabold tabular-nums text-slate-950 dark:text-white">{formatCurrency.format(row.revenue)}</div>
                       </div>
-                      <div>
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3.5 dark:border-slate-800 dark:bg-slate-950/45">
                         <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Total Cost</div>
-                        <div className="mt-1.5 text-base font-extrabold text-red-700 dark:text-red-300">{formatCurrency.format(row.totalActualCost)}</div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Job Profit</div>
-                        <div className={`mt-1.5 text-base font-extrabold ${row.estimatedProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(row.estimatedProfit)}</div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Profit Margin</div>
-                        <div className="mt-1.5 text-base font-extrabold text-slate-950 dark:text-white">{row.revenue > 0 ? `${row.marginPct.toFixed(1)}%` : '—'}</div>
+                        <div className="mt-1 text-base font-extrabold tabular-nums text-red-700 dark:text-red-300">{formatCurrency.format(row.totalActualCost)}</div>
                       </div>
                     </div>
-                    <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800/50 dark:bg-amber-500/10">
-                      <div className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-300">Outstanding</div>
-                      <div className="mt-1.5 text-base font-extrabold text-amber-800 dark:text-amber-200">{formatCurrency.format(row.outstanding)}</div>
+
+                    {row.outstanding > 0 && (
+                      <div className="mt-4 flex items-center justify-between gap-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800/50 dark:bg-amber-500/10">
+                        <span className="text-xs font-extrabold text-amber-700 dark:text-amber-300">Still outstanding</span>
+                        <span className="text-sm font-extrabold tabular-nums text-amber-800 dark:text-amber-200">{formatCurrency.format(row.outstanding)}</span>
+                      </div>
+                    )}
+
+                    <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-200 pt-4 dark:border-slate-800">
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1.5 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{row.invoiceCount} invoice{row.invoiceCount === 1 ? '' : 's'}</span>
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1.5 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{row.expenseCount} expense{row.expenseCount === 1 ? '' : 's'}</span>
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1.5 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{row.actualLaborHours.toFixed(1)} labor hours</span>
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1.5 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{row.miles.toFixed(1)} miles</span>
                     </div>
                   </div>
 
-                  <div className="mt-5 border-t border-slate-200 pt-5 dark:border-slate-800">
-                    <div className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Job Activity Snapshot</div>
-                    <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
-                      <div>
-                        <div className="font-extrabold text-slate-950 dark:text-white">Invoices</div>
-                        <div className="mt-1 font-medium text-slate-500 dark:text-slate-400">{row.invoiceCount} invoice{row.invoiceCount === 1 ? '' : 's'}</div>
-                      </div>
-                      <div>
-                        <div className="font-extrabold text-slate-950 dark:text-white">Expenses</div>
-                        <div className="mt-1 font-medium text-slate-500 dark:text-slate-400">{row.expenseCount} expense{row.expenseCount === 1 ? '' : 's'}</div>
-                      </div>
-                      <div>
-                        <div className="font-extrabold text-slate-950 dark:text-white">Labor</div>
-                        <div className="mt-1 font-medium text-slate-500 dark:text-slate-400">{row.actualLaborHours.toFixed(1)} hours</div>
-                      </div>
-                      <div>
-                        <div className="font-extrabold text-slate-950 dark:text-white">Mileage</div>
-                        <div className="mt-1 font-medium text-slate-500 dark:text-slate-400">{row.miles.toFixed(1)} miles</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 flex items-center justify-end gap-1 border-t border-slate-200 pt-4 text-sm font-extrabold text-cyan-700 dark:border-slate-800 dark:text-cyan-300">
-                    View Job <ChevronRight size={17} />
+                  <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-5 py-4 text-sm font-extrabold text-cyan-700 dark:border-slate-800 dark:bg-slate-950/35 dark:text-cyan-300">
+                    <span>View Job</span>
+                    <ChevronRight size={17} />
                   </div>
                 </button>
               ))}
@@ -12820,193 +12837,196 @@ html, body, #root {
 
       <AppDrawer
         isOpen={Boolean(selectedJobDashboard)}
-        onClose={() => setSelectedJobId(null)}
+        onClose={() => { setShowJobAddMenu(false); setExpandedJobSection(null); setSelectedJobId(null); }}
         title={selectedJobDashboard?.job.title || 'Job / Project'}
       >
         {selectedJobDashboard && (() => {
           const row = selectedJobDashboard;
           const job = row.job;
           const hasBudget = row.hasBudget;
-          const varianceTone = (value: number, inverse = false) => {
-            const good = inverse ? value <= 0 : value >= 0;
-            return good ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300';
-          };
-          const costLabel = job.status === 'completed' ? 'Final Job Profit' : 'Current Estimated Profit';
+          const laborVariance = row.laborHoursVariance;
+          const budgetCostVariance = row.costVariance;
+          const budgetProfitVariance = row.profitVariance;
+          const visibleActivity = expandedJobSection === 'activity' ? selectedJobActivity : selectedJobActivity.slice(0, 3);
+          const laborEntries = (job.timeEntries || []).slice().sort((a,b) => b.date.localeCompare(a.date));
+          const toggleSection = (section: 'budget' | 'labor' | 'costs' | 'activity') => setExpandedJobSection(current => current === section ? null : section);
+          const budgetCostText = Math.abs(budgetCostVariance) < 0.005
+            ? 'On budget'
+            : `${formatCurrency.format(Math.abs(budgetCostVariance))} ${budgetCostVariance > 0 ? 'over budget' : 'under budget'}`;
+          const profitPlanText = Math.abs(budgetProfitVariance) < 0.005
+            ? 'Profit is on plan'
+            : `${formatCurrency.format(Math.abs(budgetProfitVariance))} ${budgetProfitVariance > 0 ? 'above plan' : 'below plan'}`;
           return (
-            <div className="space-y-7 sm:space-y-8">
-              <div className="rounded-xl border border-cyan-300 bg-cyan-50/80 p-5 shadow-sm dark:border-cyan-700/50 dark:bg-cyan-500/10">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${job.status === 'active' ? 'bg-cyan-100 text-cyan-800 dark:bg-cyan-500/15 dark:text-cyan-200' : job.status === 'completed' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200' : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}>{job.status}</span>
-                      {job.startDate && <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Started {formatJobDisplayDate(job.startDate)}</span>}
-                      {job.status === 'completed' && job.endDate && <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">Completed {formatJobDisplayDate(job.endDate)}</span>}
-                    </div>
-                    <div className="mt-3 text-lg font-extrabold text-slate-950 dark:text-white">{row.clientName}</div>
-                    {job.description && <p className="mt-2 text-sm font-medium leading-6 text-slate-600 dark:text-slate-300">{job.description}</p>}
+            <>
+              <div className="space-y-6 sm:space-y-7">
+                <section className="rounded-xl border border-cyan-300 bg-cyan-50/80 p-5 shadow-sm dark:border-cyan-700/50 dark:bg-cyan-500/10">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider ${job.status === 'active' ? 'bg-cyan-100 text-cyan-800 dark:bg-cyan-500/15 dark:text-cyan-200' : job.status === 'completed' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200' : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}>{job.status}</span>
+                    {job.startDate && <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Started {formatJobDisplayDate(job.startDate)}</span>}
+                    {job.status === 'completed' && job.endDate && <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">Completed {formatJobDisplayDate(job.endDate)}</span>}
                   </div>
-                  <button type="button" onClick={() => openEditJob(job)} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-cyan-300 bg-white px-3 py-2 text-xs font-extrabold text-cyan-800 shadow-sm hover:bg-cyan-50 dark:border-cyan-700/60 dark:bg-slate-950 dark:text-cyan-200 dark:hover:bg-cyan-500/10"><Edit3 size={14} /> Edit</button>
-                </div>
-              </div>
-
-              <section className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                <div className="mb-5"><div className="text-base font-extrabold text-slate-950 dark:text-white">Financial Summary</div><div className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">What was billed, collected, spent, and earned on this job.</div></div>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60"><div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Invoiced</div><div className="mt-1 text-xl font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(row.invoiced)}</div>{row.directIncome > 0 && <div className="mt-1 text-[9px] font-semibold text-slate-500">+ {formatCurrency.format(row.directIncome)} direct income</div>}</div>
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60"><div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Collected</div><div className="mt-1 text-xl font-extrabold text-emerald-700 dark:text-emerald-300">{formatCurrency.format(row.collected)}</div></div>
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60"><div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Outstanding</div><div className="mt-1 text-xl font-extrabold text-amber-700 dark:text-amber-300">{formatCurrency.format(row.outstanding)}</div></div>
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60"><div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Total Actual Cost</div><div className="mt-1 text-xl font-extrabold text-red-700 dark:text-red-300">{formatCurrency.format(row.totalActualCost)}</div><div className="mt-1 text-[9px] font-semibold text-slate-500">{formatCurrency.format(row.expenses)} expenses + {formatCurrency.format(row.actualLaborCost)} labor</div></div>
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60"><div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">{costLabel}</div><div className={`mt-1 text-xl font-extrabold ${row.estimatedProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(row.estimatedProfit)}</div><div className="mt-1 text-[9px] font-semibold text-slate-500">{row.revenue > 0 ? `${row.marginPct.toFixed(1)}% margin` : 'No revenue yet'}</div></div>
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/60"><div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Cash Position</div><div className={`mt-1 text-xl font-extrabold ${row.cashPosition >= 0 ? 'text-cyan-700 dark:text-cyan-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(row.cashPosition)}</div><div className="mt-1 text-[9px] font-semibold text-slate-500">Collected minus cash expenses</div></div>
-                </div>
-              </section>
-
-              <section className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <div className="text-base font-extrabold text-slate-950 dark:text-white">Budget vs Actual</div>
-                    <div className="mt-1 text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">See where the job is on plan, under budget, or costing more than expected.</div>
+                  <div className="mt-4 text-lg font-extrabold text-slate-950 dark:text-white">{row.clientName}</div>
+                  {job.description && <p className="mt-2 text-sm font-medium leading-6 text-slate-600 dark:text-slate-300">{job.description}</p>}
+                  <div className="mt-5 grid grid-cols-2 gap-3 border-t border-cyan-200 pt-5 dark:border-cyan-800/40">
+                    <button type="button" onClick={() => setShowJobAddMenu(true)} className="min-h-12 rounded-lg bg-cyan-700 px-4 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-cyan-600 active:scale-[0.99]"><Plus size={17} className="mr-1.5 inline" />Add to Job</button>
+                    <button type="button" onClick={() => openEditJob(job)} className="min-h-12 rounded-lg border border-cyan-300 bg-white px-4 py-3 text-sm font-extrabold text-cyan-800 shadow-sm transition hover:bg-cyan-50 active:scale-[0.99] dark:border-cyan-700/60 dark:bg-slate-950 dark:text-cyan-200 dark:hover:bg-cyan-500/10"><Edit3 size={16} className="mr-1.5 inline" />Manage Job</button>
                   </div>
-                  <button type="button" onClick={() => openEditJob(job)} className="self-start rounded-lg border border-slate-300 bg-white px-4 py-3 text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">Edit Budget</button>
-                </div>
-                {!hasBudget ? <div className="rounded-lg border border-dashed border-slate-300 px-4 py-6 text-center text-sm font-semibold leading-6 text-slate-500 dark:border-slate-700 dark:text-slate-400">No job budget yet. Add expected revenue, labor, materials, subcontractors, and other costs to compare the plan with actual results.</div> : (
-                  <div className="space-y-4">
-                    {[
-                      { label: 'Revenue', budgetLabel: 'Budgeted Revenue', actualLabel: 'Actual Revenue', budget: row.budgetRevenue, actual: row.revenue, variance: row.revenueVariance, inverse: false },
-                      { label: 'Materials', budgetLabel: 'Budgeted Materials Cost', actualLabel: 'Actual Materials Cost', budget: row.budgetMaterials, actual: row.materialsExpenses, variance: row.materialsExpenses - row.budgetMaterials, inverse: true },
-                      { label: 'Labor', budgetLabel: 'Budgeted Labor Cost', actualLabel: 'Actual Labor Cost', budget: row.budgetLaborCost, actual: row.actualLaborCost, variance: row.actualLaborCost - row.budgetLaborCost, inverse: true },
-                      { label: 'Subcontractors', budgetLabel: 'Budgeted Subcontractor Cost', actualLabel: 'Actual Subcontractor Cost', budget: row.budgetSubcontractors, actual: row.subcontractorExpenses, variance: row.subcontractorExpenses - row.budgetSubcontractors, inverse: true },
-                      { label: 'Other Costs', budgetLabel: 'Budgeted Other Costs', actualLabel: 'Actual Other Costs', budget: row.budgetOtherCosts, actual: row.otherExpenses, variance: row.otherExpenses - row.budgetOtherCosts, inverse: true },
-                      { label: 'Total Job Cost', budgetLabel: 'Budgeted Total Cost', actualLabel: 'Actual Total Cost', budget: row.budgetTotalCost, actual: row.totalActualCost, variance: row.costVariance, inverse: true, emphasized: true },
-                      { label: 'Estimated Job Profit', budgetLabel: 'Expected Profit', actualLabel: job.status === 'completed' ? 'Final Profit' : 'Current Estimated Profit', budget: row.budgetProfit, actual: row.estimatedProfit, variance: row.profitVariance, inverse: false, emphasized: true },
-                    ].map(item => {
-                      const variance = Number(item.variance);
-                      const isGood = item.inverse ? variance <= 0 : variance >= 0;
-                      const magnitude = Math.abs(variance);
-                      const varianceText = magnitude < 0.005
-                        ? (item.inverse ? 'On budget' : 'On plan')
-                        : item.inverse
-                          ? `${formatCurrency.format(magnitude)} ${variance > 0 ? 'over budget' : 'under budget'}`
-                          : `${formatCurrency.format(magnitude)} ${variance > 0 ? 'above plan' : 'below plan'}`;
-                      return (
-                        <div key={item.label} className={`rounded-xl border p-4 sm:p-5 ${item.emphasized ? 'border-cyan-300 bg-cyan-50/70 dark:border-cyan-700/50 dark:bg-cyan-500/10' : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/45'}`}>
-                          <div className="text-sm font-extrabold text-slate-950 dark:text-white">{item.label}</div>
-                          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            <div>
-                              <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">{item.budgetLabel}</div>
-                              <div className="mt-1 text-xl font-extrabold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(Number(item.budget))}</div>
-                            </div>
-                            <div>
-                              <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">{item.actualLabel}</div>
-                              <div className="mt-1 text-xl font-extrabold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(Number(item.actual))}</div>
-                            </div>
-                          </div>
-                          <div className={`mt-4 border-t pt-3 text-sm font-extrabold ${item.emphasized ? 'border-cyan-200 dark:border-cyan-800/40' : 'border-slate-200 dark:border-slate-800'} ${isGood ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{varianceText}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </section>
-
-              <section className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <div className="text-base font-extrabold text-slate-950 dark:text-white">Labor</div>
-                    <div className="mt-1 text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">Track actual hours and internal labor cost without changing payroll or cash records.</div>
-                  </div>
-                  <button type="button" onClick={() => openJobTimeEntry(job)} className="self-start rounded-lg bg-violet-600 px-4 py-3 text-xs font-extrabold uppercase tracking-wider text-white hover:bg-violet-500"><Clock3 size={15} className="mr-1.5 inline" />Log Time</button>
-                </div>
-                <div className="space-y-3">
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/45"><div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Budgeted Labor Hours</div><div className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">{row.budgetLaborHours.toFixed(1)} hours</div></div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/45"><div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Actual Labor Hours</div><div className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">{row.actualLaborHours.toFixed(1)} hours</div></div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/45"><div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">{row.laborHoursVariance > 0 ? 'Hours Over Budget' : row.laborHoursVariance < 0 ? 'Hours Under Budget' : 'Labor Hours Variance'}</div><div className={`mt-1 text-xl font-extrabold ${varianceTone(row.laborHoursVariance, true)}`}>{Math.abs(row.laborHoursVariance).toFixed(1)} hours{row.laborHoursVariance === 0 ? ' — on budget' : ''}</div></div>
-                  <div className="rounded-xl border border-violet-200 bg-violet-50/70 p-4 dark:border-violet-800/50 dark:bg-violet-500/10"><div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Actual Labor Cost</div><div className="mt-1 text-xl font-extrabold text-violet-700 dark:text-violet-300">{formatCurrency.format(row.actualLaborCost)}</div></div>
-                </div>
-                {(job.timeEntries || []).length > 0 && (
-                  <div className="mt-6 space-y-3 border-t border-slate-200 pt-5 dark:border-slate-800">
-                    <div className="text-sm font-extrabold text-slate-900 dark:text-white">Labor Entries</div>
-                    {(job.timeEntries || []).slice().sort((a,b) => b.date.localeCompare(a.date)).map(entry => (
-                      <button type="button" key={entry.id} onClick={() => openJobTimeEntry(job, entry)} className="w-full rounded-xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-violet-300 dark:border-slate-800 dark:bg-slate-950/45 dark:hover:border-violet-700/60">
-                        <div className="text-sm font-extrabold leading-6 text-slate-900 dark:text-white">{entry.description || 'Labor time'}</div>
-                        <div className="mt-2 text-xs font-semibold text-slate-600 dark:text-slate-300">{formatJobDisplayDate(entry.date)}</div>
-                        {entry.worker && <div className="mt-1 text-xs font-semibold text-slate-600 dark:text-slate-300">Worker: {entry.worker}</div>}
-                        <div className="mt-1 text-xs font-semibold text-slate-600 dark:text-slate-300">{entry.hours.toFixed(1)} hours × {formatCurrency.format(entry.costRate)} per hour</div>
-                        <div className="mt-3 border-t border-slate-200 pt-3 text-base font-extrabold text-violet-700 dark:border-slate-800 dark:text-violet-300">Labor Cost: {formatCurrency.format(entry.hours * entry.costRate)}</div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              <section className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                <div className="mb-5"><div className="text-base font-extrabold text-slate-950 dark:text-white">Actual Cost Breakdown</div><div className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">Recorded job expenses plus tracked internal labor.</div></div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/45"><div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Materials</div><div className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.materialsExpenses)}</div></div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/45"><div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Labor</div><div className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.actualLaborCost)}</div></div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/45"><div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Subcontractors</div><div className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.subcontractorExpenses)}</div></div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/45"><div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Other Costs</div><div className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.otherExpenses)}</div></div>
-                </div>
-              </section>
-
-              <section className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                <div className="mb-3"><div className="text-sm font-extrabold text-slate-950 dark:text-white">Add to This Job</div><div className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">New records are linked automatically.</div></div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <button type="button" onClick={() => openJobBillingAction(job, 'invoice')} className="rounded-lg border border-blue-300 bg-blue-50 px-3 py-3 text-left text-xs font-extrabold text-blue-800 hover:bg-blue-100 dark:border-blue-700/60 dark:bg-blue-500/10 dark:text-blue-200"><FileText size={17} className="mb-2" />Invoice</button>
-                  <button type="button" onClick={() => openJobBillingAction(job, 'estimate')} className="rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-3 text-left text-xs font-extrabold text-indigo-800 hover:bg-indigo-100 dark:border-indigo-700/60 dark:bg-indigo-500/10 dark:text-indigo-200"><ClipboardList size={17} className="mb-2" />Estimate</button>
-                  <button type="button" onClick={() => addExpenseToJob(job)} className="rounded-lg border border-red-300 bg-red-50 px-3 py-3 text-left text-xs font-extrabold text-red-800 hover:bg-red-100 dark:border-red-700/60 dark:bg-red-500/10 dark:text-red-200"><Receipt size={17} className="mb-2" />Job Cost</button>
-                  <button type="button" onClick={() => openJobMileageAction(job)} className="rounded-lg border border-teal-300 bg-teal-50 px-3 py-3 text-left text-xs font-extrabold text-teal-800 hover:bg-teal-100 dark:border-teal-700/60 dark:bg-teal-500/10 dark:text-teal-200"><Car size={17} className="mb-2" />Mileage</button>
-                  <button type="button" onClick={() => openJobTimeEntry(job)} className="rounded-lg border border-violet-300 bg-violet-50 px-3 py-3 text-left text-xs font-extrabold text-violet-800 hover:bg-violet-100 dark:border-violet-700/60 dark:bg-violet-500/10 dark:text-violet-200"><Clock3 size={17} className="mb-2" />Log Time</button>
-                  <button type="button" onClick={() => openEditJob(job)} className="rounded-lg border border-cyan-300 bg-cyan-50 px-3 py-3 text-left text-xs font-extrabold text-cyan-800 hover:bg-cyan-100 dark:border-cyan-700/60 dark:bg-cyan-500/10 dark:text-cyan-200"><Edit3 size={17} className="mb-2" />Budget / Details</button>
-                </div>
-              </section>
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Quoted</div><div className="mt-1 text-base font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(row.estimateValue)}</div><div className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">{row.acceptedEstimateValue > 0 ? `${formatCurrency.format(row.acceptedEstimateValue)} accepted` : 'All linked estimates'}</div></div>
-                <div className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Mileage</div><div className="mt-1 text-base font-extrabold text-slate-950 dark:text-white">{row.miles.toFixed(1)} miles</div><div className="mt-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400">{formatCurrency.format(row.mileageDeduction)} deduction reference</div></div>
-              </div>
-
-              {job.status === 'completed' && (
-                <section className="rounded-xl border border-emerald-300 bg-emerald-50 p-5 shadow-sm dark:border-emerald-700/60 dark:bg-emerald-500/10">
-                  <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300"><CheckCircle size={18} /><div className="text-sm font-extrabold uppercase tracking-wider">Job Closeout</div></div>
-                  <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"><div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Quoted / Budget</div><div className="mt-1 font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.budgetRevenue || row.estimateValue)}</div></div><div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Collected</div><div className="mt-1 font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.collected)}</div></div><div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Total Cost</div><div className="mt-1 font-extrabold text-slate-900 dark:text-white">{formatCurrency.format(row.totalActualCost)}</div></div><div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Final Profit</div><div className={`mt-1 font-extrabold ${row.estimatedProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(row.estimatedProfit)}</div></div><div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Final Margin</div><div className="mt-1 font-extrabold text-slate-900 dark:text-white">{row.revenue > 0 ? `${row.marginPct.toFixed(1)}%` : '—'}</div></div><div><div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Labor</div><div className="mt-1 font-extrabold text-slate-900 dark:text-white">{row.actualLaborHours.toFixed(1)} hours</div></div></div>
                 </section>
-              )}
 
-              <section className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                <div className="mb-5">
-                  <div className="text-base font-extrabold text-slate-950 dark:text-white">Job Activity</div>
-                  <div className="mt-1 text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">Invoices, estimates, income, expenses, labor, and mileage in one chronological history.</div>
-                </div>
-                {selectedJobActivity.length === 0 ? <div className="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm font-medium leading-6 text-slate-500 dark:border-slate-700 dark:text-slate-400">No linked activity yet. Use the job actions to add the first record.</div> : <div className="space-y-3">{selectedJobActivity.map(item => {
-                  const tone = item.kind === 'invoice' ? 'text-blue-700 dark:text-blue-300' : item.kind === 'estimate' ? 'text-indigo-700 dark:text-indigo-300' : item.kind === 'income' ? 'text-emerald-700 dark:text-emerald-300' : item.kind === 'expense' ? 'text-red-700 dark:text-red-300' : item.kind === 'labor' ? 'text-violet-700 dark:text-violet-300' : 'text-teal-700 dark:text-teal-300';
-                  const kindLabel = item.kind === 'invoice' ? 'Invoice' : item.kind === 'estimate' ? 'Estimate' : item.kind === 'income' ? 'Income' : item.kind === 'expense' ? 'Expense' : item.kind === 'labor' ? 'Labor' : 'Mileage';
-                  return (
-                    <button key={`${item.kind}-${item.id}`} type="button" onClick={() => openJobActivityItem(item.kind, item.id)} className="w-full rounded-xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-cyan-300 dark:border-slate-800 dark:bg-slate-950/45 dark:hover:border-cyan-700/60">
-                      <div className={`text-base font-extrabold leading-6 ${tone}`}>{item.title}</div>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <span className="rounded-full bg-slate-200 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-700 dark:bg-slate-800 dark:text-slate-200">{kindLabel}</span>
-                        {item.status && item.status.toLowerCase() !== item.kind && <span className="rounded-full bg-slate-200 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-700 dark:bg-slate-800 dark:text-slate-200">{item.status}</span>}
+                <section className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <div className="border-b border-slate-200 p-5 dark:border-slate-800">
+                    <div className="text-[11px] font-extrabold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">Job Profit</div>
+                    <div className="mt-2 flex items-end justify-between gap-4">
+                      <div className={`text-3xl font-extrabold tabular-nums ${row.estimatedProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{formatCurrency.format(row.estimatedProfit)}</div>
+                      <div className="text-right"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Profit Margin</div><div className="mt-1 text-lg font-extrabold text-slate-950 dark:text-white">{row.revenue > 0 ? `${row.marginPct.toFixed(1)}%` : '—'}</div></div>
+                    </div>
+                  </div>
+                  <div className="p-5">
+                    <div className="mb-3 text-sm font-extrabold text-slate-950 dark:text-white">Money</div>
+                    <div className="divide-y divide-slate-200 dark:divide-slate-800">
+                      {[
+                        { label: 'Invoiced', value: row.invoiced, tone: 'text-slate-950 dark:text-white' },
+                        { label: 'Collected', value: row.collected, tone: 'text-emerald-700 dark:text-emerald-300' },
+                        { label: 'Outstanding', value: row.outstanding, tone: 'text-amber-700 dark:text-amber-300' },
+                        { label: 'Total Cost', value: row.totalActualCost, tone: 'text-red-700 dark:text-red-300' },
+                        { label: 'Cash Position', value: row.cashPosition, tone: row.cashPosition >= 0 ? 'text-cyan-700 dark:text-cyan-300' : 'text-red-700 dark:text-red-300' },
+                      ].map(item => <div key={item.label} className="flex items-center justify-between gap-4 py-3"><span className="text-sm font-semibold text-slate-600 dark:text-slate-300">{item.label}</span><span className={`text-sm font-extrabold tabular-nums ${item.tone}`}>{formatCurrency.format(item.value)}</span></div>)}
+                    </div>
+                    {row.directIncome > 0 && <div className="mt-3 text-[10px] font-semibold text-slate-500 dark:text-slate-400">Invoiced total excludes {formatCurrency.format(row.directIncome)} of direct income already included in Job Profit.</div>}
+                  </div>
+                </section>
+
+                <section className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="text-base font-extrabold text-slate-950 dark:text-white">Budget Performance</div>
+                      <div className="mt-1 text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">See whether the job is staying on plan without opening the full budget breakdown.</div>
+                    </div>
+                    <button type="button" onClick={() => toggleSection('budget')} className="shrink-0 rounded-lg border border-slate-300 bg-white p-2 text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300" aria-label={expandedJobSection === 'budget' ? 'Hide budget details' : 'View budget details'}>{expandedJobSection === 'budget' ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</button>
+                  </div>
+                  {!hasBudget ? (
+                    <div className="mt-4 rounded-lg border border-dashed border-slate-300 p-4 text-sm font-semibold leading-6 text-slate-500 dark:border-slate-700 dark:text-slate-400">No job budget is set yet. Use Manage Job to add expected revenue and costs.</div>
+                  ) : (
+                    <>
+                      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/45">
+                        <div className={`text-sm font-extrabold ${budgetCostVariance <= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{budgetCostText}</div>
+                        <div className="mt-2 text-sm font-medium text-slate-600 dark:text-slate-300">Actual cost {formatCurrency.format(row.totalActualCost)} vs budgeted cost {formatCurrency.format(row.budgetTotalCost)}.</div>
+                        <div className={`mt-2 text-sm font-bold ${budgetProfitVariance >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{profitPlanText}</div>
                       </div>
-                      <div className="mt-3 text-sm font-semibold text-slate-600 dark:text-slate-300">{formatJobDisplayDate(item.date)}</div>
-                      <div className="mt-1 text-sm font-medium leading-6 text-slate-600 dark:text-slate-300">{item.detail}</div>
-                      {typeof item.amount === 'number' && <div className={`mt-4 border-t border-slate-200 pt-3 text-lg font-extrabold tabular-nums dark:border-slate-800 ${item.kind === 'expense' ? 'text-red-700 dark:text-red-300' : item.kind === 'income' ? 'text-emerald-700 dark:text-emerald-300' : item.kind === 'labor' ? 'text-violet-700 dark:text-violet-300' : 'text-slate-900 dark:text-white'}`}>{item.kind === 'expense' ? '−' : ''}{formatCurrency.format(item.amount)}</div>}
-                      <div className="mt-3 flex items-center justify-end gap-1 text-xs font-bold text-cyan-700 dark:text-cyan-300">Open record <ChevronRight size={15} /></div>
-                    </button>
-                  );
-                })}</div>}
-              </section>
+                      <button type="button" onClick={() => toggleSection('budget')} className="mt-4 flex w-full items-center justify-between rounded-lg border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm font-extrabold text-cyan-800 dark:border-cyan-800/50 dark:bg-cyan-500/10 dark:text-cyan-200"><span>{expandedJobSection === 'budget' ? 'Hide Budget Details' : 'View Budget Details'}</span>{expandedJobSection === 'budget' ? <ChevronUp size={17} /> : <ChevronDown size={17} />}</button>
+                    </>
+                  )}
+                  {hasBudget && expandedJobSection === 'budget' && (
+                    <div className="mt-5 space-y-3 border-t border-slate-200 pt-5 dark:border-slate-800">
+                      {[
+                        { label: 'Revenue', budgetLabel: 'Budgeted Revenue', actualLabel: 'Actual Revenue', budget: row.budgetRevenue, actual: row.revenue, variance: row.revenueVariance, inverse: false },
+                        { label: 'Materials', budgetLabel: 'Budgeted Materials Cost', actualLabel: 'Actual Materials Cost', budget: row.budgetMaterials, actual: row.materialsExpenses, variance: row.materialsExpenses - row.budgetMaterials, inverse: true },
+                        { label: 'Labor', budgetLabel: 'Budgeted Labor Cost', actualLabel: 'Actual Labor Cost', budget: row.budgetLaborCost, actual: row.actualLaborCost, variance: row.actualLaborCost - row.budgetLaborCost, inverse: true },
+                        { label: 'Subcontractors', budgetLabel: 'Budgeted Subcontractor Cost', actualLabel: 'Actual Subcontractor Cost', budget: row.budgetSubcontractors, actual: row.subcontractorExpenses, variance: row.subcontractorExpenses - row.budgetSubcontractors, inverse: true },
+                        { label: 'Other Costs', budgetLabel: 'Budgeted Other Costs', actualLabel: 'Actual Other Costs', budget: row.budgetOtherCosts, actual: row.otherExpenses, variance: row.otherExpenses - row.budgetOtherCosts, inverse: true },
+                        { label: 'Total Job Cost', budgetLabel: 'Budgeted Total Cost', actualLabel: 'Actual Total Cost', budget: row.budgetTotalCost, actual: row.totalActualCost, variance: row.costVariance, inverse: true },
+                        { label: 'Estimated Job Profit', budgetLabel: 'Expected Profit', actualLabel: job.status === 'completed' ? 'Final Profit' : 'Current Estimated Profit', budget: row.budgetProfit, actual: row.estimatedProfit, variance: row.profitVariance, inverse: false },
+                      ].map(item => {
+                        const variance = Number(item.variance);
+                        const magnitude = Math.abs(variance);
+                        const good = item.inverse ? variance <= 0 : variance >= 0;
+                        const varianceText = magnitude < 0.005 ? (item.inverse ? 'On budget' : 'On plan') : item.inverse ? `${formatCurrency.format(magnitude)} ${variance > 0 ? 'over budget' : 'under budget'}` : `${formatCurrency.format(magnitude)} ${variance > 0 ? 'above plan' : 'below plan'}`;
+                        return <div key={item.label} className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/45"><div className="text-sm font-extrabold text-slate-950 dark:text-white">{item.label}</div><div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2"><div><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">{item.budgetLabel}</div><div className="mt-1 text-lg font-extrabold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(Number(item.budget))}</div></div><div><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">{item.actualLabel}</div><div className="mt-1 text-lg font-extrabold tabular-nums text-slate-900 dark:text-white">{formatCurrency.format(Number(item.actual))}</div></div></div><div className={`mt-3 border-t border-slate-200 pt-3 text-sm font-extrabold dark:border-slate-800 ${good ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{varianceText}</div></div>;
+                      })}
+                      <button type="button" onClick={() => openEditJob(job)} className="w-full rounded-lg border border-cyan-300 bg-cyan-50 px-4 py-3 text-sm font-extrabold text-cyan-800 dark:border-cyan-700/60 dark:bg-cyan-500/10 dark:text-cyan-200">Edit Budget</button>
+                    </div>
+                  )}
+                </section>
 
-              <section className="space-y-3 pb-6">
-                <div className={`grid gap-3 ${job.status === 'active' ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                  <button type="button" onClick={() => { setSelectedJobId(null); repeatJob(job); }} className="min-h-14 rounded-lg border border-cyan-300 bg-cyan-50 px-4 py-3 text-sm font-extrabold text-cyan-800 transition hover:bg-cyan-100 active:scale-[0.99] dark:border-cyan-700/60 dark:bg-cyan-500/10 dark:text-cyan-200">
-                    <Repeat size={17} className="mr-2 inline" />Repeat Job
-                  </button>
-                  {job.status === 'active' && <button type="button" onClick={() => completeJob(job)} className="min-h-14 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-extrabold text-emerald-800 transition hover:bg-emerald-100 active:scale-[0.99] dark:border-emerald-700/60 dark:bg-emerald-500/10 dark:text-emerald-200"><CheckCircle size={17} className="mr-2 inline" />Complete Job</button>}
-                </div>
-                <button type="button" onClick={() => openEditJob(job)} className="min-h-14 w-full rounded-lg bg-cyan-700 px-5 py-4 text-sm font-extrabold text-white shadow-sm transition hover:bg-cyan-600 active:scale-[0.99]"><Edit3 size={17} className="mr-2 inline" />Edit Job Details</button>
-              </section>
-            </div>
+                <section className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <div className="flex items-start justify-between gap-4">
+                    <div><div className="text-base font-extrabold text-slate-950 dark:text-white">Labor</div><div className="mt-1 text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">Hours and internal labor cost for this job.</div></div>
+                    <button type="button" onClick={() => toggleSection('labor')} className="shrink-0 rounded-lg border border-slate-300 bg-white p-2 text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">{expandedJobSection === 'labor' ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</button>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3.5 dark:border-slate-800 dark:bg-slate-950/45"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Actual Hours</div><div className="mt-1 text-lg font-extrabold text-slate-950 dark:text-white">{row.actualLaborHours.toFixed(1)}</div><div className="mt-1 text-[10px] font-semibold text-slate-500">Budgeted {row.budgetLaborHours.toFixed(1)}</div></div>
+                    <div className="rounded-lg border border-violet-200 bg-violet-50/70 p-3.5 dark:border-violet-800/50 dark:bg-violet-500/10"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Labor Cost</div><div className="mt-1 text-lg font-extrabold text-violet-700 dark:text-violet-300">{formatCurrency.format(row.actualLaborCost)}</div></div>
+                  </div>
+                  <div className={`mt-3 text-sm font-extrabold ${laborVariance <= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{laborVariance === 0 ? 'Labor hours are on budget' : `${Math.abs(laborVariance).toFixed(1)} hours ${laborVariance > 0 ? 'over budget' : 'under budget'}`}</div>
+                  <div className="mt-4 grid grid-cols-2 gap-3"><button type="button" onClick={() => openJobTimeEntry(job)} className="rounded-lg bg-violet-600 px-4 py-3 text-sm font-extrabold text-white hover:bg-violet-500"><Clock3 size={16} className="mr-1.5 inline" />Log Time</button><button type="button" onClick={() => toggleSection('labor')} className="rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-extrabold text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">{expandedJobSection === 'labor' ? 'Hide Details' : 'View Details'}</button></div>
+                  {expandedJobSection === 'labor' && (
+                    <div className="mt-5 border-t border-slate-200 pt-5 dark:border-slate-800">
+                      <div className="mb-3 text-sm font-extrabold text-slate-900 dark:text-white">Labor Entries</div>
+                      {laborEntries.length === 0 ? <div className="rounded-lg border border-dashed border-slate-300 p-4 text-sm font-medium text-slate-500 dark:border-slate-700 dark:text-slate-400">No labor time has been logged yet.</div> : <div className="space-y-3">{laborEntries.map(entry => <button type="button" key={entry.id} onClick={() => openJobTimeEntry(job, entry)} className="w-full rounded-xl border border-slate-200 bg-slate-50 p-4 text-left dark:border-slate-800 dark:bg-slate-950/45"><div className="text-sm font-extrabold leading-6 text-slate-900 dark:text-white">{entry.description || 'Labor time'}</div><div className="mt-2 text-xs font-semibold text-slate-600 dark:text-slate-300">{formatJobDisplayDate(entry.date)}</div>{entry.worker && <div className="mt-1 text-xs font-semibold text-slate-600 dark:text-slate-300">{entry.worker}</div>}<div className="mt-1 text-xs font-semibold text-slate-600 dark:text-slate-300">{entry.hours.toFixed(1)} hours × {formatCurrency.format(entry.costRate)} per hour</div><div className="mt-3 border-t border-slate-200 pt-3 text-base font-extrabold text-violet-700 dark:border-slate-800 dark:text-violet-300">Labor Cost: {formatCurrency.format(entry.hours * entry.costRate)}</div></button>)}</div>}
+                    </div>
+                  )}
+                </section>
+
+                <section className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <div className="flex items-start justify-between gap-4"><div><div className="text-base font-extrabold text-slate-950 dark:text-white">Costs</div><div className="mt-1 text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">Recorded expenses plus tracked internal labor.</div></div><button type="button" onClick={() => toggleSection('costs')} className="shrink-0 rounded-lg border border-slate-300 bg-white p-2 text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">{expandedJobSection === 'costs' ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</button></div>
+                  <div className="mt-4 rounded-xl border border-red-200 bg-red-50/70 p-4 dark:border-red-800/50 dark:bg-red-500/10"><div className="text-[10px] font-extrabold uppercase tracking-wider text-red-700 dark:text-red-300">Total Actual Cost</div><div className="mt-1.5 text-2xl font-extrabold text-red-700 dark:text-red-300">{formatCurrency.format(row.totalActualCost)}</div></div>
+                  <button type="button" onClick={() => toggleSection('costs')} className="mt-4 flex w-full items-center justify-between rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-extrabold text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"><span>{expandedJobSection === 'costs' ? 'Hide Cost Breakdown' : 'View Cost Breakdown'}</span>{expandedJobSection === 'costs' ? <ChevronUp size={17} /> : <ChevronDown size={17} />}</button>
+                  {expandedJobSection === 'costs' && <div className="mt-4 grid grid-cols-1 gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">{[
+                    ['Materials', row.materialsExpenses], ['Labor', row.actualLaborCost], ['Subcontractors', row.subcontractorExpenses], ['Other Costs', row.otherExpenses]
+                  ].map(([label, value]) => <div key={String(label)} className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/45"><span className="text-sm font-semibold text-slate-600 dark:text-slate-300">{label}</span><span className="text-sm font-extrabold tabular-nums text-slate-950 dark:text-white">{formatCurrency.format(Number(value))}</span></div>)}</div>}
+                </section>
+
+                <section className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <div className="text-base font-extrabold text-slate-950 dark:text-white">Estimates & Invoices</div>
+                  <div className="mt-1 text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">Quoted work and collection status for this job.</div>
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3.5 dark:border-slate-800 dark:bg-slate-950/45"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Quoted</div><div className="mt-1 text-base font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(row.estimateValue)}</div></div>
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3.5 dark:border-slate-800 dark:bg-slate-950/45"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Accepted</div><div className="mt-1 text-base font-extrabold text-emerald-700 dark:text-emerald-300">{formatCurrency.format(row.acceptedEstimateValue)}</div></div>
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3.5 dark:border-slate-800 dark:bg-slate-950/45"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Invoiced</div><div className="mt-1 text-base font-extrabold text-slate-950 dark:text-white">{formatCurrency.format(row.invoiced)}</div></div>
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3.5 dark:border-amber-800/50 dark:bg-amber-500/10"><div className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-300">Outstanding</div><div className="mt-1 text-base font-extrabold text-amber-800 dark:text-amber-200">{formatCurrency.format(row.outstanding)}</div></div>
+                  </div>
+                </section>
+
+                <section className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300"><Car size={19} /></div><div><div className="text-base font-extrabold text-slate-950 dark:text-white">Mileage</div><div className="mt-0.5 text-sm font-medium text-slate-500 dark:text-slate-400">Business travel linked to this job.</div></div></div>
+                  <div className="mt-4 flex items-end justify-between gap-4"><div><div className="text-2xl font-extrabold text-slate-950 dark:text-white">{row.miles.toFixed(1)} miles</div><div className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{row.mileageCount} trip{row.mileageCount === 1 ? '' : 's'}</div></div><div className="text-right"><div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">Deduction Reference</div><div className="mt-1 text-base font-extrabold text-teal-700 dark:text-teal-300">{formatCurrency.format(row.mileageDeduction)}</div></div></div>
+                </section>
+
+                {job.status === 'completed' && (
+                  <section className="rounded-xl border border-emerald-300 bg-emerald-50 p-5 shadow-sm dark:border-emerald-700/60 dark:bg-emerald-500/10">
+                    <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300"><CheckCircle size={18} /><div className="text-sm font-extrabold uppercase tracking-wider">Job Closeout</div></div>
+                    <div className="mt-4 divide-y divide-emerald-200/70 dark:divide-emerald-800/40">{[
+                      ['Quoted / Budget', row.budgetRevenue || row.estimateValue], ['Collected', row.collected], ['Total Cost', row.totalActualCost], ['Final Profit', row.estimatedProfit]
+                    ].map(([label,value]) => <div key={String(label)} className="flex items-center justify-between gap-4 py-3"><span className="text-sm font-semibold text-slate-600 dark:text-slate-300">{label}</span><span className="text-sm font-extrabold tabular-nums text-slate-950 dark:text-white">{formatCurrency.format(Number(value))}</span></div>)}</div>
+                    <div className="mt-3 flex items-center justify-between gap-4 text-sm"><span className="font-semibold text-slate-600 dark:text-slate-300">Final Margin</span><span className="font-extrabold text-slate-950 dark:text-white">{row.revenue > 0 ? `${row.marginPct.toFixed(1)}%` : '—'}</span></div>
+                  </section>
+                )}
+
+                <section className="rounded-xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <div className="flex items-start justify-between gap-4"><div><div className="text-base font-extrabold text-slate-950 dark:text-white">Job Activity</div><div className="mt-1 text-sm font-medium leading-6 text-slate-500 dark:text-slate-400">The chronological story of invoices, estimates, income, expenses, labor, and mileage.</div></div>{selectedJobActivity.length > 3 && <button type="button" onClick={() => toggleSection('activity')} className="shrink-0 rounded-lg border border-slate-300 bg-white p-2 text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">{expandedJobSection === 'activity' ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</button>}</div>
+                  {selectedJobActivity.length === 0 ? <div className="mt-4 rounded-xl border border-dashed border-slate-300 px-4 py-7 text-center text-sm font-medium leading-6 text-slate-500 dark:border-slate-700 dark:text-slate-400">No linked activity yet. Use Add to Job to create the first record.</div> : <div className="mt-5 space-y-3">{visibleActivity.map(item => {
+                    const tone = item.kind === 'invoice' ? 'text-blue-700 dark:text-blue-300' : item.kind === 'estimate' ? 'text-indigo-700 dark:text-indigo-300' : item.kind === 'income' ? 'text-emerald-700 dark:text-emerald-300' : item.kind === 'expense' ? 'text-red-700 dark:text-red-300' : item.kind === 'labor' ? 'text-violet-700 dark:text-violet-300' : 'text-teal-700 dark:text-teal-300';
+                    const kindLabel = item.kind === 'invoice' ? 'Invoice' : item.kind === 'estimate' ? 'Estimate' : item.kind === 'income' ? 'Income' : item.kind === 'expense' ? 'Expense' : item.kind === 'labor' ? 'Labor' : 'Mileage';
+                    return <button key={`${item.kind}-${item.id}`} type="button" onClick={() => openJobActivityItem(item.kind, item.id)} className="w-full rounded-xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-cyan-300 dark:border-slate-800 dark:bg-slate-950/45 dark:hover:border-cyan-700/60"><div className={`text-base font-extrabold leading-6 ${tone}`}>{item.title}</div><div className="mt-2 flex flex-wrap gap-2"><span className="rounded-full bg-slate-200 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-700 dark:bg-slate-800 dark:text-slate-200">{kindLabel}</span>{item.status && item.status.toLowerCase() !== item.kind && <span className="rounded-full bg-slate-200 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-700 dark:bg-slate-800 dark:text-slate-200">{item.status}</span>}</div><div className="mt-3 text-sm font-semibold text-slate-600 dark:text-slate-300">{formatJobDisplayDate(item.date)}</div><div className="mt-1 text-sm font-medium leading-6 text-slate-600 dark:text-slate-300">{item.detail}</div>{typeof item.amount === 'number' && <div className={`mt-4 border-t border-slate-200 pt-3 text-lg font-extrabold tabular-nums dark:border-slate-800 ${item.kind === 'expense' ? 'text-red-700 dark:text-red-300' : item.kind === 'income' ? 'text-emerald-700 dark:text-emerald-300' : item.kind === 'labor' ? 'text-violet-700 dark:text-violet-300' : 'text-slate-900 dark:text-white'}`}>{item.kind === 'expense' ? '−' : ''}{formatCurrency.format(item.amount)}</div>}<div className="mt-3 flex items-center justify-end gap-1 text-xs font-bold text-cyan-700 dark:text-cyan-300">Open record <ChevronRight size={15} /></div></button>;
+                  })}</div>}
+                  {selectedJobActivity.length > 3 && <button type="button" onClick={() => toggleSection('activity')} className="mt-4 flex w-full items-center justify-between rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-extrabold text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"><span>{expandedJobSection === 'activity' ? 'Show Recent Activity Only' : `View All ${selectedJobActivity.length} Activity Records`}</span>{expandedJobSection === 'activity' ? <ChevronUp size={17} /> : <ChevronDown size={17} />}</button>}
+                </section>
+
+                <section className="space-y-3 pb-6">
+                  <div className={`grid gap-3 ${job.status === 'active' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                    <button type="button" onClick={() => { setSelectedJobId(null); repeatJob(job); }} className="min-h-14 rounded-lg border border-cyan-300 bg-cyan-50 px-4 py-3 text-sm font-extrabold text-cyan-800 transition hover:bg-cyan-100 active:scale-[0.99] dark:border-cyan-700/60 dark:bg-cyan-500/10 dark:text-cyan-200"><Repeat size={17} className="mr-2 inline" />Repeat Job</button>
+                    {job.status === 'active' && <button type="button" onClick={() => completeJob(job)} className="min-h-14 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-extrabold text-emerald-800 transition hover:bg-emerald-100 active:scale-[0.99] dark:border-emerald-700/60 dark:bg-emerald-500/10 dark:text-emerald-200"><CheckCircle size={17} className="mr-2 inline" />Complete Job</button>}
+                  </div>
+                  <button type="button" onClick={() => openEditJob(job)} className="min-h-14 w-full rounded-lg border border-slate-300 bg-white px-5 py-4 text-sm font-extrabold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.99] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"><Edit3 size={17} className="mr-2 inline" />Edit Job Details</button>
+                </section>
+              </div>
+
+              {showJobAddMenu && typeof document !== 'undefined' && createPortal(
+                <div className="fixed inset-0 z-[90] flex items-end justify-center bg-slate-950/70 p-3 backdrop-blur-sm sm:items-center" onClick={() => setShowJobAddMenu(false)}>
+                  <div className="w-full max-w-md rounded-xl border border-slate-300 bg-white p-4 shadow-2xl dark:border-slate-700 dark:bg-slate-900" onClick={event => event.stopPropagation()}>
+                    <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-4 dark:border-slate-800"><div><div className="text-xl font-extrabold text-slate-950 dark:text-white">Add to Job</div><div className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">New records are linked automatically to {job.title}.</div></div><button type="button" onClick={() => setShowJobAddMenu(false)} className="rounded-full p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"><X size={22} /></button></div>
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <button type="button" onClick={() => { setShowJobAddMenu(false); openJobBillingAction(job, 'invoice'); }} className="rounded-xl border border-blue-300 bg-blue-50 p-4 text-left text-sm font-extrabold text-blue-800 dark:border-blue-700/60 dark:bg-blue-500/10 dark:text-blue-200"><FileText size={19} className="mb-3" />Invoice</button>
+                      <button type="button" onClick={() => { setShowJobAddMenu(false); openJobBillingAction(job, 'estimate'); }} className="rounded-xl border border-indigo-300 bg-indigo-50 p-4 text-left text-sm font-extrabold text-indigo-800 dark:border-indigo-700/60 dark:bg-indigo-500/10 dark:text-indigo-200"><ClipboardList size={19} className="mb-3" />Estimate</button>
+                      <button type="button" onClick={() => { setShowJobAddMenu(false); addExpenseToJob(job); }} className="rounded-xl border border-red-300 bg-red-50 p-4 text-left text-sm font-extrabold text-red-800 dark:border-red-700/60 dark:bg-red-500/10 dark:text-red-200"><Receipt size={19} className="mb-3" />Expense / Job Cost</button>
+                      <button type="button" onClick={() => { setShowJobAddMenu(false); openJobMileageAction(job); }} className="rounded-xl border border-teal-300 bg-teal-50 p-4 text-left text-sm font-extrabold text-teal-800 dark:border-teal-700/60 dark:bg-teal-500/10 dark:text-teal-200"><Car size={19} className="mb-3" />Mileage</button>
+                      <button type="button" onClick={() => { setShowJobAddMenu(false); openJobTimeEntry(job); }} className="col-span-2 rounded-xl border border-violet-300 bg-violet-50 p-4 text-left text-sm font-extrabold text-violet-800 dark:border-violet-700/60 dark:bg-violet-500/10 dark:text-violet-200"><Clock3 size={19} className="mr-2 inline" />Log Time</button>
+                    </div>
+                  </div>
+                </div>,
+                document.body,
+              )}
+            </>
           );
         })()}
       </AppDrawer>

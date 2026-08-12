@@ -1,13 +1,15 @@
-# MONIEZI v38.0.21
+# MONIEZI v38.0.22
 
-Source package for the v38.0.21 Job Dashboard Mobile UX Refinement release.
+Source package for the v38.0.22 Jobs Information Architecture & Progressive Disclosure release.
 
-## New in v38.0.21
+## New in v38.0.22
 
-- Adds Jobs as a permanent bottom-navigation destination while preserving Jobs / Projects in the main menu.
-- Replaces the cramped mobile Budget vs Actual table with readable stacked comparison cards.
-- Expands Labor metrics into full-width mobile records with complete labels and full words.
-- Expands labor entries so descriptions, worker names, dates, hours, rates, and labor cost can be read without truncation.
-- Rebuilds Job Activity as vertically spaced records with full titles, details, dates, status, and amounts.
-- Gives Financial Summary, Actual Cost Breakdown, Job actions, mileage/quoted cards, and Job Closeout more mobile breathing room.
-- Keeps the complete v38.0.20 job-costing calculations, labor model, demo data, reports, and backward-compatible data model unchanged.
+- Rebuilds the Jobs landing overview into one deliberate Jobs Overview panel with Job Profit as the primary business result.
+- Refines individual job cards into clearer profit-first summaries rather than mini dashboards.
+- Reorganizes the Job Dashboard around summary-first information architecture.
+- Replaces the large Add to This Job block with a compact Add to Job action sheet.
+- Keeps Budget, Labor, Costs, and Job Activity fully available through expandable detail sections.
+- Adds dedicated Estimates & Invoices and Mileage summary sections while preserving the complete job activity history.
+- Preserves all v38.0.21 Job Costing, labor, budget, demo, reports, footer Jobs navigation, receipt workflow, and commercial-source cleanup.
+
+MONIEZI v38.0.22 preserves the v38.0.21 data model and remains compatible with existing v38 backups and installed PWAs.
