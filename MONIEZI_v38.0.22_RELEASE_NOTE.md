@@ -27,3 +27,11 @@ No Job data fields were removed or changed. Existing v38.0.21 jobs, budgets, lab
 - Replaces the first-run demo count cards with a Business Preview that demonstrates Job Profit, a paid invoice, a linked receipt, Jobs, Mileage, and Reports.
 - Rewrites the demo invitation around what the buyer can experience: Money, Work, and Records & Reports.
 - Keeps the existing demo load/remove behavior unchanged.
+
+
+## Demo card simplification correction
+
+- Simplified first-run demo copy to remove repeated "sample business" / "load demo" explanations.
+- Business Preview is now tappable and triggers the same demo-load action as the primary button.
+- Replaced the three large supporting cards with compact Money, Work, and Reports rows.
+- Preserved the primary Load Demo button and Skip — record my first entry secondary path.
