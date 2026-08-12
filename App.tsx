@@ -94,7 +94,7 @@ import { getInsightCount } from './services/insightsEngine';
 import { migrateLegacyStorage } from './services/storageMigration';
 import { putReceiptBlob, getReceiptBlob, deleteReceiptBlob, dataUrlToBlob, blobToDataUrl, clearAllReceipts } from './services/receiptStore';
 import { DEMO_RECEIPT_ASSETS } from './services/demoReceipts';
-import { loadAppState, saveAppState, clearAppState } from './services/appStore';
+import { loadAppState, saveAppState, clearAppState, loadDemoReturnState, saveDemoReturnState, clearDemoReturnState } from './services/appStore';
 import { AppDrawer } from './src/components/mobile/AppDrawer';
 import { GlobalSearchPanel } from './src/components/GlobalSearchPanel';
 import { MonieziSelect } from './src/components/MonieziSelect';
@@ -3414,6 +3414,37 @@ export default function App() {
     setReceiptPreviewUrls({});
     setSettings({ ...demo.settings } as UserSettings);
     setTaxPayments([...(demo.taxPayments || [])] as TaxPayment[]);
+    // Demo Mode must not leak the customer's advanced/private records into the
+    // sample business. Those records are preserved in the return snapshot and
+    // restored when Demo Mode is removed.
+    setCustomCategories({ income: [], expense: [], billing: [] });
+    setCompanyEquity(createDefaultCompanyEquityState());
+    setSavedTemplates([]);
+    setDuplicationHistory({});
+    setPlannerData({
+      income: 0,
+      expenses: 0,
+      filingStatus: 'single',
+      taxRate: 15,
+      useCustomRate: false,
+      useSE: true,
+      useStdDed: true,
+      retirement: 0,
+      credits: 0,
+      otherIncomeInterest: 0,
+      otherIncomeDividends: 0,
+      otherIncomeCapital: 0,
+      otherIncomeOther: 0,
+      deductionMode: 'standard',
+      itemizedDeduction: 0,
+      adjustmentHSA: 0,
+      adjustmentHealth: 0,
+      applyQBI: false,
+      qbiOverride: 0,
+      paymentsYTD: 0,
+      withholdingYTD: 0,
+      lastYearTaxRef: 0,
+    });
 
     // The commercial demo contains a deep receipt history plus ten featured
     // lightweight U.S. receipt photos. Fetch the featured assets once, then reuse
@@ -3458,6 +3489,9 @@ export default function App() {
 
     // Clear IndexedDB app-state (large-capacity storage)
     clearAppState().catch((e) => console.error("Failed to clear IndexedDB app-state", e));
+    // Reset & Clear All is intentionally permanent, including any business
+    // snapshot being held while Demo Mode is active.
+    clearDemoReturnState().catch((e) => console.error("Failed to clear Demo Mode return snapshot", e));
 
     // Clear receipt blobs as well to free space
     clearAllReceipts().catch((e) => console.error("Failed to clear receipt blobs", e));
@@ -3496,6 +3530,8 @@ export default function App() {
       monthlyProfitGoal: 0,
     });
 
+    setReceiptPreviewUrls({});
+    setIsDemoData(false);
     setSeedSuccess(false);
     setShowResetConfirm(false);
     showToast("All data has been wiped.", "success");
@@ -3530,13 +3566,25 @@ export default function App() {
     window.location.reload();
   };
 
+  /** True when the customer has not recorded any business data yet. */
   /**
-   * True when the customer has recorded nothing yet.
-   *
-   * Loading sample data REPLACES everything (see handleSeedDemoData), so it is
-   * only ever offered while there is nothing to destroy. This single condition
-   * is the safety check: no empty app, no button.
+   * Real counts pulled from the sample data itself, so the welcome card can
+   * never advertise numbers that differ from what loading actually produces.
+   * Only computed while the app is empty, which is the only time it renders.
    */
+  const sampleDataCounts = useMemo(() => {
+    try {
+      const demo: any = getFreshDemoData();
+      return {
+        transactions: (demo?.transactions || []).length,
+        invoices: (demo?.invoices || []).length,
+        clients: (demo?.clients || []).length,
+      };
+    } catch {
+      return { transactions: 0, invoices: 0, clients: 0 };
+    }
+  }, []);
+
   /**
    * The install prompt takes the whole screen when it applies, so nobody starts
    * entering records in a browser tab and then loses them.
@@ -3560,19 +3608,91 @@ export default function App() {
     mileageTrips.length === 0 &&
     taxPayments.length === 0;
 
-  /** Only reachable while sample data is loaded, so nothing real can be lost. */
-  const handleRemoveSampleData = () => {
-    performReset();
-    setIsDemoData(false);
-    showToast("Demo removed. The app is ready for your own records.", "success");
+  /**
+   * Exit Demo Mode. If the customer entered the demo while their own business
+   * already contained records, restore that preserved business exactly. If the
+   * demo was entered from an empty app, simply return to a fresh empty app.
+   */
+  const handleRemoveSampleData = async () => {
+    try {
+      const snapshot = await loadDemoReturnState<any>();
+      if (snapshot) {
+        setTransactions(Array.isArray(snapshot.transactions) ? snapshot.transactions : []);
+        setInvoices(Array.isArray(snapshot.invoices) ? snapshot.invoices : []);
+        setEstimates(Array.isArray(snapshot.estimates) ? snapshot.estimates : []);
+        setClients(Array.isArray(snapshot.clients) ? snapshot.clients : []);
+        setJobs(normalizeJobs(snapshot.jobs));
+        setSettings(snapshot.settings || settings);
+        setTaxPayments(Array.isArray(snapshot.taxPayments) ? snapshot.taxPayments : []);
+        setCustomCategories(snapshot.customCategories || { income: [], expense: [], billing: [] });
+        setReceipts(Array.isArray(snapshot.receipts) ? snapshot.receipts : []);
+        setMileageTrips(Array.isArray(snapshot.mileageTrips) ? snapshot.mileageTrips : []);
+        setCompanyEquity(normalizeCompanyEquityState(snapshot.companyEquity, snapshot.settings?.businessName || settings.businessName));
+        setSavedTemplates(Array.isArray(snapshot.savedTemplates) ? snapshot.savedTemplates : []);
+        setDuplicationHistory(snapshot.duplicationHistory || {});
+        if (snapshot.plannerData) setPlannerData(snapshot.plannerData);
+        setReceiptPreviewUrls({});
+        setIsDemoData(false);
+        setSeedSuccess(false);
+        await clearDemoReturnState();
+        setShowMainMenu(false);
+        setCurrentPage(Page.Dashboard);
+        showToast("Demo closed. Your business records are back.", "success");
+        return;
+      }
+
+      performReset();
+      setIsDemoData(false);
+      await clearDemoReturnState();
+      setShowMainMenu(false);
+      showToast("Demo removed. You can load it again any time from Menu or Settings.", "success");
+    } catch (error) {
+      console.error("Failed to exit demo mode", error);
+      showToast("Could not exit Demo Mode safely. Your saved business was not changed.", "error");
+    }
   };
 
+  /**
+   * Demo access is permanent. When real records exist, preserve the complete
+   * current business in IndexedDB before switching the visible app into Demo
+   * Mode. This makes Try Demo safe even after the customer has started using
+   * MONIEZI for their own business.
+   */
   const handleLoadSampleData = async () => {
-    await handleSeedDemoData();
-    markSampleDataTried();
-    setShowMainMenu(false);
-    setCurrentPage(Page.Dashboard);
-    showToast("Demo loaded. Remove it any time from the banner at the top.", "success");
+    try {
+      if (!isDemoData && !isAppEmpty) {
+        const receiptsMeta = receipts.map(r => ({ id: r.id, date: r.date, imageKey: r.imageKey, mimeType: r.mimeType, note: r.note }));
+        await saveDemoReturnState({
+          transactions,
+          invoices,
+          estimates,
+          clients,
+          jobs,
+          settings,
+          taxPayments,
+          customCategories,
+          receipts: receiptsMeta,
+          mileageTrips,
+          companyEquity,
+          savedTemplates,
+          duplicationHistory,
+          plannerData,
+          isDemoData: false,
+        });
+      } else if (!isDemoData && isAppEmpty) {
+        // An empty app has nothing to restore when the demo is removed.
+        await clearDemoReturnState();
+      }
+
+      await handleSeedDemoData();
+      markSampleDataTried();
+      setShowMainMenu(false);
+      setCurrentPage(Page.Dashboard);
+      showToast("Demo loaded. You can exit or reload it any time from Menu or Settings.", "success");
+    } catch (error) {
+      console.error("Failed to enter demo mode", error);
+      showToast("Could not start Demo Mode safely. Your business records were not changed.", "error");
+    }
   };
 
   const confirmDeleteInvoice = () => {
@@ -7990,7 +8110,7 @@ html, body, #root {
           <div className="min-w-0 flex-1">
             <div className="text-sm font-bold text-amber-900 dark:text-amber-100">Demo data</div>
             <div className="text-xs font-medium text-amber-800/80 dark:text-amber-200/70">
-              These are demo records, not your business.
+              These are demo records, not your business. Exit any time from here, Menu, or Settings.
             </div>
           </div>
           <button
@@ -8012,102 +8132,44 @@ html, body, #root {
           : 'border-sky-300/65 bg-gradient-to-br from-slate-50/98 via-white/98 to-sky-50/96 shadow-[0_18px_48px_rgba(15,23,42,0.16)] ring-1 ring-sky-200/70'}`}>
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(96,165,250,0.20),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(125,211,252,0.10),transparent_32%)]" />
 
-          <div className="relative px-5 py-6 sm:px-6 sm:py-7">
-            {!hasTriedSampleData ? (
-              <>
-                {/* Business Preview: show what the demo lets the buyer experience,
-                    rather than leading with abstract record counts. */}
-                <div className="relative overflow-hidden rounded-xl border border-blue-300/30 bg-gradient-to-br from-blue-700/85 via-blue-900/90 to-indigo-950 p-4 shadow-[0_18px_38px_rgba(2,6,23,0.32)]">
-                  <div className="pointer-events-none absolute -right-12 -top-14 h-40 w-40 rounded-full bg-cyan-300/15 blur-2xl" />
-                  <div className="relative flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-blue-200">Sample Business</div>
-                      <div className="mt-1 text-sm font-bold text-white">See MONIEZI already working</div>
-                    </div>
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-sky-300/25 bg-slate-950/35 text-sky-200">
-                      <PlayCircle size={22} strokeWidth={2} />
-                    </div>
-                  </div>
+          <div className="relative px-6 py-7">
+            <div className={`mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-3xl border shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${theme === 'dark'
+              ? 'border-sky-300/25 bg-gradient-to-br from-sky-500/20 to-blue-600/10'
+              : 'border-sky-200/90 bg-gradient-to-br from-sky-100 to-blue-50 shadow-[0_8px_20px_rgba(59,130,246,0.12)]'}`}>
+              {hasTriedSampleData
+                ? <Plus size={30} className={theme === 'dark' ? 'text-sky-200' : 'text-sky-500'} strokeWidth={2.5} />
+                : <PlayCircle size={28} className={theme === 'dark' ? 'text-sky-200' : 'text-sky-500'} strokeWidth={2} />}
+            </div>
 
-                  <div className="relative mt-4 grid grid-cols-[1.2fr_0.8fr] gap-2.5">
-                    <div className="rounded-xl border border-emerald-300/20 bg-emerald-400/10 p-3">
-                      <div className="flex items-center gap-2 text-emerald-200">
-                        <TrendingUp size={16} strokeWidth={2} />
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider">Job Profit</span>
-                      </div>
-                      <div className="mt-2 text-2xl font-extrabold tabular-nums text-emerald-300">$3,490</div>
-                      <div className="mt-1 text-[10px] font-semibold text-blue-100/80">Budget, labor and costs linked</div>
-                    </div>
+            <div className={`text-center text-2xl font-extrabold leading-tight tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+              {hasTriedSampleData ? 'Now make it yours' : 'Load the demo'}
+            </div>
+            <p className={`mx-auto mt-2.5 max-w-[34ch] text-center text-[14px] leading-6 ${theme === 'dark' ? 'text-slate-200/90' : 'text-slate-800'}`}>
+              {hasTriedSampleData
+                ? 'The demo is cleared. Record a job, an expense, a mile or an invoice — whatever you did today.'
+                : 'A complete demo business you can look around, then clear out and start your own. Nothing to undo.'}
+            </p>
 
-                    <div className="space-y-2.5">
-                      <div className="rounded-xl border border-blue-300/20 bg-slate-950/30 p-2.5">
-                        <div className="flex items-center gap-1.5 text-blue-100">
-                          <FileText size={14} />
-                          <span className="text-[9px] font-extrabold uppercase tracking-wider">Invoice</span>
-                        </div>
-                        <div className="mt-1 text-xs font-extrabold text-emerald-300">PAID</div>
-                      </div>
-                      <div className="rounded-xl border border-blue-300/20 bg-slate-950/30 p-2.5">
-                        <div className="flex items-center gap-1.5 text-blue-100">
-                          <Receipt size={14} />
-                          <span className="text-[9px] font-extrabold uppercase tracking-wider">Receipt</span>
-                        </div>
-                        <div className="mt-1 text-xs font-extrabold text-cyan-200">LINKED</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="relative mt-2.5 grid grid-cols-3 gap-2">
-                    <div className="rounded-lg bg-slate-950/25 px-2 py-2 text-center">
-                      <Briefcase size={15} className="mx-auto text-cyan-200" />
-                      <div className="mt-1 text-[9px] font-bold text-blue-100">Jobs</div>
-                    </div>
-                    <div className="rounded-lg bg-slate-950/25 px-2 py-2 text-center">
-                      <Car size={15} className="mx-auto text-cyan-200" />
-                      <div className="mt-1 text-[9px] font-bold text-blue-100">Mileage</div>
-                    </div>
-                    <div className="rounded-lg bg-slate-950/25 px-2 py-2 text-center">
-                      <BarChart3 size={15} className="mx-auto text-cyan-200" />
-                      <div className="mt-1 text-[9px] font-bold text-blue-100">Reports</div>
-                    </div>
+            {/* Real counts, read from the sample data itself. Only shown while
+                the demo is still being offered as the main action. */}
+            {!hasTriedSampleData && (
+            <div className="mt-5 flex gap-2">
+              {[
+                { value: sampleDataCounts.transactions, label: 'RECORDS' },
+                { value: sampleDataCounts.invoices, label: 'INVOICES' },
+                { value: sampleDataCounts.clients, label: 'CLIENTS' },
+              ].map((stat) => (
+                <div
+                  key={stat.label}
+                  className="flex-1 rounded-xl border border-emerald-200 bg-emerald-50 px-1.5 py-3 text-center dark:border-emerald-700/40 dark:bg-emerald-500/10"
+                >
+                  <div className="text-[19px] font-extrabold text-emerald-700 dark:text-emerald-300">{stat.value}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                    {stat.label}
                   </div>
                 </div>
-
-                <div className={`mt-5 text-center text-2xl font-extrabold leading-tight tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-                  Load the demo
-                </div>
-                <p className={`mx-auto mt-2.5 max-w-[38ch] text-center text-[14px] leading-6 ${theme === 'dark' ? 'text-slate-200/90' : 'text-slate-800'}`}>
-                  Explore a complete sample business and see how MONIEZI works before entering your own records.
-                </p>
-
-                <div className="mt-5 space-y-2.5">
-                  {[
-                    { icon: <Wallet size={17} />, title: 'Money', detail: 'Income, expenses, invoices and collections' },
-                    { icon: <Briefcase size={17} />, title: 'Work', detail: 'Clients, estimates, jobs and mileage' },
-                    { icon: <BarChart3 size={17} />, title: 'Records & Reports', detail: 'Receipts, profit, tax readiness and reports' },
-                  ].map((item) => (
-                    <div key={item.title} className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-white/60 px-3.5 py-3 text-left dark:border-blue-300/15 dark:bg-slate-950/25">
-                      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-cyan-200">{item.icon}</div>
-                      <div className="min-w-0">
-                        <div className="text-sm font-extrabold text-slate-900 dark:text-white">{item.title}</div>
-                        <div className="mt-0.5 text-xs font-medium leading-5 text-slate-600 dark:text-slate-300">{item.detail}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <>
-                <div className={`mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-3xl border shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${theme === 'dark'
-                  ? 'border-sky-300/25 bg-gradient-to-br from-sky-500/20 to-blue-600/10'
-                  : 'border-sky-200/90 bg-gradient-to-br from-sky-100 to-blue-50 shadow-[0_8px_20px_rgba(59,130,246,0.12)]'}`}>
-                  <Plus size={30} className={theme === 'dark' ? 'text-sky-200' : 'text-sky-500'} strokeWidth={2.5} />
-                </div>
-                <div className={`text-center text-2xl font-extrabold leading-tight tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Now make it yours</div>
-                <p className={`mx-auto mt-2.5 max-w-[34ch] text-center text-[14px] leading-6 ${theme === 'dark' ? 'text-slate-200/90' : 'text-slate-800'}`}>
-                  The demo is cleared. Record a job, an expense, a mile or an invoice — whatever you did today.
-                </p>
-              </>
+              ))}
+            </div>
             )}
 
             {/* Once the demo has been seen, the actions swap. Offering "load the
@@ -11239,7 +11301,7 @@ html, body, #root {
 
         {/* ==================== JOBS / PROJECTS PAGE ==================== */}
         {currentPage === Page.Jobs && (
-          <div className="space-y-6 pt-4 sm:space-y-8 sm:pt-5 animate-in fade-in slide-in-from-right-4 pb-24">
+          <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-right-4 pb-24">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="p-2.5 rounded-xl bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300 flex-shrink-0">
@@ -11266,12 +11328,16 @@ html, body, #root {
               const totalRevenue = visibleRows.reduce((sum, row) => sum + row.revenue, 0);
               const totalCost = visibleRows.reduce((sum, row) => sum + row.totalActualCost, 0);
               const totalProfit = visibleRows.reduce((sum, row) => sum + row.estimatedProfit, 0);
+              const activeCount = jobs.filter(job => job.status === 'active').length;
               return (
                 <section className="overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
                   <div className="p-5 sm:p-6">
-                    <div>
-                      <div className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Jobs Overview</div>
-                      <div className="mt-2 text-sm font-semibold leading-6 text-slate-600 dark:text-slate-300">Profit across active and completed work</div>
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <div className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Jobs Overview</div>
+                        <div className="mt-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Profit across active and completed work</div>
+                      </div>
+                      <div className="rounded-full bg-cyan-100 px-3 py-1.5 text-xs font-extrabold text-cyan-800 dark:bg-cyan-500/15 dark:text-cyan-200">{activeCount} active</div>
                     </div>
 
                     <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50/80 p-5 dark:border-emerald-800/50 dark:bg-emerald-500/10">
@@ -11882,26 +11948,41 @@ html, body, #root {
                     <h3 className="text-xl font-bold text-slate-900 dark:text-white">Data Management</h3>
                   </div>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                      {(isAppEmpty || isDemoData) && (
-                      <button onClick={handleLoadSampleData} className="py-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30 border-2 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-100 rounded-lg text-sm font-bold uppercase tracking-widest shadow-lg transition-all flex flex-col items-center justify-center gap-3 active:scale-95">
-                        {seedSuccess ? <CheckCircle size={24} /> : <PlayCircle size={24} />}
-                        <span>{seedSuccess ? 'Demo Data Loaded' : 'Load Demo Data'}</span>
-                      </button>
-                      )}
-                      <button onClick={handleClearData} className="py-6 bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 hover:from-red-100 hover:to-orange-100 dark:hover:from-red-900/30 dark:hover:to-orange-900/30 border-2 border-red-200 dark:border-red-800 text-red-900 dark:text-red-100 rounded-lg text-sm font-bold uppercase tracking-widest shadow-lg transition-all flex flex-col items-center justify-center gap-3 active:scale-95">
-                        <AlertTriangle size={24} />
-                        <span>Reset & Clear All</span>
-                      </button>
+                  <div className="mb-6 space-y-4">
+                    <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-4 dark:border-blue-800/60 dark:bg-blue-500/10">
+                      <div className="mb-3 flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">
+                          <PlayCircle size={20} />
+                        </div>
+                        <div>
+                          <div className="font-bold text-slate-900 dark:text-white">Demo Business</div>
+                          <div className="mt-1 text-xs font-medium leading-5 text-slate-600 dark:text-slate-300">Try MONIEZI any time. If you already have your own records, they are preserved and restored when you exit the demo.</div>
+                        </div>
+                      </div>
+                      <div className={`grid gap-3 ${isDemoData ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+                        <button onClick={handleLoadSampleData} className="min-h-12 rounded-lg bg-blue-600 px-4 py-3 text-sm font-extrabold uppercase tracking-wider text-white shadow-sm transition-all hover:bg-blue-500 active:scale-[0.99]">
+                          {isDemoData ? 'Reload Demo Business' : 'Load Demo Business'}
+                        </button>
+                        {isDemoData && (
+                          <button onClick={handleRemoveSampleData} className="min-h-12 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-extrabold uppercase tracking-wider text-amber-800 transition-all hover:bg-amber-100 active:scale-[0.99] dark:border-amber-700/60 dark:bg-amber-500/10 dark:text-amber-300">
+                            Remove Demo
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <button onClick={handleClearData} className="w-full py-5 bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 hover:from-red-100 hover:to-orange-100 dark:hover:from-red-900/30 dark:hover:to-orange-900/30 border-2 border-red-200 dark:border-red-800 text-red-900 dark:text-red-100 rounded-lg text-sm font-bold uppercase tracking-widest shadow-lg transition-all flex items-center justify-center gap-3 active:scale-95">
+                      <AlertTriangle size={22} />
+                      <span>Reset & Clear All</span>
+                    </button>
                   </div>
                   
                   <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg p-4">
                     <div className="flex items-start gap-3">
                       <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
                       <div className="text-sm text-red-900 dark:text-red-100">
-                        <p className="font-semibold mb-1">⚠️ Warning: Destructive Actions</p>
-                        <p className="mb-2"><strong>Load Demo Data:</strong> Replaces everything with demo records so you can explore. Only offered while the app is empty, so your own records can never be overwritten.</p>
-                        <p><strong>Reset & Clear All:</strong> Permanently deletes ALL your data including transactions, invoices, tax payments, and custom categories. This action cannot be undone!</p>
+                        <p className="font-semibold mb-1">Reset permanently deletes your data</p>
+                        <p><strong>Reset & Clear All:</strong> Permanently deletes ALL your business data including transactions, invoices, jobs, tax payments, receipts, mileage, and custom categories. Demo Mode is separate and does not require you to reset your business.</p>
                       </div>
                     </div>
                   </div>
@@ -12309,8 +12390,7 @@ html, body, #root {
             </div>
           </section>
 
-          {(isAppEmpty || isDemoData) && (
-            <section className="border-t border-slate-300 dark:border-slate-700 py-6">
+          <section className="border-t border-slate-300 dark:border-slate-700 py-6">
               <div className="px-1 pb-3 text-xs font-extrabold uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">
                 Trying MONIEZI
               </div>
@@ -12325,7 +12405,7 @@ html, body, #root {
                     </span>
                     <span className="min-w-0">
                       Remove the demo
-                      <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Clears the demo records and starts you fresh</span>
+                      <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Exit Demo Mode and return to your business</span>
                     </span>
                   </button>
                 ) : (
@@ -12338,13 +12418,12 @@ html, body, #root {
                     </span>
                     <span className="min-w-0">
                       Try the demo
-                      <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">A filled-in demo business. Removable any time.</span>
+                      <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Explore it any time. Your own records are preserved.</span>
                     </span>
                   </button>
                 )}
               </div>
             </section>
-          )}
 
           {settings.companyEquityEnabled && (
             <section className="border-t border-slate-300 dark:border-slate-700 py-6">

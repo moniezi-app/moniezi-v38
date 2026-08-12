@@ -20,10 +20,12 @@
 No Job data fields were removed or changed. Existing v38.0.21 jobs, budgets, labor entries, linked records, backups, demo data, and report calculations remain compatible.
 
 
-## UI correction — Jobs header + Demo invitation
+## v38.0.22 correction — Permanent Demo access
 
-- Adds extra top breathing room to the Jobs page header so Jobs / Projects no longer crowds or clips against the fixed app chrome.
-- Removes the redundant active-job badge from Jobs Overview; status counts remain in the dedicated All / Active / Completed / Archived selector.
-- Replaces the first-run demo count cards with a Business Preview that demonstrates Job Profit, a paid invoice, a linked receipt, Jobs, Mileage, and Reports.
-- Rewrites the demo invitation around what the buyer can experience: Money, Work, and Records & Reports.
-- Keeps the existing demo load/remove behavior unchanged.
+- Demo access is always visible in both Menu and Settings, regardless of whether the customer already has business records.
+- The one-time first-run demo invitation is now independent from permanent Demo access.
+- Entering Demo Mode with existing business records preserves the complete current business in IndexedDB.
+- Removing Demo Mode restores the preserved business; entering from an empty app returns to an empty app.
+- Reloading the demo does not overwrite the preserved return snapshot.
+- Demo Mode clears private/advanced live-state surfaces while active so the sample business does not expose the customer’s Company Equity, templates, custom categories, duplication history, or Tax Planner entries.
+- Reset & Clear All remains truly destructive and also clears any Demo Mode return snapshot.

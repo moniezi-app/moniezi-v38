@@ -69,6 +69,7 @@ async function kvDelete(id: string): Promise<void> {
 
 // Public API
 const APP_STATE_KEY = "appState";
+const DEMO_RETURN_STATE_KEY = "demoReturnState";
 
 export async function loadAppState<T = any>(): Promise<T | null> {
   return await kvGet<T>(APP_STATE_KEY);
@@ -80,4 +81,19 @@ export async function saveAppState<T = any>(state: T): Promise<void> {
 
 export async function clearAppState(): Promise<void> {
   await kvDelete(APP_STATE_KEY);
+}
+
+// A temporary snapshot of the customer's real business while Demo Mode is active.
+// Stored in the same IndexedDB KV store so it is not constrained by localStorage size
+// and survives an app reload while the customer is exploring the demo.
+export async function loadDemoReturnState<T = any>(): Promise<T | null> {
+  return await kvGet<T>(DEMO_RETURN_STATE_KEY);
+}
+
+export async function saveDemoReturnState<T = any>(state: T): Promise<void> {
+  await kvSet(DEMO_RETURN_STATE_KEY, state);
+}
+
+export async function clearDemoReturnState(): Promise<void> {
+  await kvDelete(DEMO_RETURN_STATE_KEY);
 }
