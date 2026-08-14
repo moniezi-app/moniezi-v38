@@ -804,8 +804,8 @@ class PageErrorBoundary extends React.Component<
   }
 }
 
-const CUSTOMER_VERSION = "38.0.22";
-setReportAppVersion("38.0.22");
+const CUSTOMER_VERSION = "38.0.23";
+setReportAppVersion("38.0.23");
 const LICENSE_STORAGE_KEY = `moniezi_license_v1_${STORAGE_NAMESPACE}`;
 const DEVICE_ID_STORAGE_KEY = `moniezi_device_id_v1_${STORAGE_NAMESPACE}`;
 const LICENSE_TOKEN_SALT = "moniezi_v35_offline_binding";
@@ -1042,10 +1042,6 @@ export default function App() {
   useKeyboardEditingState({ onEditingChange: setIsKeyboardEditing });
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<any>(null);
   const [showDeferredInstallCta, setShowDeferredInstallCta] = useState(false);
-  // Escape hatch for browsers that cannot install (Firefox Android, locked-down
-  // environments, some desktops). Without it, a paying customer could be unable
-  // to open the app at all.
-  const [installGateDismissed, setInstallGateDismissed] = useState(false);
 
   /**
    * Whether this device has already loaded the sample data at least once.
@@ -1066,7 +1062,6 @@ export default function App() {
   const [showIosInstallHelp, setShowIosInstallHelp] = useState(false);
   const [isRunningStandalone, setIsRunningStandalone] = useState(false);
   const [justInstalled, setJustInstalled] = useState(false);
-  const [closeTabRefused, setCloseTabRefused] = useState(false);
 
   const getIosInstallContext = useCallback(() => {
     try {
@@ -3476,7 +3471,6 @@ export default function App() {
     setReceipts([...(demo.receipts || [])] as ReceiptType[]);
 
     setSeedSuccess(true);
-    showToast('Demo data loaded successfully!', 'success');
     setCurrentPage(Page.Dashboard);
     setTimeout(() => setSeedSuccess(false), 2000);
   };
@@ -3594,7 +3588,6 @@ export default function App() {
    */
   const installGateActive =
     !isRunningStandalone &&
-    !installGateDismissed &&
     isLicenseValid === true &&
     ((showDeferredInstallCta && !!deferredInstallPrompt) || showIosInstallCta);
 
@@ -3645,7 +3638,7 @@ export default function App() {
       setIsDemoData(false);
       await clearDemoReturnState();
       setShowMainMenu(false);
-      showToast("Demo removed. You can load it again any time from Menu or Settings.", "success");
+      showToast("Demo closed.", "success");
     } catch (error) {
       console.error("Failed to exit demo mode", error);
       showToast("Could not exit Demo Mode safely. Your saved business was not changed.", "error");
@@ -3688,7 +3681,7 @@ export default function App() {
       markSampleDataTried();
       setShowMainMenu(false);
       setCurrentPage(Page.Dashboard);
-      showToast("Demo loaded. You can exit or reload it any time from Menu or Settings.", "success");
+      showToast("Demo ready. Sample business data is loaded.", "success");
     } catch (error) {
       console.error("Failed to enter demo mode", error);
       showToast("Could not start Demo Mode safely. Your business records were not changed.", "error");
@@ -7430,10 +7423,8 @@ html, body, #root {
         const iosInstallContext = getIosInstallContext();
         const isIosInstallBanner = showIosInstallCta && iosInstallContext.isIosDevice && !deferredInstallPrompt;
         const bannerCopy = isIosInstallBanner
-          ? (iosInstallContext.isSafariLike
-              ? 'Add MONIEZI to your iPhone home screen for faster access using Share and Add to Home Screen.'
-              : 'Open MONIEZI in Safari to add it to your iPhone home screen, then tap Share and Add to Home Screen.')
-          : 'You can install the app now for faster access from your phone home screen.';
+          ? 'Add MONIEZI to your Home screen and use it like a regular app.'
+          : 'Add MONIEZI to your Home screen and use it like a regular app.';
 
         return (
           <div className="fixed inset-0 z-[95] flex items-center justify-center overflow-y-auto bg-slate-950/80 px-4 py-8 backdrop-blur-sm animate-in fade-in duration-200 modal-overlay">
@@ -7448,18 +7439,12 @@ html, body, #root {
                 </div>
 
                 <div className={`text-center text-2xl font-extrabold leading-tight tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-                  Install MONIEZI first
+                  Install MONIEZI
                 </div>
                 <p className={`mx-auto mt-2.5 max-w-[34ch] text-center text-[14px] leading-6 ${theme === 'dark' ? 'text-slate-200/90' : 'text-slate-800'}`}>
                   {bannerCopy}
                 </p>
 
-                <div className={`mt-5 rounded-2xl border px-4 py-3.5 ${theme === 'dark' ? 'border-amber-400/25 bg-amber-500/10' : 'border-amber-300/70 bg-amber-50'}`}>
-                  <p className={`text-[13px] leading-6 ${theme === 'dark' ? 'text-amber-100/90' : 'text-amber-900'}`}>
-                    <span className="font-bold">Do this before you enter anything.</span> Records you
-                    create in this browser tab may not appear in the installed app.
-                  </p>
-                </div>
 
                 <button
                   onClick={isIosInstallBanner ? openIosInstallHelp : triggerDeferredInstallPrompt}
@@ -7468,12 +7453,6 @@ html, body, #root {
                   {isIosInstallBanner ? 'Show me how' : 'Install MONIEZI'}
                 </button>
 
-                <button
-                  onClick={() => setInstallGateDismissed(true)}
-                  className={`mt-3.5 w-full py-2 text-center text-[13px] font-semibold underline underline-offset-4 transition-colors ${theme === 'dark' ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
-                >
-                  Continue in this browser instead
-                </button>
               </div>
             </div>
             </div>
@@ -7956,40 +7935,18 @@ html, body, #root {
               </div>
               <h3 className="text-lg font-bold text-slate-900 dark:text-white sm:text-xl">MONIEZI is installed</h3>
             </div>
-            <p className="mb-4 font-medium leading-relaxed text-slate-600 dark:text-slate-300">
-              You&apos;ll find it on your home screen with your other apps. Two things left:
-            </p>
-            <ol className="mb-6 space-y-2 pl-5 text-sm font-medium text-slate-600 dark:text-slate-300" style={{ listStyleType: 'decimal' }}>
-              <li>Close this browser tab.</li>
-              <li>Open MONIEZI from your home screen instead. That&apos;s where you&apos;ll use it from now on.</li>
-            </ol>
-            <p className="mb-5 text-xs text-slate-500 dark:text-slate-400">
-              Your records are the same in both. The installed app just opens faster and works without the browser.
+            <p className="mb-5 font-medium leading-relaxed text-slate-600 dark:text-slate-300">
+              Open MONIEZI from your Home screen to get started.
             </p>
             <button
               onClick={() => {
-                // Browsers only let a script close a tab that a script opened.
-                // A customer arriving from a purchase link doesn't qualify, so
-                // this usually fails — but some browsers allow it when the tab
-                // has no history behind it, which is exactly that case. Try it,
-                // and if the tab is still here a moment later, say so rather
-                // than leaving the button looking broken.
-                try { window.close(); } catch { /* refused — expected */ }
-                window.setTimeout(() => {
-                  if (!window.closed) setCloseTabRefused(true);
-                }, 350);
+                try { window.close(); } catch { /* browser may refuse */ }
               }}
               className="w-full rounded-lg bg-emerald-600 py-3 font-bold text-white transition-colors hover:bg-emerald-700"
               style={{ backgroundColor: '#059669', color: '#ffffff' }}
             >
-              {closeTabRefused ? 'Close this tab yourself to finish' : 'Got it — close this tab'}
+              Got it
             </button>
-            {closeTabRefused && (
-              <p className="mt-3 text-center text-xs text-slate-500 dark:text-slate-400">
-                Your browser won&apos;t let a page close its own tab. Close it the
-                usual way, then open MONIEZI from your home screen.
-              </p>
-            )}
           </div>
         </div>
       )}
@@ -8108,16 +8065,16 @@ html, body, #root {
         <div className="mb-5 flex items-center gap-3 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-900/20 px-4 py-3">
           <PlayCircle size={18} className="shrink-0 text-amber-600 dark:text-amber-400" />
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-bold text-amber-900 dark:text-amber-100">Demo data</div>
+            <div className="text-sm font-bold text-amber-900 dark:text-amber-100">Demo mode</div>
             <div className="text-xs font-medium text-amber-800/80 dark:text-amber-200/70">
-              These are demo records, not your business. Exit any time from here, Menu, or Settings.
+              You&apos;re viewing sample business data.
             </div>
           </div>
           <button
             onClick={handleRemoveSampleData}
             className="shrink-0 rounded-lg bg-amber-600 px-3 py-2 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-amber-700"
           >
-            Remove
+            Exit Demo
           </button>
         </div>
       )}
