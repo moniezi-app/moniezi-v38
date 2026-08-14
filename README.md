@@ -1,14 +1,13 @@
-# MONIEZI v38.0.23
+# MONIEZI v38.0.24
 
-Source package for the v38.0.23 App Installation & Demo Language Refinement release.
+Source package for the v38.0.24 Mobile Numeric Editing & Jobs Overview Refinement release.
 
-## New in v38.0.23
+## New in v38.0.24
 
-- Treats the browser strictly as the installation doorway and MONIEZI as the installed app.
-- Simplifies the install gate to one instruction and one installation action; the browser-use alternative is removed.
-- Simplifies the post-install confirmation to direct the customer to open MONIEZI from the Home screen.
-- Refines the active demo banner to “Demo mode,” concise sample-data wording, and an “Exit Demo” action.
-- Removes duplicate demo-load confirmations and replaces them with one compact success message.
-- Preserves permanent Demo access in Menu and Settings, safe business-data preservation/restoration, Jobs Information Architecture, and all existing v38.0.22 functionality.
+- Removes the redundant active-job badge from the Jobs Overview header; the active count remains in the Jobs filter selector.
+- Invoice and Estimate line-item `Quantity` now uses the full label and selects the current value on focus so typing replaces the existing value instead of appending to it.
+- Quantity keeps decimal entry support and requests the mobile decimal keypad.
+- Job/Project budget fields now use the same select-to-replace behavior for Expected Revenue, Materials Budget, Estimated Labor Hours, Internal Labor Cost / Hr, Subcontractor Budget, and Other Cost Budget.
+- Preserves the v38.0.23 app-installation wording and permanent Demo access/restore behavior.
 
-MONIEZI v38.0.23 preserves the v38 data model and remains compatible with existing v38 backups and installed PWAs.
+MONIEZI v38.0.24 preserves the v38 data model and remains compatible with existing v38 backups and installed PWAs.
