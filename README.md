@@ -1,13 +1,13 @@
-# MONIEZI v38.0.32
+# MONIEZI v38.0.33
 
-Source package for the v38.0.32 Single Add Picker release.
+Source package for the v38.0.33 Unified Specialized Add release.
 
-## New in v38.0.32
+## New in v38.0.33
 
-- Home `+` and Activity `All → +` now open the same full-screen Add picker used inside the transaction forms.
-- Removed the separate embedded blue Add-choice panel.
-- The Add picker now has one reusable implementation for Income, Expense, Invoice, Estimate, Mileage, Client, and Job / Project.
-- Dismissing the initial Add picker closes the Add drawer cleanly.
-- Existing contextual Activity shortcuts remain unchanged.
+- The shared Add picker now visibly separates **Money & Sales** from **Business** with distinct bordered/tinted groups.
+- New Mileage, Client, and Job / Project editors now show the same icon-led Add-type selector used by Income, Expense, Invoice, and Estimate.
+- Switching the type from those specialized editors returns to the same seven-choice shared picker and routes into the selected creation flow.
+- Mileage keeps its dedicated trip fields; Client and Job / Project keep their specialized forms. Only the Add-entry shell is unified.
+- Existing edit workflows remain focused on the record being edited and do not show the creation-type switcher.
 
-MONIEZI v38.0.32 preserves the v38 data model and remains compatible with existing v38 backups and installed PWAs.
+MONIEZI v38.0.33 preserves the v38 data model and remains compatible with existing v38 backups and installed PWAs.

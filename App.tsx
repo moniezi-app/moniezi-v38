@@ -3226,6 +3226,8 @@ export default function App() {
     return 'expense';
   };
 
+  type UnifiedAddAction = 'income' | 'expense' | 'invoice' | 'estimate' | 'mileage' | 'client' | 'job';
+
   const unifiedAddOptions = [
     { value: 'income', label: <span className="inline-flex items-center gap-3"><TrendingUp size={24} strokeWidth={1.25} className="text-emerald-500 dark:text-emerald-400" />Income</span>, group: 'Money & Sales' },
     { value: 'expense', label: <span className="inline-flex items-center gap-3"><Receipt size={24} strokeWidth={1.25} className="text-rose-500 dark:text-rose-400" />Expense</span>, group: 'Money & Sales' },
@@ -3236,7 +3238,7 @@ export default function App() {
     { value: 'job', label: <span className="inline-flex items-center gap-3"><Briefcase size={24} strokeWidth={1.25} className="text-teal-500 dark:text-teal-400" />Job / Project</span>, group: 'Business' },
   ];
 
-  const handleUnifiedAddSelection = (action: 'income' | 'expense' | 'invoice' | 'estimate' | 'mileage' | 'client' | 'job') => {
+  const handleUnifiedAddSelection = (action: UnifiedAddAction) => {
     setAddFlowSelection(action);
 
     if (action === 'income') {
@@ -3282,6 +3284,26 @@ export default function App() {
 
     setEditingClient({ status: 'lead' });
     window.setTimeout(() => setIsClientModalOpen(true), 0);
+  };
+
+  const switchUnifiedAddFromSpecialized = (current: 'mileage' | 'client' | 'job', next: UnifiedAddAction) => {
+    if (next === current) return;
+
+    if (current === 'mileage') {
+      setIsDrawerOpen(false);
+      setEditingMileageTripId(null);
+      setNewTrip(createEmptyMileageDraft());
+    } else if (current === 'client') {
+      setIsClientModalOpen(false);
+      setEditingClient({ status: 'lead' });
+    } else {
+      setShowJobDrawer(false);
+      setEditingJobId(null);
+      setJobAssignmentTarget(null);
+      setJobDraft({ status: 'active' });
+    }
+
+    window.setTimeout(() => handleUnifiedAddSelection(next), 0);
   };
 
   const handleOpenUnifiedAdd = (initial?: 'income' | 'expense' | 'invoice' | 'estimate' | React.SyntheticEvent) => {
@@ -12494,6 +12516,17 @@ html, body, #root {
              </div>
          ) : drawerMode === 'mileage' ? (
              <div className="space-y-5">
+                {!editingMileageTripId ? (
+                  <MonieziSelect
+                    value="mileage"
+                    onChange={value => switchUnifiedAddFromSpecialized('mileage', value as UnifiedAddAction)}
+                    ariaLabel="Choose what to add"
+                    menuVariant="screen"
+                    menuTitle=""
+                    options={unifiedAddOptions}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-5 py-4 text-lg font-normal text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                  />
+                ) : null}
                 <DateInput label="Date" value={newTrip.date} onChange={v => setNewTrip(p => ({ ...p, date: v }))} />
                 <div>
                   <label className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-2 block pl-1">Miles</label>
@@ -12557,7 +12590,7 @@ html, body, #root {
                     !addFlowSelection ? (
                       <MonieziSelect
                         value=""
-                        onChange={value => handleUnifiedAddSelection(value as 'income' | 'expense' | 'invoice' | 'estimate' | 'mileage' | 'client' | 'job')}
+                        onChange={value => handleUnifiedAddSelection(value as UnifiedAddAction)}
                         ariaLabel="Choose what to add"
                         menuVariant="screen"
                         menuTitle=""
@@ -12570,7 +12603,7 @@ html, body, #root {
                       <div className="mb-4 font-sans">
                         <MonieziSelect
                           value={addFlowSelection}
-                          onChange={value => handleUnifiedAddSelection(value as 'income' | 'expense' | 'invoice' | 'estimate' | 'mileage' | 'client' | 'job')}
+                          onChange={value => handleUnifiedAddSelection(value as UnifiedAddAction)}
                           ariaLabel="Choose what to add"
                           menuMinWidth={280}
                           menuVariant="screen"
@@ -13130,6 +13163,17 @@ html, body, #root {
         title={editingJobId ? 'Edit Job Details' : 'New Job / Project'}
       >
         <div className="space-y-5">
+          {!editingJobId ? (
+            <MonieziSelect
+              value="job"
+              onChange={value => switchUnifiedAddFromSpecialized('job', value as UnifiedAddAction)}
+              ariaLabel="Choose what to add"
+              menuVariant="screen"
+              menuTitle=""
+              options={unifiedAddOptions}
+              className="w-full rounded-xl border border-slate-300 bg-white px-5 py-4 text-lg font-normal text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+            />
+          ) : null}
           {editingJobId && jobStatsById.get(editingJobId) && (() => {
             const row = jobStatsById.get(editingJobId)!;
             return (
@@ -13268,6 +13312,20 @@ html, body, #root {
               </div>
               <button onClick={() => { setIsClientModalOpen(false); setEditingClient({ status: 'lead' }); }} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"><X size={18} /></button>
             </div>
+
+            {!editingClient.id ? (
+              <div className="mb-4">
+                <MonieziSelect
+                  value="client"
+                  onChange={value => switchUnifiedAddFromSpecialized('client', value as UnifiedAddAction)}
+                  ariaLabel="Choose what to add"
+                  menuVariant="screen"
+                  menuTitle=""
+                  options={unifiedAddOptions}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-5 py-4 text-lg font-normal text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                />
+              </div>
+            ) : null}
 
             <div className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
