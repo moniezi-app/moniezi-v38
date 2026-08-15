@@ -176,8 +176,8 @@ export function MonieziSelect({
             }}
           >
             {menuVariant === 'screen' ? (
-              <div className="mb-2 flex items-center justify-between border-b border-slate-200 px-2 pb-3 pt-1 dark:border-slate-700/80">
-                <div className="text-xl font-normal text-slate-950 dark:text-white">{menuTitle}</div>
+              <div className={`mb-2 flex items-center ${menuTitle ? 'justify-between border-b border-slate-200 px-2 pb-3 pt-1 dark:border-slate-700/80' : 'justify-end px-1 pb-1 pt-1'}`}>
+                {menuTitle ? <div className="text-xl font-normal text-slate-950 dark:text-white">{menuTitle}</div> : null}
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
@@ -197,7 +197,7 @@ export function MonieziSelect({
                   <React.Fragment key={option.value}>
                     {showGroup ? (
                       <div className={menuVariant === 'screen'
-                        ? 'px-3 pb-1 pt-3 text-sm font-normal uppercase tracking-[0.04em] text-slate-500 dark:text-slate-400'
+                        ? 'px-3 pb-1 pt-3 text-sm font-medium uppercase tracking-[0.04em] text-slate-500 dark:text-slate-400'
                         : 'px-3 pb-1 pt-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400'}>
                         {option.group}
                       </div>
