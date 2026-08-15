@@ -818,8 +818,8 @@ class PageErrorBoundary extends React.Component<
   }
 }
 
-const CUSTOMER_VERSION = "38.0.24";
-setReportAppVersion("38.0.24");
+const CUSTOMER_VERSION = "38.0.25";
+setReportAppVersion("38.0.25");
 const LICENSE_STORAGE_KEY = `moniezi_license_v1_${STORAGE_NAMESPACE}`;
 const DEVICE_ID_STORAGE_KEY = `moniezi_device_id_v1_${STORAGE_NAMESPACE}`;
 const LICENSE_TOKEN_SALT = "moniezi_v35_offline_binding";
@@ -3140,10 +3140,11 @@ export default function App() {
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([cat]) => cat);
  }, [transactions, invoices, activeTab, dataLoaded]);
 
-  const resetActiveItem = (type: 'income' | 'expense' | 'billing') => {
+  const resetActiveItem = (type: 'income' | 'expense' | 'billing', billingTypeOverride?: 'invoice' | 'estimate') => {
     const today = new Date().toISOString().split('T')[0];
     if (type === 'billing') {
-      if (billingDocType === 'estimate') {
+      const documentType = billingTypeOverride ?? billingDocType;
+      if (documentType === 'estimate') {
         setActiveItem({
           client: '', amount: 0, category: CATS_BILLING[0], description: '', date: today, validUntil: today, status: 'draft',
           items: [{ id: generateId('est_item'), description: '', quantity: 1, rate: 0 }],
@@ -3205,7 +3206,7 @@ export default function App() {
       setBillingDocType(billingType);
     }
 
-    resetActiveItem(type);
+    resetActiveItem(type, type === 'billing' ? billingType : undefined);
     setCategorySearch('');
     setIsDrawerOpen(true);
   };
@@ -3228,9 +3229,22 @@ export default function App() {
   };
 
   const handleLedgerAddAction = () => {
-    // Ledger is a mixed workspace, so the add button should never guess between
-    // invoice vs estimate based on prior billing-page state. Always show the same
-    // quick-add chooser used on Home.
+    // Activity already provides record-type context. Respect the selected tab so
+    // the + button skips Quick Add when the user has already chosen what to add.
+    if (ledgerFilter === 'income') {
+      handleOpenFAB('income');
+      return;
+    }
+    if (ledgerFilter === 'expense') {
+      handleOpenFAB('expense');
+      return;
+    }
+    if (ledgerFilter === 'invoice') {
+      handleOpenFAB('billing', 'invoice');
+      return;
+    }
+
+    // "All" has no single record-type context, so Quick Add is still appropriate.
     handleOpenQuickAdd();
   };
 
@@ -12564,10 +12578,11 @@ html, body, #root {
               activeTab={activeTab}
               billingDocType={billingDocType}
               tabSelector={drawerMode === 'add' ? (
-                    <div className="flex bg-slate-200 dark:bg-slate-900 p-1 rounded-lg mb-4">
-                        <button onClick={() => { setActiveTab('income'); resetActiveItem('income'); setCategorySearch(''); }} className={`flex-1 py-3 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'income' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Income</button>
-                        <button onClick={() => { setActiveTab('expense'); resetActiveItem('expense'); setCategorySearch(''); }} className={`flex-1 py-3 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'expense' ? 'bg-red-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Expense</button>
-                        <button onClick={() => { setActiveTab('billing'); resetActiveItem('billing'); setCategorySearch(''); }} className={`flex-1 py-3 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'billing' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>{billingDocType === 'estimate' ? 'Estimate' : 'Invoice'}</button>
+                    <div className="grid grid-cols-2 gap-2 bg-slate-200 dark:bg-slate-900 p-1.5 rounded-lg mb-4">
+                        <button onClick={() => { setActiveTab('income'); resetActiveItem('income'); setCategorySearch(''); }} className={`min-h-11 py-3 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'income' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Income</button>
+                        <button onClick={() => { setActiveTab('expense'); resetActiveItem('expense'); setCategorySearch(''); }} className={`min-h-11 py-3 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'expense' ? 'bg-red-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Expense</button>
+                        <button onClick={() => { setBillingDocType('estimate'); setActiveTab('billing'); resetActiveItem('billing', 'estimate'); setCategorySearch(''); }} className={`min-h-11 py-3 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'billing' && billingDocType === 'estimate' ? 'bg-violet-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Estimate</button>
+                        <button onClick={() => { setBillingDocType('invoice'); setActiveTab('billing'); resetActiveItem('billing', 'invoice'); setCategorySearch(''); }} className={`min-h-11 py-3 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'billing' && billingDocType === 'invoice' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Invoice</button>
                     </div>
               ) : undefined}
               utilityPanel={drawerMode === 'edit_inv' && activeItem.id ? (

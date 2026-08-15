@@ -1,13 +1,16 @@
-# MONIEZI v38.0.24
+# MONIEZI v38.0.25
 
-Source package for the v38.0.24 Mobile Numeric Editing & Jobs Overview Refinement release.
+Source package for the v38.0.25 Activity Contextual Add Flow release.
 
-## New in v38.0.24
+## New in v38.0.25
 
-- Removes the redundant active-job badge from the Jobs Overview header; the active count remains in the Jobs filter selector.
-- Invoice and Estimate line-item `Quantity` now uses the full label and selects the current value on focus so typing replaces the existing value instead of appending to it.
-- Quantity keeps decimal entry support and requests the mobile decimal keypad.
-- Job/Project budget fields now use the same select-to-replace behavior for Expected Revenue, Materials Budget, Estimated Labor Hours, Internal Labor Cost / Hr, Subcontractor Budget, and Other Cost Budget.
-- Preserves the v38.0.23 app-installation wording and permanent Demo access/restore behavior.
+- Activity now respects the selected record type when the `+` button is used.
+  - Income opens Add Income directly.
+  - Expense opens Add Expense directly.
+  - Invoice opens New Invoice directly.
+  - All continues to open Quick Add because no single record type is selected.
+- The add-entry type selector now exposes all four creation paths in a mobile-friendly 2 × 2 layout: Income, Expense, Estimate, and Invoice.
+- Switching between Estimate and Invoice resets the correct billing-document draft explicitly, avoiding stale document-type state.
+- All v38.0.24 numeric-editing, Jobs Overview, Demo, installation, reports, receipt, and storage behavior is preserved.
 
-MONIEZI v38.0.24 preserves the v38 data model and remains compatible with existing v38 backups and installed PWAs.
+MONIEZI v38.0.25 preserves the v38 data model and remains compatible with existing v38 backups and installed PWAs.
