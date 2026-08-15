@@ -1,16 +1,16 @@
-# MONIEZI v38.0.25
+# MONIEZI v38.0.26
 
-Source package for the v38.0.25 Activity Contextual Add Flow release.
+Source package for the v38.0.26 Unified Add Selector release.
 
-## New in v38.0.25
+## New in v38.0.26
 
-- Activity now respects the selected record type when the `+` button is used.
-  - Income opens Add Income directly.
-  - Expense opens Add Expense directly.
-  - Invoice opens New Invoice directly.
-  - All continues to open Quick Add because no single record type is selected.
-- The add-entry type selector now exposes all four creation paths in a mobile-friendly 2 × 2 layout: Income, Expense, Estimate, and Invoice.
-- Switching between Estimate and Invoice resets the correct billing-document draft explicitly, avoiding stale document-type state.
-- All v38.0.24 numeric-editing, Jobs Overview, Demo, installation, reports, receipt, and storage behavior is preserved.
+- Replaces the separate Quick Add tile popup with one shared Add flow.
+- Home `+` and Activity `+` now use the same Add experience.
+- Activity Income, Expense, and Invoice open directly with that type preselected.
+- Activity `All` and Home open the shared Add flow with a single MONIEZI-controlled selector.
+- The selector includes Income, Expense, Invoice, Estimate, Mileage, Client, and Job / Project.
+- Options are grouped as Money & Sales and Business.
+- Mileage, Client, and Job / Project continue into their existing focused editors after selection.
+- Preserves v38.0.25 Activity contextual-add behavior and v38.0.24 numeric-editing fixes and permanent Demo access/restore behavior.
 
-MONIEZI v38.0.25 preserves the v38 data model and remains compatible with existing v38 backups and installed PWAs.
+MONIEZI v38.0.26 preserves the v38 data model and remains compatible with existing v38 backups and installed PWAs.

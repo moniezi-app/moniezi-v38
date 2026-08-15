@@ -1,7 +1,7 @@
 {
   "name": "moniezi-license-worker",
   "private": true,
-  "version": "38.0.25",
+  "version": "38.0.26",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",

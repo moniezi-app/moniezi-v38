@@ -6,6 +6,7 @@ export type MonieziSelectOption = {
   value: string;
   label: React.ReactNode;
   disabled?: boolean;
+  group?: string;
 };
 
 type MonieziSelectProps = {
@@ -148,27 +149,35 @@ export function MonieziSelect({
             zIndex: 200000,
           }}
         >
-          {options.map(option => {
+          {options.map((option, index) => {
             const selected = option.value === value;
+            const previousGroup = index > 0 ? options[index - 1].group : undefined;
+            const showGroup = Boolean(option.group && option.group !== previousGroup);
             return (
-              <button
-                key={option.value}
-                type="button"
-                role="option"
-                aria-selected={selected}
-                disabled={option.disabled}
-                onClick={() => choose(option.value, option.disabled)}
-                className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-md px-3 py-2.5 text-left text-sm font-semibold leading-5 transition-colors ${
-                  selected
-                    ? 'bg-blue-50 text-blue-800 dark:bg-blue-500/15 dark:text-blue-200'
-                    : 'text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800'
-                } ${option.disabled ? 'cursor-not-allowed opacity-45' : ''}`}
-              >
-                <span className="min-w-0 flex-1 break-words">{option.label}</span>
-                <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
-                  {selected ? <Check size={16} strokeWidth={2.4} /> : null}
-                </span>
-              </button>
+              <React.Fragment key={option.value}>
+                {showGroup ? (
+                  <div className="px-3 pb-1 pt-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                    {option.group}
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  disabled={option.disabled}
+                  onClick={() => choose(option.value, option.disabled)}
+                  className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-md px-3 py-2.5 text-left text-sm font-semibold leading-5 transition-colors ${
+                    selected
+                      ? 'bg-blue-50 text-blue-800 dark:bg-blue-500/15 dark:text-blue-200'
+                      : 'text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800'
+                  } ${option.disabled ? 'cursor-not-allowed opacity-45' : ''}`}
+                >
+                  <span className="min-w-0 flex-1 break-words">{option.label}</span>
+                  <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
+                    {selected ? <Check size={16} strokeWidth={2.4} /> : null}
+                  </span>
+                </button>
+              </React.Fragment>
             );
           })}
         </div>,

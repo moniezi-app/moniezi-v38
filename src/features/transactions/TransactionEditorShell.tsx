@@ -9,9 +9,10 @@ type TransactionEditorShellProps = {
   tabSelector?: React.ReactNode;
   utilityPanel?: React.ReactNode;
   formContent: React.ReactNode;
+  descriptionOverride?: string;
 };
 
-export function TransactionEditorShell({ isKeyboardEditing, mode, activeTab, billingDocType, tabSelector, utilityPanel, formContent }: TransactionEditorShellProps) {
+export function TransactionEditorShell({ isKeyboardEditing, mode, activeTab, billingDocType, tabSelector, utilityPanel, formContent, descriptionOverride }: TransactionEditorShellProps) {
   const noun = activeTab === 'billing' ? (billingDocType === 'estimate' ? 'estimate' : 'invoice') : activeTab;
   const description = mode === 'add'
     ? `Create a new ${noun} entry in a single keyboard-safe editing flow.`
@@ -21,7 +22,7 @@ export function TransactionEditorShell({ isKeyboardEditing, mode, activeTab, bil
     <MobileFormShell
       isEditing={isKeyboardEditing}
       title={mode === 'add' ? 'New entry' : 'Edit entry'}
-      description={description}
+      description={descriptionOverride ?? description}
       toolbar={!isKeyboardEditing ? tabSelector : undefined}
       form={
         <div className="space-y-6">

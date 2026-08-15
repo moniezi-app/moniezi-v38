@@ -818,8 +818,8 @@ class PageErrorBoundary extends React.Component<
   }
 }
 
-const CUSTOMER_VERSION = "38.0.25";
-setReportAppVersion("38.0.25");
+const CUSTOMER_VERSION = "38.0.26";
+setReportAppVersion("38.0.26");
 const LICENSE_STORAGE_KEY = `moniezi_license_v1_${STORAGE_NAMESPACE}`;
 const DEVICE_ID_STORAGE_KEY = `moniezi_device_id_v1_${STORAGE_NAMESPACE}`;
 const LICENSE_TOKEN_SALT = "moniezi_v35_offline_binding";
@@ -1299,7 +1299,7 @@ export default function App() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<'add' | 'edit_tx' | 'edit_inv' | 'tax_payments' | 'create_cat' | 'mileage'>('add');
   const [activeTab, setActiveTab] = useState<'income' | 'expense' | 'billing'>('income');
-  const [showQuickAddMenu, setShowQuickAddMenu] = useState(false);
+  const [addFlowSelection, setAddFlowSelection] = useState<'income' | 'expense' | 'invoice' | 'estimate' | 'mileage' | 'client' | 'job' | ''>('');
   const [showGoalsEditor, setShowGoalsEditor] = useState(false);
   const [goalDraft, setGoalDraft] = useState({ revenue: '', profit: '' });
   const [billingDocType, setBillingDocType] = useState<'invoice' | 'estimate'>('invoice');
@@ -3197,6 +3197,8 @@ export default function App() {
     type: 'income' | 'expense' | 'billing' = 'income',
     billingType?: 'invoice' | 'estimate'
   ) => {
+    const nextSelection = type === 'billing' ? (billingType ?? billingDocType) : type;
+    setAddFlowSelection(nextSelection);
     setDrawerMode('add');
     setActiveTab(type);
 
@@ -3224,28 +3226,84 @@ export default function App() {
     return 'expense';
   };
 
-  const handleOpenQuickAdd = () => {
-    setShowQuickAddMenu(true);
+  const handleUnifiedAddSelection = (action: 'income' | 'expense' | 'invoice' | 'estimate' | 'mileage' | 'client' | 'job') => {
+    setAddFlowSelection(action);
+
+    if (action === 'income') {
+      setDrawerMode('add');
+      setActiveTab('income');
+      resetActiveItem('income');
+      setCategorySearch('');
+      setIsDrawerOpen(true);
+      return;
+    }
+
+    if (action === 'expense') {
+      setDrawerMode('add');
+      setActiveTab('expense');
+      resetActiveItem('expense');
+      setCategorySearch('');
+      setIsDrawerOpen(true);
+      return;
+    }
+
+    if (action === 'invoice' || action === 'estimate') {
+      const docType = action;
+      setDrawerMode('add');
+      setBillingDocType(docType);
+      setActiveTab('billing');
+      resetActiveItem('billing', docType);
+      setCategorySearch('');
+      setIsDrawerOpen(true);
+      return;
+    }
+
+    // The shared selector is the one launcher. Specialized records keep their
+    // existing focused editors after the user chooses them.
+    setIsDrawerOpen(false);
+    if (action === 'mileage') {
+      window.setTimeout(() => openMileageAddDrawer(), 0);
+      return;
+    }
+    if (action === 'job') {
+      window.setTimeout(() => openNewJob(), 0);
+      return;
+    }
+
+    setEditingClient({ status: 'lead' });
+    window.setTimeout(() => setIsClientModalOpen(true), 0);
+  };
+
+  const handleOpenUnifiedAdd = (initial?: 'income' | 'expense' | 'invoice' | 'estimate' | React.SyntheticEvent) => {
+    if (typeof initial === 'string') {
+      handleUnifiedAddSelection(initial);
+      return;
+    }
+
+    setAddFlowSelection('');
+    setDrawerMode('add');
+    setCategorySearch('');
+    setIsDrawerOpen(true);
   };
 
   const handleLedgerAddAction = () => {
-    // Activity already provides record-type context. Respect the selected tab so
-    // the + button skips Quick Add when the user has already chosen what to add.
+    // Activity already provides record-type context. Open that form immediately,
+    // while keeping every other Add option available in the shared selector.
     if (ledgerFilter === 'income') {
-      handleOpenFAB('income');
+      handleOpenUnifiedAdd('income');
       return;
     }
     if (ledgerFilter === 'expense') {
-      handleOpenFAB('expense');
+      handleOpenUnifiedAdd('expense');
       return;
     }
     if (ledgerFilter === 'invoice') {
-      handleOpenFAB('billing', 'invoice');
+      handleOpenUnifiedAdd('invoice');
       return;
     }
 
-    // "All" has no single record-type context, so Quick Add is still appropriate.
-    handleOpenQuickAdd();
+    // "All" has no single record-type context, so use the same Add flow as Home.
+    handleOpenUnifiedAdd();
   };
 
   const handleContextualHeaderAdd = () => {
@@ -3263,47 +3321,6 @@ export default function App() {
     handleOpenFAB(fabType, fabType === 'billing' ? 'invoice' : undefined);
   };
 
-  const handleQuickAddSelection = (action: 'income' | 'expense' | 'invoice' | 'estimate' | 'mileage' | 'client' | 'job') => {
-    setShowQuickAddMenu(false);
-
-    if (action === 'income') {
-      handleOpenFAB('income');
-      return;
-    }
-
-    if (action === 'expense') {
-      handleOpenFAB('expense');
-      return;
-    }
-
-    if (action === 'invoice') {
-      setBillingDocType('invoice');
-      setCurrentPage(Page.Invoices);
-      handleOpenFAB('billing', 'invoice');
-      return;
-    }
-
-    if (action === 'estimate') {
-      setBillingDocType('estimate');
-      setCurrentPage(Page.Invoices);
-      handleOpenFAB('billing', 'estimate');
-      return;
-    }
-
-    if (action === 'mileage') {
-      openMileageAddDrawer();
-      return;
-    }
-
-    if (action === 'job') {
-      openNewJob();
-      return;
-    }
-
-    setEditingClient({ status: 'lead' });
-    setIsClientModalOpen(true);
-  };
-  
   const openGoalsEditor = () => {
     setGoalDraft({
       revenue: settings.monthlyRevenueGoal && settings.monthlyRevenueGoal > 0 ? String(settings.monthlyRevenueGoal) : '',
@@ -7267,57 +7284,6 @@ html:not(.dark) .font-medium { font-weight: 600 !important; }
 html:not(.dark) .font-semibold { font-weight: 700 !important; }
 html:not(.dark) .font-bold { font-weight: 800 !important; }
 
-/* Quick Add typography lock: keep dark mode text metrics identical to light mode */
-.quick-add-typography-lock,
-.quick-add-typography-lock * {
-  font-family: var(--moniezi-app-font) !important;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-  font-kerning: normal;
-  font-feature-settings: 'liga' 1, 'calt' 1;
-}
-.quick-add-typography-lock .qa-heading {
-  font-size: 2rem;
-  line-height: 1;
-  font-weight: 900;
-  letter-spacing: -0.025em;
-}
-.quick-add-typography-lock .qa-subheading {
-  font-size: 0.95rem;
-  line-height: 1.25rem;
-  font-weight: 900;
-  letter-spacing: 0;
-}
-.quick-add-typography-lock .qa-tile-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-}
-.quick-add-typography-lock .qa-tile-title {
-  margin: 0;
-  font-size: 1.02rem;
-  line-height: 1.2;
-  font-weight: 900;
-  letter-spacing: 0.025em;
-  text-transform: uppercase;
-}
-.quick-add-typography-lock .qa-tile-desc {
-  margin: 0;
-  font-size: 0.95rem;
-  line-height: 1.25rem;
-  font-weight: 500;
-  letter-spacing: 0;
-}
-@media (min-width: 640px) {
-  .quick-add-typography-lock .qa-heading {
-    font-size: 2.05rem;
-  }
-  .quick-add-typography-lock .qa-subheading {
-    font-size: 1rem;
-  }
-}
-
 /* Slightly crisper borders in light mode */
 html:not(.dark) .border-slate-100 { border-color: rgb(232 238 245) !important; }
 html:not(.dark) .border-slate-200 { border-color: rgb(216 224 234) !important; }
@@ -8161,14 +8127,14 @@ html, body, #root {
                 example" as the main button to someone who just removed it is the
                 one thing they are certain not to want. */}
             <button
-              onClick={hasTriedSampleData ? () => setShowQuickAddMenu(true) : handleLoadSampleData}
+              onClick={hasTriedSampleData ? () => handleOpenUnifiedAdd() : handleLoadSampleData}
               className="mt-5 w-full rounded-xl bg-amber-500 px-5 py-4 text-center text-[16px] font-bold text-white shadow-lg shadow-amber-950/30 transition-colors hover:bg-amber-400"
             >
               {hasTriedSampleData ? 'Record my first entry' : 'Load the demo'}
             </button>
 
             <button
-              onClick={hasTriedSampleData ? handleLoadSampleData : () => setShowQuickAddMenu(true)}
+              onClick={hasTriedSampleData ? handleLoadSampleData : () => handleOpenUnifiedAdd()}
               className={`mt-3.5 w-full py-2 text-center text-[13px] font-semibold underline underline-offset-4 transition-colors ${theme === 'dark' ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-800'}`}
             >
               {hasTriedSampleData ? 'Show the demo again' : 'Skip — record my first entry'}
@@ -8188,7 +8154,7 @@ html, body, #root {
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-950 dark:text-white font-brand">Overview</h2>
               </div>
-              <button onClick={handleOpenQuickAdd} className="w-11 h-11 sm:w-12 sm:h-12 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-md shadow-blue-600/20 hover:bg-blue-500 transition-all active:scale-95 flex-shrink-0" aria-label="Add new record"><Plus size={21} strokeWidth={2.5} /></button>
+              <button onClick={() => handleOpenUnifiedAdd()} className="w-11 h-11 sm:w-12 sm:h-12 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-md shadow-blue-600/20 hover:bg-blue-500 transition-all active:scale-95 flex-shrink-0" aria-label="Add new record"><Plus size={21} strokeWidth={2.5} /></button>
             </div>
 
             <div className="bg-white dark:bg-gradient-to-br dark:from-blue-800 dark:to-indigo-950 p-6 sm:p-8 rounded-xl shadow-xl dark:shadow-none border border-slate-200 dark:border-white/10 relative overflow-hidden group">
@@ -8496,7 +8462,7 @@ html, body, #root {
                 <button onClick={() => setCurrentPage(Page.AllTransactions)} className="min-h-11 px-2 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors">See all</button>
               </div>
               <div className="space-y-3">
-                {transactions.length === 0 ? <EmptyState icon={<ClipboardList size={24} />} title="No activity yet" subtitle="Your latest transactions will appear here once you start recording." action={handleOpenQuickAdd} actionLabel="Add Transaction" /> :
+                {transactions.length === 0 ? <EmptyState icon={<ClipboardList size={24} />} title="No activity yet" subtitle="Your latest transactions will appear here once you start recording." action={handleOpenUnifiedAdd} actionLabel="Add Transaction" /> :
                   transactions.slice().sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5).map(t => (
                     <div key={t.id} className="group flex items-center justify-between p-5 bg-white dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-700 hover:border-blue-500/40 hover:shadow-md transition-all cursor-pointer shadow-sm relative z-10" onClick={() => handleEditItem(t)}>
                       <div className="flex items-center gap-4 flex-1 min-w-0">
@@ -12497,7 +12463,7 @@ html, body, #root {
             drawerMode === 'tax_payments' ? 'Tax Payments' :
             drawerMode === 'create_cat' ? 'New Category' :
             drawerMode === 'mileage' ? (editingMileageTripId ? 'Edit Mileage Trip' : 'Add Mileage Trip') :
-            drawerMode === 'add' ? (activeTab === 'billing' ? (billingDocType === 'estimate' ? 'New Estimate' : 'New Invoice') : activeTab === 'income' ? 'Add Income' : 'Add Expense') : 
+            drawerMode === 'add' ? (!addFlowSelection ? 'Add' : activeTab === 'billing' ? (billingDocType === 'estimate' ? 'New Estimate' : 'New Invoice') : activeTab === 'income' ? 'Add Income' : 'Add Expense') : 
             drawerMode === 'edit_tx' ? 'Edit Transaction' : 
             drawerMode === 'edit_inv' ? (billingDocType === 'estimate' ? 'Edit Estimate' : 'Edit Invoice') :
             'Edit Invoice'
@@ -12578,11 +12544,25 @@ html, body, #root {
               activeTab={activeTab}
               billingDocType={billingDocType}
               tabSelector={drawerMode === 'add' ? (
-                    <div className="grid grid-cols-2 gap-2 bg-slate-200 dark:bg-slate-900 p-1.5 rounded-lg mb-4">
-                        <button onClick={() => { setActiveTab('income'); resetActiveItem('income'); setCategorySearch(''); }} className={`min-h-11 py-3 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'income' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Income</button>
-                        <button onClick={() => { setActiveTab('expense'); resetActiveItem('expense'); setCategorySearch(''); }} className={`min-h-11 py-3 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'expense' ? 'bg-red-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Expense</button>
-                        <button onClick={() => { setBillingDocType('estimate'); setActiveTab('billing'); resetActiveItem('billing', 'estimate'); setCategorySearch(''); }} className={`min-h-11 py-3 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'billing' && billingDocType === 'estimate' ? 'bg-violet-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Estimate</button>
-                        <button onClick={() => { setBillingDocType('invoice'); setActiveTab('billing'); resetActiveItem('billing', 'invoice'); setCategorySearch(''); }} className={`min-h-11 py-3 rounded-md text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'billing' && billingDocType === 'invoice' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Invoice</button>
+                    <div className="mb-4">
+                      <label className="mb-2 block pl-1 text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">What would you like to add?</label>
+                      <MonieziSelect
+                        value={addFlowSelection}
+                        onChange={value => handleUnifiedAddSelection(value as 'income' | 'expense' | 'invoice' | 'estimate' | 'mileage' | 'client' | 'job')}
+                        ariaLabel="Choose what to add"
+                        placeholder="Choose an item"
+                        menuMinWidth={280}
+                        options={[
+                          { value: 'income', label: 'Income', group: 'Money & Sales' },
+                          { value: 'expense', label: 'Expense', group: 'Money & Sales' },
+                          { value: 'invoice', label: 'Invoice', group: 'Money & Sales' },
+                          { value: 'estimate', label: 'Estimate', group: 'Money & Sales' },
+                          { value: 'mileage', label: 'Mileage', group: 'Business' },
+                          { value: 'client', label: 'Client', group: 'Business' },
+                          { value: 'job', label: 'Job / Project', group: 'Business' },
+                        ]}
+                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-sm font-bold text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                      />
                     </div>
               ) : undefined}
               utilityPanel={drawerMode === 'edit_inv' && activeItem.id ? (
@@ -12610,7 +12590,13 @@ html, body, #root {
                         )}
                     </div>
               ) : undefined}
-              formContent={activeTab === 'billing' ? (
+              descriptionOverride={drawerMode === 'add' && !addFlowSelection ? 'Choose what you want to add.' : undefined}
+              formContent={drawerMode === 'add' && !addFlowSelection ? (
+                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/70 px-5 py-8 text-center dark:border-slate-700 dark:bg-slate-900/50">
+                  <div className="text-sm font-bold text-slate-800 dark:text-slate-100">Choose an item above to get started.</div>
+                  <div className="mt-1 text-xs font-medium leading-5 text-slate-500 dark:text-slate-400">Income, expenses, invoices, estimates, mileage, clients, and jobs are all available here.</div>
+                </div>
+              ) : activeTab === 'billing' ? (
                    <div className="space-y-4">
                       <div className="bg-slate-100 dark:bg-slate-900/70 p-5 rounded-xl border border-slate-300 dark:border-slate-700 shadow-sm">
                           <div className="mb-4 border-b border-slate-300 dark:border-slate-700 pb-3">
@@ -13262,67 +13248,6 @@ html, body, #root {
       
 
       {/* Client Modal */}
-      {showQuickAddMenu && (
-        <div className="fixed inset-0 z-[105] flex items-end sm:items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-200 modal-overlay" onClick={() => setShowQuickAddMenu(false)}>
-          <div className="quick-add-typography-lock w-full max-w-md max-h-[90vh] overflow-y-auto custom-scrollbar rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl animate-in slide-in-from-bottom-4 duration-200" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800">
-              <div>
-                <div className={theme === 'dark' ? 'qa-heading text-white' : 'qa-heading text-slate-950'}>Quick Add</div>
-                <div className={theme === 'dark' ? 'qa-subheading text-white' : 'qa-subheading text-slate-950'}>Choose what you want to create.</div>
-              </div>
-              <button onClick={() => setShowQuickAddMenu(false)} className="p-2 rounded-full text-slate-950 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" aria-label="Close quick add"><X size={18} /></button>
-            </div>
-            <div className="grid grid-cols-2 gap-3 p-4">
-              <button onClick={() => handleQuickAddSelection('income')} className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-4 text-left transition-all active:scale-[0.98] hover:bg-emerald-100 shadow-sm dark:border-emerald-400/50 dark:bg-emerald-950/60 dark:hover:bg-emerald-950/80">
-                <div className="qa-tile-copy">
-                  <div className={theme === 'dark' ? 'qa-tile-title text-emerald-50' : 'qa-tile-title text-emerald-950'}>Add Income</div>
-                  <div className={theme === 'dark' ? 'qa-tile-desc text-emerald-100' : 'qa-tile-desc text-emerald-900'}>Record a payment or deposit.</div>
-                </div>
-              </button>
-              <button onClick={() => handleQuickAddSelection('expense')} className="rounded-xl border border-red-300 bg-red-50 px-4 py-4 text-left transition-all active:scale-[0.98] hover:bg-red-100 shadow-sm dark:border-red-400/50 dark:bg-red-950/60 dark:hover:bg-red-950/80">
-                <div className="qa-tile-copy">
-                  <div className={theme === 'dark' ? 'qa-tile-title text-red-50' : 'qa-tile-title text-red-950'}>Add Expense</div>
-                  <div className={theme === 'dark' ? 'qa-tile-desc text-red-100' : 'qa-tile-desc text-red-900'}>Log a purchase or bill.</div>
-                </div>
-              </button>
-              <button onClick={() => handleQuickAddSelection('invoice')} className="rounded-xl border border-blue-300 bg-blue-50 px-4 py-4 text-left transition-all active:scale-[0.98] hover:bg-blue-100 shadow-sm dark:border-blue-400/50 dark:bg-blue-950/60 dark:hover:bg-blue-950/80">
-                <div className="qa-tile-copy">
-                  <div className={theme === 'dark' ? 'qa-tile-title text-blue-50' : 'qa-tile-title text-blue-950'}>New Invoice</div>
-                  <div className={theme === 'dark' ? 'qa-tile-desc text-blue-100' : 'qa-tile-desc text-blue-900'}>Create a bill to send.</div>
-                </div>
-              </button>
-              <button onClick={() => handleQuickAddSelection('estimate')} className="rounded-xl border border-indigo-300 bg-indigo-50 px-4 py-4 text-left transition-all active:scale-[0.98] hover:bg-indigo-100 shadow-sm dark:border-indigo-400/50 dark:bg-indigo-950/60 dark:hover:bg-indigo-950/80">
-                <div className="qa-tile-copy">
-                  <div className={theme === 'dark' ? 'qa-tile-title text-indigo-50' : 'qa-tile-title text-indigo-950'}>New Estimate</div>
-                  <div className={theme === 'dark' ? 'qa-tile-desc text-indigo-100' : 'qa-tile-desc text-indigo-900'}>Draft a proposal or quote.</div>
-                </div>
-              </button>
-              <button onClick={() => handleQuickAddSelection('mileage')} className="rounded-xl border border-teal-300 bg-teal-50 px-4 py-4 text-left transition-all active:scale-[0.98] hover:bg-teal-100 shadow-sm dark:border-teal-700/50 dark:bg-teal-500/10 dark:hover:bg-teal-500/15">
-                <div className="qa-tile-copy">
-                  <div className={theme === 'dark' ? 'qa-tile-title text-teal-100' : 'qa-tile-title text-teal-950'}>Mileage</div>
-                  <div className={theme === 'dark' ? 'qa-tile-desc text-teal-100' : 'qa-tile-desc text-teal-900'}>Log a business trip.</div>
-                </div>
-              </button>
-              <button onClick={() => handleQuickAddSelection('client')} className="rounded-xl border border-purple-300 bg-purple-50 px-4 py-4 text-left transition-all active:scale-[0.98] hover:bg-purple-100 shadow-sm dark:border-purple-700/50 dark:bg-purple-500/10 dark:hover:bg-purple-500/15">
-                <div className="qa-tile-copy">
-                  <div className={theme === 'dark' ? 'qa-tile-title text-purple-100' : 'qa-tile-title text-purple-950'}>Add Client</div>
-                  <div className={theme === 'dark' ? 'qa-tile-desc text-purple-100' : 'qa-tile-desc text-purple-900'}>Create a new client profile.</div>
-                </div>
-              </button>
-              <button onClick={() => handleQuickAddSelection('job')} className="col-span-2 rounded-xl border border-cyan-300 bg-cyan-50 px-4 py-4 text-left transition-all active:scale-[0.98] hover:bg-cyan-100 shadow-sm dark:border-cyan-700/50 dark:bg-cyan-500/10 dark:hover:bg-cyan-500/15">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-cyan-100 text-cyan-800 dark:bg-cyan-500/15 dark:text-cyan-200"><Briefcase size={19} /></div>
-                  <div className="qa-tile-copy min-w-0">
-                    <div className={theme === 'dark' ? 'qa-tile-title text-cyan-100' : 'qa-tile-title text-cyan-950'}>New Job / Project</div>
-                    <div className={theme === 'dark' ? 'qa-tile-desc text-cyan-100' : 'qa-tile-desc text-cyan-900'}>Track the work and see what it earns.</div>
-                  </div>
-                </div>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {isClientModalOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-200 modal-overlay">
           <div className="bg-white dark:bg-slate-900 w-full max-w-lg max-h-[90vh] overflow-y-auto custom-scrollbar rounded-2xl p-5 shadow-2xl border border-slate-200 dark:border-slate-800">
