@@ -1,7 +1,7 @@
 const FONT_STYLE_ID = 'moniezi-embedded-fonts';
 
-const SYSTEM_APP_STACK = "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
-const SYSTEM_REPORT_STACK = "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+const SYSTEM_APP_STACK = "\"Plus Jakarta Sans Variable\", \"Plus Jakarta Sans\", system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
+const SYSTEM_REPORT_STACK = "\"Plus Jakarta Sans Variable\", \"Plus Jakarta Sans\", system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
 
 const buildFontFaceCss = () => `
 :root {

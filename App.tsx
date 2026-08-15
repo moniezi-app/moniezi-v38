@@ -5825,7 +5825,7 @@ export default function App() {
     clone.style.maxHeight = 'none';
     clone.style.minHeight = '0';
     clone.style.overflow = 'visible';
-    clone.style.fontFamily = 'var(--moniezi-report-font), MonieziReport, MonieziApp, Inter, Arial, sans-serif';
+    clone.style.fontFamily = 'var(--moniezi-report-font), \"Plus Jakarta Sans Variable\", \"Plus Jakarta Sans\", Arial, sans-serif';
     clone.style.letterSpacing = '0';
     clone.style.color = '#111827';
     clone.style.background = '#ffffff';
@@ -12544,45 +12544,47 @@ html, body, #root {
               activeTab={activeTab}
               billingDocType={billingDocType}
               tabSelector={drawerMode === 'add' ? (
-                    <div className="mb-4">
-                      {!addFlowSelection ? (
-                        <div aria-hidden="true" className="relative mb-5 h-40 overflow-hidden rounded-2xl border border-blue-400/25 bg-gradient-to-br from-blue-600/25 via-indigo-600/15 to-cyan-500/10 shadow-inner">
-                          <div className="absolute -left-10 -top-12 h-36 w-36 rounded-full bg-blue-500/20 blur-3xl" />
-                          <div className="absolute -bottom-16 -right-10 h-40 w-40 rounded-full bg-violet-500/20 blur-3xl" />
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-blue-300/40 bg-blue-600 text-white shadow-2xl shadow-blue-500/30">
-                              <Plus size={38} strokeWidth={2.2} />
-                            </div>
+                    !addFlowSelection ? (
+                      <div className="mb-4 overflow-hidden rounded-2xl border border-blue-300/30 bg-white shadow-xl dark:border-blue-400/25 dark:bg-slate-950 font-sans">
+                        <div className="border-b border-slate-200 px-5 py-4 text-xl font-extrabold text-slate-950 dark:border-slate-800 dark:text-white">Choose an item</div>
+                        <div className="px-3 pb-4 pt-2">
+                          <div className="px-3 pb-1 pt-2 text-sm font-extrabold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Money &amp; Sales</div>
+                          <div className="space-y-1">
+                            <button type="button" onClick={() => handleUnifiedAddSelection('income')} className="flex min-h-[70px] w-full items-center gap-4 rounded-xl px-4 py-3 text-left text-xl font-bold text-slate-900 transition-colors hover:bg-slate-100 active:bg-slate-200 dark:text-slate-100 dark:hover:bg-slate-900 dark:active:bg-slate-800"><TrendingUp size={30} strokeWidth={2.2} className="flex-shrink-0 text-emerald-500 dark:text-emerald-400" /><span>Income</span></button>
+                            <button type="button" onClick={() => handleUnifiedAddSelection('expense')} className="flex min-h-[70px] w-full items-center gap-4 rounded-xl px-4 py-3 text-left text-xl font-bold text-slate-900 transition-colors hover:bg-slate-100 active:bg-slate-200 dark:text-slate-100 dark:hover:bg-slate-900 dark:active:bg-slate-800"><Receipt size={30} strokeWidth={2.2} className="flex-shrink-0 text-rose-500 dark:text-rose-400" /><span>Expense</span></button>
+                            <button type="button" onClick={() => handleUnifiedAddSelection('invoice')} className="flex min-h-[70px] w-full items-center gap-4 rounded-xl px-4 py-3 text-left text-xl font-bold text-slate-900 transition-colors hover:bg-slate-100 active:bg-slate-200 dark:text-slate-100 dark:hover:bg-slate-900 dark:active:bg-slate-800"><FileText size={30} strokeWidth={2.2} className="flex-shrink-0 text-blue-500 dark:text-blue-400" /><span>Invoice</span></button>
+                            <button type="button" onClick={() => handleUnifiedAddSelection('estimate')} className="flex min-h-[70px] w-full items-center gap-4 rounded-xl px-4 py-3 text-left text-xl font-bold text-slate-900 transition-colors hover:bg-slate-100 active:bg-slate-200 dark:text-slate-100 dark:hover:bg-slate-900 dark:active:bg-slate-800"><ClipboardList size={30} strokeWidth={2.2} className="flex-shrink-0 text-violet-500 dark:text-violet-400" /><span>Estimate</span></button>
                           </div>
-                          <div className="absolute left-[10%] top-[16%] flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-400/25 bg-slate-950/70 text-emerald-300 shadow-lg"><TrendingUp size={23} /></div>
-                          <div className="absolute right-[12%] top-[13%] flex h-11 w-11 items-center justify-center rounded-xl border border-rose-400/25 bg-slate-950/70 text-rose-300 shadow-lg"><Receipt size={23} /></div>
-                          <div className="absolute left-[7%] top-[54%] flex h-11 w-11 items-center justify-center rounded-xl border border-blue-400/25 bg-slate-950/70 text-blue-300 shadow-lg"><FileText size={23} /></div>
-                          <div className="absolute right-[8%] top-[52%] flex h-11 w-11 items-center justify-center rounded-xl border border-violet-400/25 bg-slate-950/70 text-violet-300 shadow-lg"><ClipboardList size={23} /></div>
-                          <div className="absolute bottom-[8%] left-[25%] flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/25 bg-slate-950/70 text-cyan-300 shadow-lg"><Car size={21} /></div>
-                          <div className="absolute bottom-[7%] right-[25%] flex h-10 w-10 items-center justify-center rounded-xl border border-teal-400/25 bg-slate-950/70 text-teal-300 shadow-lg"><Briefcase size={21} /></div>
-                          <div className="absolute left-1/2 top-[9%] flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-lg border border-amber-400/25 bg-slate-950/70 text-amber-300 shadow-lg"><User size={19} /></div>
+                          <div className="mt-2 px-3 pb-1 pt-3 text-sm font-extrabold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">Business</div>
+                          <div className="space-y-1">
+                            <button type="button" onClick={() => handleUnifiedAddSelection('mileage')} className="flex min-h-[70px] w-full items-center gap-4 rounded-xl px-4 py-3 text-left text-xl font-bold text-slate-900 transition-colors hover:bg-slate-100 active:bg-slate-200 dark:text-slate-100 dark:hover:bg-slate-900 dark:active:bg-slate-800"><Car size={30} strokeWidth={2.2} className="flex-shrink-0 text-cyan-500 dark:text-cyan-400" /><span>Mileage</span></button>
+                            <button type="button" onClick={() => handleUnifiedAddSelection('client')} className="flex min-h-[70px] w-full items-center gap-4 rounded-xl px-4 py-3 text-left text-xl font-bold text-slate-900 transition-colors hover:bg-slate-100 active:bg-slate-200 dark:text-slate-100 dark:hover:bg-slate-900 dark:active:bg-slate-800"><User size={30} strokeWidth={2.2} className="flex-shrink-0 text-amber-500 dark:text-amber-400" /><span>Client</span></button>
+                            <button type="button" onClick={() => handleUnifiedAddSelection('job')} className="flex min-h-[70px] w-full items-center gap-4 rounded-xl px-4 py-3 text-left text-xl font-bold text-slate-900 transition-colors hover:bg-slate-100 active:bg-slate-200 dark:text-slate-100 dark:hover:bg-slate-900 dark:active:bg-slate-800"><Briefcase size={30} strokeWidth={2.2} className="flex-shrink-0 text-teal-500 dark:text-teal-400" /><span>Job / Project</span></button>
+                          </div>
                         </div>
-                      ) : null}
-                      <MonieziSelect
-                        value={addFlowSelection}
-                        onChange={value => handleUnifiedAddSelection(value as 'income' | 'expense' | 'invoice' | 'estimate' | 'mileage' | 'client' | 'job')}
-                        ariaLabel="Choose what to add"
-                        placeholder={<span className="inline-flex items-center gap-3"><PlusCircle size={24} className="text-blue-500 dark:text-blue-400" />Choose an item</span>}
-                        menuMinWidth={280}
-                        menuVariant="screen"
-                        menuTitle="Choose an item"
-                        options={[
-                          { value: 'income', label: <span className="inline-flex items-center gap-3"><TrendingUp size={25} className="text-emerald-500 dark:text-emerald-400" />Income</span>, group: 'Money & Sales' },
-                          { value: 'expense', label: <span className="inline-flex items-center gap-3"><Receipt size={25} className="text-rose-500 dark:text-rose-400" />Expense</span>, group: 'Money & Sales' },
-                          { value: 'invoice', label: <span className="inline-flex items-center gap-3"><FileText size={25} className="text-blue-500 dark:text-blue-400" />Invoice</span>, group: 'Money & Sales' },
-                          { value: 'estimate', label: <span className="inline-flex items-center gap-3"><ClipboardList size={25} className="text-violet-500 dark:text-violet-400" />Estimate</span>, group: 'Money & Sales' },
-                          { value: 'mileage', label: <span className="inline-flex items-center gap-3"><Car size={25} className="text-cyan-500 dark:text-cyan-400" />Mileage</span>, group: 'Business' },
-                          { value: 'client', label: <span className="inline-flex items-center gap-3"><User size={25} className="text-amber-500 dark:text-amber-400" />Client</span>, group: 'Business' },
-                          { value: 'job', label: <span className="inline-flex items-center gap-3"><Briefcase size={25} className="text-teal-500 dark:text-teal-400" />Job / Project</span>, group: 'Business' },
-                        ]}
-                        className="w-full rounded-xl border border-slate-300 bg-white px-5 py-4 text-lg font-extrabold text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
-                      />
-                    </div>
+                      </div>
+                    ) : (
+                      <div className="mb-4 font-sans">
+                        <MonieziSelect
+                          value={addFlowSelection}
+                          onChange={value => handleUnifiedAddSelection(value as 'income' | 'expense' | 'invoice' | 'estimate' | 'mileage' | 'client' | 'job')}
+                          ariaLabel="Choose what to add"
+                          menuMinWidth={280}
+                          menuVariant="screen"
+                          menuTitle="Choose an item"
+                          options={[
+                            { value: 'income', label: <span className="inline-flex items-center gap-3"><TrendingUp size={27} className="text-emerald-500 dark:text-emerald-400" />Income</span>, group: 'Money & Sales' },
+                            { value: 'expense', label: <span className="inline-flex items-center gap-3"><Receipt size={27} className="text-rose-500 dark:text-rose-400" />Expense</span>, group: 'Money & Sales' },
+                            { value: 'invoice', label: <span className="inline-flex items-center gap-3"><FileText size={27} className="text-blue-500 dark:text-blue-400" />Invoice</span>, group: 'Money & Sales' },
+                            { value: 'estimate', label: <span className="inline-flex items-center gap-3"><ClipboardList size={27} className="text-violet-500 dark:text-violet-400" />Estimate</span>, group: 'Money & Sales' },
+                            { value: 'mileage', label: <span className="inline-flex items-center gap-3"><Car size={27} className="text-cyan-500 dark:text-cyan-400" />Mileage</span>, group: 'Business' },
+                            { value: 'client', label: <span className="inline-flex items-center gap-3"><User size={27} className="text-amber-500 dark:text-amber-400" />Client</span>, group: 'Business' },
+                            { value: 'job', label: <span className="inline-flex items-center gap-3"><Briefcase size={27} className="text-teal-500 dark:text-teal-400" />Job / Project</span>, group: 'Business' },
+                          ]}
+                          className="w-full rounded-xl border border-slate-300 bg-white px-5 py-4 text-lg font-extrabold text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                        />
+                      </div>
+                    )
               ) : undefined}
               utilityPanel={drawerMode === 'edit_inv' && activeItem.id ? (
                     <div className="bg-slate-100 dark:bg-slate-900/70 p-3 rounded-xl mb-5 border border-slate-300 dark:border-slate-700 shadow-sm">

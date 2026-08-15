@@ -164,7 +164,7 @@ export function MonieziSelect({
             role="listbox"
             aria-label={ariaLabel}
             className={`${menuVariant === 'screen'
-              ? 'fixed flex flex-col overflow-hidden border border-blue-300 bg-white p-3 shadow-2xl dark:border-blue-400/30 dark:bg-slate-950'
+              ? 'fixed flex flex-col overflow-hidden border border-blue-300 bg-white p-3 font-sans shadow-2xl dark:border-blue-400/30 dark:bg-slate-950'
               : 'fixed overflow-y-auto overscroll-contain border border-slate-300 bg-white p-1.5 shadow-2xl dark:border-slate-700 dark:bg-slate-900'} ${menuClassName}`.trim()}
             style={{
               left: menuPosition.left,
@@ -188,7 +188,7 @@ export function MonieziSelect({
                 </button>
               </div>
             ) : null}
-            <div className={menuVariant === 'screen' ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 pb-1' : ''}>
+            <div className={menuVariant === 'screen' ? 'min-h-0 flex-1 overflow-visible px-1 pb-1' : ''}>
               {options.map((option, index) => {
                 const selected = option.value === value;
                 const previousGroup = index > 0 ? options[index - 1].group : undefined;
@@ -197,7 +197,7 @@ export function MonieziSelect({
                   <React.Fragment key={option.value}>
                     {showGroup ? (
                       <div className={menuVariant === 'screen'
-                        ? 'px-3 pb-1 pt-3 text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400'
+                        ? 'px-3 pb-1 pt-3 text-sm font-extrabold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400'
                         : 'px-3 pb-1 pt-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400'}>
                         {option.group}
                       </div>
@@ -209,7 +209,7 @@ export function MonieziSelect({
                       disabled={option.disabled}
                       onClick={() => choose(option.value, option.disabled)}
                       className={`${menuVariant === 'screen'
-                        ? `flex min-h-[62px] w-full items-center justify-between gap-4 rounded-xl px-4 py-3 text-left text-lg font-bold leading-6 transition-colors ${selected ? 'bg-blue-50 text-blue-900 ring-1 ring-blue-300 dark:bg-blue-500/20 dark:text-blue-100 dark:ring-blue-400/40' : 'text-slate-900 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800/90'}`
+                        ? `flex min-h-[68px] w-full items-center justify-between gap-4 rounded-xl px-4 py-3 text-left text-xl font-bold leading-7 transition-colors ${selected ? 'bg-blue-50 text-blue-900 ring-1 ring-blue-300 dark:bg-blue-500/20 dark:text-blue-100 dark:ring-blue-400/40' : 'text-slate-900 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800/90'}`
                         : `flex min-h-11 w-full items-center justify-between gap-3 rounded-md px-3 py-2.5 text-left text-sm font-semibold leading-5 transition-colors ${selected ? 'bg-blue-50 text-blue-800 dark:bg-blue-500/15 dark:text-blue-200' : 'text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800'}`} ${option.disabled ? 'cursor-not-allowed opacity-45' : ''}`}
                     >
                       <span className="min-w-0 flex-1 break-words">{option.label}</span>
