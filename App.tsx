@@ -12546,24 +12546,41 @@ html, body, #root {
               tabSelector={drawerMode === 'add' ? (
                     <div className="mb-4">
                       {!addFlowSelection ? (
-                        <label className="mb-2 block pl-1 text-sm font-bold text-slate-700 dark:text-slate-200">What are you adding?</label>
+                        <div aria-hidden="true" className="relative mb-5 h-40 overflow-hidden rounded-2xl border border-blue-400/25 bg-gradient-to-br from-blue-600/25 via-indigo-600/15 to-cyan-500/10 shadow-inner">
+                          <div className="absolute -left-10 -top-12 h-36 w-36 rounded-full bg-blue-500/20 blur-3xl" />
+                          <div className="absolute -bottom-16 -right-10 h-40 w-40 rounded-full bg-violet-500/20 blur-3xl" />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-blue-300/40 bg-blue-600 text-white shadow-2xl shadow-blue-500/30">
+                              <Plus size={38} strokeWidth={2.2} />
+                            </div>
+                          </div>
+                          <div className="absolute left-[10%] top-[16%] flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-400/25 bg-slate-950/70 text-emerald-300 shadow-lg"><TrendingUp size={23} /></div>
+                          <div className="absolute right-[12%] top-[13%] flex h-11 w-11 items-center justify-center rounded-xl border border-rose-400/25 bg-slate-950/70 text-rose-300 shadow-lg"><Receipt size={23} /></div>
+                          <div className="absolute left-[7%] top-[54%] flex h-11 w-11 items-center justify-center rounded-xl border border-blue-400/25 bg-slate-950/70 text-blue-300 shadow-lg"><FileText size={23} /></div>
+                          <div className="absolute right-[8%] top-[52%] flex h-11 w-11 items-center justify-center rounded-xl border border-violet-400/25 bg-slate-950/70 text-violet-300 shadow-lg"><ClipboardList size={23} /></div>
+                          <div className="absolute bottom-[8%] left-[25%] flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/25 bg-slate-950/70 text-cyan-300 shadow-lg"><Car size={21} /></div>
+                          <div className="absolute bottom-[7%] right-[25%] flex h-10 w-10 items-center justify-center rounded-xl border border-teal-400/25 bg-slate-950/70 text-teal-300 shadow-lg"><Briefcase size={21} /></div>
+                          <div className="absolute left-1/2 top-[9%] flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-lg border border-amber-400/25 bg-slate-950/70 text-amber-300 shadow-lg"><User size={19} /></div>
+                        </div>
                       ) : null}
                       <MonieziSelect
                         value={addFlowSelection}
                         onChange={value => handleUnifiedAddSelection(value as 'income' | 'expense' | 'invoice' | 'estimate' | 'mileage' | 'client' | 'job')}
                         ariaLabel="Choose what to add"
-                        placeholder={<span className="inline-flex items-center gap-2"><PlusCircle size={18} className="text-blue-500 dark:text-blue-400" />Choose an item</span>}
+                        placeholder={<span className="inline-flex items-center gap-3"><PlusCircle size={24} className="text-blue-500 dark:text-blue-400" />Choose an item</span>}
                         menuMinWidth={280}
+                        menuVariant="screen"
+                        menuTitle="Choose an item"
                         options={[
-                          { value: 'income', label: <span className="inline-flex items-center gap-2"><TrendingUp size={18} className="text-emerald-500 dark:text-emerald-400" />Income</span>, group: 'Money & Sales' },
-                          { value: 'expense', label: <span className="inline-flex items-center gap-2"><Receipt size={18} className="text-rose-500 dark:text-rose-400" />Expense</span>, group: 'Money & Sales' },
-                          { value: 'invoice', label: <span className="inline-flex items-center gap-2"><FileText size={18} className="text-blue-500 dark:text-blue-400" />Invoice</span>, group: 'Money & Sales' },
-                          { value: 'estimate', label: <span className="inline-flex items-center gap-2"><ClipboardList size={18} className="text-violet-500 dark:text-violet-400" />Estimate</span>, group: 'Money & Sales' },
-                          { value: 'mileage', label: <span className="inline-flex items-center gap-2"><Car size={18} className="text-cyan-500 dark:text-cyan-400" />Mileage</span>, group: 'Business' },
-                          { value: 'client', label: <span className="inline-flex items-center gap-2"><User size={18} className="text-amber-500 dark:text-amber-400" />Client</span>, group: 'Business' },
-                          { value: 'job', label: <span className="inline-flex items-center gap-2"><Briefcase size={18} className="text-teal-500 dark:text-teal-400" />Job / Project</span>, group: 'Business' },
+                          { value: 'income', label: <span className="inline-flex items-center gap-3"><TrendingUp size={25} className="text-emerald-500 dark:text-emerald-400" />Income</span>, group: 'Money & Sales' },
+                          { value: 'expense', label: <span className="inline-flex items-center gap-3"><Receipt size={25} className="text-rose-500 dark:text-rose-400" />Expense</span>, group: 'Money & Sales' },
+                          { value: 'invoice', label: <span className="inline-flex items-center gap-3"><FileText size={25} className="text-blue-500 dark:text-blue-400" />Invoice</span>, group: 'Money & Sales' },
+                          { value: 'estimate', label: <span className="inline-flex items-center gap-3"><ClipboardList size={25} className="text-violet-500 dark:text-violet-400" />Estimate</span>, group: 'Money & Sales' },
+                          { value: 'mileage', label: <span className="inline-flex items-center gap-3"><Car size={25} className="text-cyan-500 dark:text-cyan-400" />Mileage</span>, group: 'Business' },
+                          { value: 'client', label: <span className="inline-flex items-center gap-3"><User size={25} className="text-amber-500 dark:text-amber-400" />Client</span>, group: 'Business' },
+                          { value: 'job', label: <span className="inline-flex items-center gap-3"><Briefcase size={25} className="text-teal-500 dark:text-teal-400" />Job / Project</span>, group: 'Business' },
                         ]}
-                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-sm font-bold text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-5 py-4 text-lg font-extrabold text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
                       />
                     </div>
               ) : undefined}

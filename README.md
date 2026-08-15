@@ -1,13 +1,11 @@
-# MONIEZI v38.0.27
+# MONIEZI v38.0.28
 
-Source package for the v38.0.27 Clean Add Selector & Icons release.
+Source package for the v38.0.28 Add Visual & Full-Screen Picker release.
 
-## New in v38.0.27
+## New in v38.0.28
 
-- Removes redundant “New entry” and keyboard-flow copy from the unified Add experience.
-- Uses one concise prompt only when no add type has been chosen yet.
-- Adds clear icons for Income, Expense, Invoice, Estimate, Mileage, Client, and Job / Project in the MONIEZI selector.
-- Removes the explanatory empty-state box below the selector.
-- Keeps the v38.0.26 unified routing and form behavior unchanged.
+- Removed the redundant Add-screen prompt above the selector.
+- Added a compact MONIEZI visual composition to the empty Add state using the existing action icons.
+- The Add selector now opens as a large mobile picker that uses nearly the full viewport instead of a cramped scrolling dropdown.
+- Increased Add-picker icon size, text size, row height, and spacing while preserving the Money & Sales / Business grouping.
 
-MONIEZI v38.0.27 preserves the v38 data model and remains compatible with existing v38 backups and installed PWAs.

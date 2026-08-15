@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown, X } from 'lucide-react';
 
 export type MonieziSelectOption = {
   value: string;
@@ -19,6 +19,8 @@ type MonieziSelectProps = {
   disabled?: boolean;
   placeholder?: React.ReactNode;
   menuMinWidth?: number;
+  menuVariant?: 'default' | 'screen';
+  menuTitle?: string;
 };
 
 type MenuPosition = {
@@ -42,6 +44,8 @@ export function MonieziSelect({
   disabled = false,
   placeholder = 'Select',
   menuMinWidth = DEFAULT_MENU_MIN_WIDTH,
+  menuVariant = 'default',
+  menuTitle = 'Choose an item',
 }: MonieziSelectProps) {
   const [open, setOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
@@ -63,6 +67,16 @@ export function MonieziSelect({
     const viewportTop = window.visualViewport?.offsetTop || 0;
     const viewportLeft = window.visualViewport?.offsetLeft || 0;
 
+    if (menuVariant === 'screen') {
+      setMenuPosition({
+        left: viewportLeft + VIEWPORT_MARGIN,
+        top: viewportTop + VIEWPORT_MARGIN,
+        width: Math.max(280, viewportWidth - VIEWPORT_MARGIN * 2),
+        maxHeight: Math.max(280, viewportHeight - VIEWPORT_MARGIN * 2),
+      });
+      return;
+    }
+
     const width = Math.min(
       Math.max(rect.width, menuMinWidth),
       Math.max(160, viewportWidth - VIEWPORT_MARGIN * 2),
@@ -83,7 +97,7 @@ export function MonieziSelect({
       : Math.min(viewportTop + viewportHeight - VIEWPORT_MARGIN - 40, rect.bottom + 6);
 
     setMenuPosition({ left, top, width, maxHeight });
-  }, [menuMinWidth]);
+  }, [menuMinWidth, menuVariant]);
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -135,52 +149,80 @@ export function MonieziSelect({
 
   const popup = open && menuPosition && typeof document !== 'undefined'
     ? createPortal(
-        <div
-          ref={menuRef}
-          role="listbox"
-          aria-label={ariaLabel}
-          className={`fixed overflow-y-auto overscroll-contain border border-slate-300 bg-white p-1.5 shadow-2xl dark:border-slate-700 dark:bg-slate-900 ${menuClassName}`.trim()}
-          style={{
-            left: menuPosition.left,
-            top: menuPosition.top,
-            width: menuPosition.width,
-            maxHeight: menuPosition.maxHeight,
-            borderRadius: '10px',
-            zIndex: 200000,
-          }}
-        >
-          {options.map((option, index) => {
-            const selected = option.value === value;
-            const previousGroup = index > 0 ? options[index - 1].group : undefined;
-            const showGroup = Boolean(option.group && option.group !== previousGroup);
-            return (
-              <React.Fragment key={option.value}>
-                {showGroup ? (
-                  <div className="px-3 pb-1 pt-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                    {option.group}
-                  </div>
-                ) : null}
+        <>
+          {menuVariant === 'screen' ? (
+            <button
+              type="button"
+              aria-label="Close choices"
+              onClick={() => setOpen(false)}
+              className="fixed inset-0 cursor-default bg-slate-950/70 backdrop-blur-[2px]"
+              style={{ zIndex: 199999 }}
+            />
+          ) : null}
+          <div
+            ref={menuRef}
+            role="listbox"
+            aria-label={ariaLabel}
+            className={`${menuVariant === 'screen'
+              ? 'fixed flex flex-col overflow-hidden border border-blue-300 bg-white p-3 shadow-2xl dark:border-blue-400/30 dark:bg-slate-950'
+              : 'fixed overflow-y-auto overscroll-contain border border-slate-300 bg-white p-1.5 shadow-2xl dark:border-slate-700 dark:bg-slate-900'} ${menuClassName}`.trim()}
+            style={{
+              left: menuPosition.left,
+              top: menuPosition.top,
+              width: menuPosition.width,
+              maxHeight: menuPosition.maxHeight,
+              borderRadius: menuVariant === 'screen' ? '18px' : '10px',
+              zIndex: 200000,
+            }}
+          >
+            {menuVariant === 'screen' ? (
+              <div className="mb-2 flex items-center justify-between border-b border-slate-200 px-2 pb-3 pt-1 dark:border-slate-700/80">
+                <div className="text-xl font-extrabold text-slate-950 dark:text-white">{menuTitle}</div>
                 <button
                   type="button"
-                  role="option"
-                  aria-selected={selected}
-                  disabled={option.disabled}
-                  onClick={() => choose(option.value, option.disabled)}
-                  className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-md px-3 py-2.5 text-left text-sm font-semibold leading-5 transition-colors ${
-                    selected
-                      ? 'bg-blue-50 text-blue-800 dark:bg-blue-500/15 dark:text-blue-200'
-                      : 'text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800'
-                  } ${option.disabled ? 'cursor-not-allowed opacity-45' : ''}`}
+                  onClick={() => setOpen(false)}
+                  className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 bg-slate-100 text-slate-700 transition-colors hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                  aria-label="Close choices"
                 >
-                  <span className="min-w-0 flex-1 break-words">{option.label}</span>
-                  <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center">
-                    {selected ? <Check size={16} strokeWidth={2.4} /> : null}
-                  </span>
+                  <X size={24} strokeWidth={2.2} />
                 </button>
-              </React.Fragment>
-            );
-          })}
-        </div>,
+              </div>
+            ) : null}
+            <div className={menuVariant === 'screen' ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 pb-1' : ''}>
+              {options.map((option, index) => {
+                const selected = option.value === value;
+                const previousGroup = index > 0 ? options[index - 1].group : undefined;
+                const showGroup = Boolean(option.group && option.group !== previousGroup);
+                return (
+                  <React.Fragment key={option.value}>
+                    {showGroup ? (
+                      <div className={menuVariant === 'screen'
+                        ? 'px-3 pb-1 pt-3 text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400'
+                        : 'px-3 pb-1 pt-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400'}>
+                        {option.group}
+                      </div>
+                    ) : null}
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={selected}
+                      disabled={option.disabled}
+                      onClick={() => choose(option.value, option.disabled)}
+                      className={`${menuVariant === 'screen'
+                        ? `flex min-h-[62px] w-full items-center justify-between gap-4 rounded-xl px-4 py-3 text-left text-lg font-bold leading-6 transition-colors ${selected ? 'bg-blue-50 text-blue-900 ring-1 ring-blue-300 dark:bg-blue-500/20 dark:text-blue-100 dark:ring-blue-400/40' : 'text-slate-900 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800/90'}`
+                        : `flex min-h-11 w-full items-center justify-between gap-3 rounded-md px-3 py-2.5 text-left text-sm font-semibold leading-5 transition-colors ${selected ? 'bg-blue-50 text-blue-800 dark:bg-blue-500/15 dark:text-blue-200' : 'text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800'}`} ${option.disabled ? 'cursor-not-allowed opacity-45' : ''}`}
+                    >
+                      <span className="min-w-0 flex-1 break-words">{option.label}</span>
+                      <span className={`${menuVariant === 'screen' ? 'h-7 w-7' : 'h-5 w-5'} flex flex-shrink-0 items-center justify-center`}>
+                        {selected ? <Check size={menuVariant === 'screen' ? 22 : 16} strokeWidth={2.4} /> : null}
+                      </span>
+                    </button>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+        </>,
         document.body,
       )
     : null;
