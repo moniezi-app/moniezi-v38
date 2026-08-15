@@ -7149,10 +7149,7 @@ export default function App() {
               <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
                 <Key size={20} className="text-emerald-400" />
               </div>
-              <div>
-                <h2 className="text-lg font-bold text-white">Activate Your License</h2>
-                <p className="text-sm text-slate-500">Enter your license key to unlock MONIEZI</p>
-              </div>
+              <h2 className="text-lg font-bold text-white">Activate MONIEZI</h2>
             </div>
 
             {/* License Key Input */}
@@ -7166,7 +7163,7 @@ export default function App() {
                   value={licenseKey}
                   onChange={(e) => { setLicenseKey(e.target.value); setLicenseError(''); }}
                   onKeyDown={(e) => e.key === 'Enter' && handleActivateLicense()}
-                  placeholder="Enter your license key"
+                  placeholder="Paste or enter your license key"
                   className="w-full px-4 py-4 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono text-base placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
                   disabled={isValidatingLicense}
                   autoCapitalize="none"
@@ -7174,6 +7171,7 @@ export default function App() {
                   spellCheck={false}
                   autoFocus
                 />
+                <p className="mt-2 text-sm text-slate-500">Find your key in your purchase confirmation.</p>
               </div>
 
               {/* Error Message */}
@@ -7198,52 +7196,11 @@ export default function App() {
                 ) : (
                   <>
                     <CheckCircle size={20} />
-                    Activate License
+                    Activate MONIEZI
                   </>
                 )}
               </button>
             </div>
-
-            {/* Divider */}
-            <div className="flex items-center gap-4 my-6">
-              <div className="flex-1 h-px bg-slate-800" />
-              <span className="text-xs text-slate-600 uppercase tracking-wider">Need a license?</span>
-              <div className="flex-1 h-px bg-slate-800" />
-            </div>
-
-            {/* Purchase Action */}
-            {PURCHASE_URL ? (
-              <a
-                href={PURCHASE_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="w-full min-h-[60px] px-5 py-4 bg-blue-600 hover:bg-blue-500 !text-white font-bold rounded-xl text-center flex items-center justify-center transition-colors"
-              >
-                Buy MONIEZI
-              </a>
-            ) : (
-              <div className="w-full min-h-[72px] px-5 py-4 bg-slate-800 text-slate-300 font-semibold rounded-xl text-center flex items-center justify-center">
-                <span className="max-w-[17rem] leading-snug text-[15px] sm:text-base whitespace-normal">
-                  Use the license key from your purchase confirmation
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Features Preview */}
-          <div className="mt-8 grid grid-cols-3 gap-4">
-            {[
-              { icon: <TrendingUp size={18} />, label: 'Track Income' },
-              { icon: <Receipt size={18} />, label: 'Manage Expenses' },
-              { icon: <FileText size={18} />, label: 'Create Invoices' },
-            ].map((feature, i) => (
-              <div key={i} className="text-center p-4 bg-slate-900/50 rounded-xl border border-slate-800/50">
-                <div className="w-10 h-10 mx-auto mb-2 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400">
-                  {feature.icon}
-                </div>
-                <span className="text-xs text-slate-500 font-medium">{feature.label}</span>
-              </div>
-            ))}
           </div>
 
           {/* Customer links */}

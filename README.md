@@ -1,15 +1,15 @@
-# MONIEZI v38.0.35
+# MONIEZI v38.0.36
 
-Source package for the v38.0.35 Complete Hamburger Menu Directory refinement.
+Source package for the v38.0.36 Welcome & License Activation Cleanup refinement.
 
-## New in v38.0.35
+## New in v38.0.36
 
-- Moves Settings to the top of the hamburger menu.
-- Makes the hamburger menu the complete app directory while preserving the six-item bottom navigation for fast access.
-- Adds Main destinations: Home, Activity, and Reports.
-- Completes Your Business with Clients, Jobs / Projects, Invoices, Estimates, and Mileage.
-- Adds Records & Tax shortcuts for Receipts and Tax Prep / Readiness.
-- Preserves Demo, Company Equity, Support, and the version/privacy footer.
-- Receipts opens directly to the Home receipts section; Tax Prep / Readiness opens its report directly.
+- Simplifies the first-run license activation screen around one clear action: enter the purchased license key and activate MONIEZI.
+- Renames the activation card to “Activate MONIEZI.”
+- Removes the repeated unlock instruction, “Need a license?” divider, purchase-action block, and feature-preview cards from the activation gate.
+- Changes the field placeholder to “Paste or enter your license key.”
+- Adds one compact helper line: “Find your key in your purchase confirmation.”
+- Changes the primary button to “Activate MONIEZI.”
+- Preserves licensing validation, error handling, legal/support links, and all v38.0.35 app functionality.
 
-MONIEZI v38.0.35 preserves the v38 data model and remains compatible with existing v38 backups and installed PWAs.
+MONIEZI v38.0.36 preserves the v38 data model and remains compatible with existing v38 backups and installed PWAs.
