@@ -215,7 +215,7 @@ export function MonieziSelect({
                         className="rounded-2xl border border-slate-300/90 bg-slate-50/70 p-2 shadow-sm dark:border-blue-400/25 dark:bg-blue-500/[0.055]"
                       >
                         {group ? (
-                          <div className="px-3 pb-1.5 pt-2 text-sm font-medium uppercase tracking-[0.04em] text-slate-600 dark:text-slate-300">
+                          <div className="mx-3 mb-2 mt-2 inline-flex w-fit items-center rounded-md border border-blue-200/90 bg-blue-100/80 px-2.5 py-1 text-xs font-medium uppercase tracking-[0.04em] text-blue-900 shadow-sm dark:border-blue-400/30 dark:bg-blue-400/10 dark:text-blue-100">
                             {group}
                           </div>
                         ) : null}

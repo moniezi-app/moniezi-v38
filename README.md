@@ -1,13 +1,12 @@
-# MONIEZI v38.0.33
+# MONIEZI v38.0.34
 
-Source package for the v38.0.33 Unified Specialized Add release.
+Source package for the v38.0.34 Add Picker Category Chips refinement.
 
-## New in v38.0.33
+## New in v38.0.34
 
-- The shared Add picker now visibly separates **Money & Sales** from **Business** with distinct bordered/tinted groups.
-- New Mileage, Client, and Job / Project editors now show the same icon-led Add-type selector used by Income, Expense, Invoice, and Estimate.
-- Switching the type from those specialized editors returns to the same seven-choice shared picker and routes into the selected creation flow.
-- Mileage keeps its dedicated trip fields; Client and Job / Project keep their specialized forms. Only the Add-entry shell is unified.
-- Existing edit workflows remain focused on the record being edited and do not show the creation-type switcher.
+- The shared Add picker keeps the existing two-section layout: Money & Sales and Business.
+- Both category titles now use compact tab/badge-style chips with a subtle tinted background, border, padding, and small radius.
+- Category labels remain slightly stronger than the selectable items while still using the MONIEZI Plus Jakarta Sans typography.
+- The seven Add choices, shared picker behavior, specialized forms, and v38.0.33 functionality are otherwise unchanged.
 
-MONIEZI v38.0.33 preserves the v38 data model and remains compatible with existing v38 backups and installed PWAs.
+MONIEZI v38.0.34 preserves the v38 data model and remains compatible with existing v38 backups and installed PWAs.
