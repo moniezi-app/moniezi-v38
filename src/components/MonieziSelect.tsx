@@ -21,6 +21,9 @@ type MonieziSelectProps = {
   menuMinWidth?: number;
   menuVariant?: 'default' | 'screen';
   menuTitle?: string;
+  autoOpen?: boolean;
+  hideTrigger?: boolean;
+  onDismiss?: () => void;
 };
 
 type MenuPosition = {
@@ -46,8 +49,11 @@ export function MonieziSelect({
   menuMinWidth = DEFAULT_MENU_MIN_WIDTH,
   menuVariant = 'default',
   menuTitle = 'Choose an item',
+  autoOpen = false,
+  hideTrigger = false,
+  onDismiss,
 }: MonieziSelectProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(autoOpen);
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -58,15 +64,16 @@ export function MonieziSelect({
   );
 
   const updatePosition = useCallback(() => {
-    const trigger = triggerRef.current;
-    if (!trigger || typeof window === 'undefined') return;
+    if (typeof window === 'undefined') return;
 
-    const rect = trigger.getBoundingClientRect();
     const viewportWidth = window.visualViewport?.width || window.innerWidth;
     const viewportHeight = window.visualViewport?.height || window.innerHeight;
     const viewportTop = window.visualViewport?.offsetTop || 0;
     const viewportLeft = window.visualViewport?.offsetLeft || 0;
 
+    // Screen-style menus are viewport panels and do not need a visible trigger.
+    // This lets the same component launch directly from Home/Activity as well
+    // as from an already-selected Add form.
     if (menuVariant === 'screen') {
       setMenuPosition({
         left: viewportLeft + VIEWPORT_MARGIN,
@@ -76,6 +83,10 @@ export function MonieziSelect({
       });
       return;
     }
+
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
 
     const width = Math.min(
       Math.max(rect.width, menuMinWidth),
@@ -104,19 +115,24 @@ export function MonieziSelect({
     updatePosition();
   }, [open, updatePosition, options.length]);
 
+  const dismissMenu = useCallback(() => {
+    setOpen(false);
+    onDismiss?.();
+  }, [onDismiss]);
+
   useEffect(() => {
     if (!open) return;
 
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node | null;
       if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
-      setOpen(false);
+      dismissMenu();
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        setOpen(false);
+        dismissMenu();
         triggerRef.current?.focus();
       }
     };
@@ -138,7 +154,7 @@ export function MonieziSelect({
       window.visualViewport?.removeEventListener('resize', handleViewportChange);
       window.visualViewport?.removeEventListener('scroll', handleViewportChange);
     };
-  }, [open, updatePosition]);
+  }, [dismissMenu, open, updatePosition]);
 
   const choose = (nextValue: string, optionDisabled?: boolean) => {
     if (optionDisabled) return;
@@ -154,7 +170,7 @@ export function MonieziSelect({
             <button
               type="button"
               aria-label="Close choices"
-              onClick={() => setOpen(false)}
+              onClick={dismissMenu}
               className="fixed inset-0 cursor-default bg-slate-950/70 backdrop-blur-[2px]"
               style={{ zIndex: 199999 }}
             />
@@ -180,7 +196,7 @@ export function MonieziSelect({
                 {menuTitle ? <div className="text-xl font-normal text-slate-950 dark:text-white">{menuTitle}</div> : null}
                 <button
                   type="button"
-                  onClick={() => setOpen(false)}
+                  onClick={dismissMenu}
                   className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 bg-slate-100 text-slate-700 transition-colors hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                   aria-label="Close choices"
                 >
@@ -229,22 +245,24 @@ export function MonieziSelect({
 
   return (
     <>
-      <button
-        ref={triggerRef}
-        type="button"
-        aria-label={ariaLabel}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        disabled={disabled}
-        onClick={() => {
-          if (disabled) return;
-          setOpen(current => !current);
-        }}
-        className={`inline-flex items-center justify-between gap-2 text-left disabled:cursor-not-allowed disabled:opacity-50 ${className}`.trim()}
-      >
-        <span className="min-w-0 flex-1 truncate">{selectedOption?.label ?? placeholder}</span>
-        <ChevronDown size={15} strokeWidth={2} className={`flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
+      {!hideTrigger ? (
+        <button
+          ref={triggerRef}
+          type="button"
+          aria-label={ariaLabel}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          disabled={disabled}
+          onClick={() => {
+            if (disabled) return;
+            setOpen(current => !current);
+          }}
+          className={`inline-flex items-center justify-between gap-2 text-left disabled:cursor-not-allowed disabled:opacity-50 ${className}`.trim()}
+        >
+          <span className="min-w-0 flex-1 truncate">{selectedOption?.label ?? placeholder}</span>
+          <ChevronDown size={15} strokeWidth={2} className={`flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+      ) : null}
       {popup}
     </>
   );
