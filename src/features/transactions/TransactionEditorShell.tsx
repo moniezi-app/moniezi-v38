@@ -13,16 +13,11 @@ type TransactionEditorShellProps = {
 };
 
 export function TransactionEditorShell({ isKeyboardEditing, mode, activeTab, billingDocType, tabSelector, utilityPanel, formContent, descriptionOverride }: TransactionEditorShellProps) {
-  const noun = activeTab === 'billing' ? (billingDocType === 'estimate' ? 'estimate' : 'invoice') : activeTab;
-  const description = mode === 'add'
-    ? `Create a new ${noun} entry in a single keyboard-safe editing flow.`
-    : `Update this ${noun} entry without the drawer fighting iPhone keyboard behavior.`;
-
   return (
     <MobileFormShell
       isEditing={isKeyboardEditing}
-      title={mode === 'add' ? 'New entry' : 'Edit entry'}
-      description={descriptionOverride ?? description}
+      title=""
+      description={descriptionOverride}
       toolbar={!isKeyboardEditing ? tabSelector : undefined}
       form={
         <div className="space-y-6">

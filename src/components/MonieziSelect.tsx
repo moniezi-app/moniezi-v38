@@ -17,7 +17,7 @@ type MonieziSelectProps = {
   menuClassName?: string;
   ariaLabel?: string;
   disabled?: boolean;
-  placeholder?: string;
+  placeholder?: React.ReactNode;
   menuMinWidth?: number;
 };
 

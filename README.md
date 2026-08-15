@@ -1,16 +1,13 @@
-# MONIEZI v38.0.26
+# MONIEZI v38.0.27
 
-Source package for the v38.0.26 Unified Add Selector release.
+Source package for the v38.0.27 Clean Add Selector & Icons release.
 
-## New in v38.0.26
+## New in v38.0.27
 
-- Replaces the separate Quick Add tile popup with one shared Add flow.
-- Home `+` and Activity `+` now use the same Add experience.
-- Activity Income, Expense, and Invoice open directly with that type preselected.
-- Activity `All` and Home open the shared Add flow with a single MONIEZI-controlled selector.
-- The selector includes Income, Expense, Invoice, Estimate, Mileage, Client, and Job / Project.
-- Options are grouped as Money & Sales and Business.
-- Mileage, Client, and Job / Project continue into their existing focused editors after selection.
-- Preserves v38.0.25 Activity contextual-add behavior and v38.0.24 numeric-editing fixes and permanent Demo access/restore behavior.
+- Removes redundant “New entry” and keyboard-flow copy from the unified Add experience.
+- Uses one concise prompt only when no add type has been chosen yet.
+- Adds clear icons for Income, Expense, Invoice, Estimate, Mileage, Client, and Job / Project in the MONIEZI selector.
+- Removes the explanatory empty-state box below the selector.
+- Keeps the v38.0.26 unified routing and form behavior unchanged.
 
-MONIEZI v38.0.26 preserves the v38 data model and remains compatible with existing v38 backups and installed PWAs.
+MONIEZI v38.0.27 preserves the v38 data model and remains compatible with existing v38 backups and installed PWAs.

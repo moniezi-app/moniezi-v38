@@ -12545,21 +12545,23 @@ html, body, #root {
               billingDocType={billingDocType}
               tabSelector={drawerMode === 'add' ? (
                     <div className="mb-4">
-                      <label className="mb-2 block pl-1 text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">What would you like to add?</label>
+                      {!addFlowSelection ? (
+                        <label className="mb-2 block pl-1 text-sm font-bold text-slate-700 dark:text-slate-200">What are you adding?</label>
+                      ) : null}
                       <MonieziSelect
                         value={addFlowSelection}
                         onChange={value => handleUnifiedAddSelection(value as 'income' | 'expense' | 'invoice' | 'estimate' | 'mileage' | 'client' | 'job')}
                         ariaLabel="Choose what to add"
-                        placeholder="Choose an item"
+                        placeholder={<span className="inline-flex items-center gap-2"><PlusCircle size={18} className="text-blue-500 dark:text-blue-400" />Choose an item</span>}
                         menuMinWidth={280}
                         options={[
-                          { value: 'income', label: 'Income', group: 'Money & Sales' },
-                          { value: 'expense', label: 'Expense', group: 'Money & Sales' },
-                          { value: 'invoice', label: 'Invoice', group: 'Money & Sales' },
-                          { value: 'estimate', label: 'Estimate', group: 'Money & Sales' },
-                          { value: 'mileage', label: 'Mileage', group: 'Business' },
-                          { value: 'client', label: 'Client', group: 'Business' },
-                          { value: 'job', label: 'Job / Project', group: 'Business' },
+                          { value: 'income', label: <span className="inline-flex items-center gap-2"><TrendingUp size={18} className="text-emerald-500 dark:text-emerald-400" />Income</span>, group: 'Money & Sales' },
+                          { value: 'expense', label: <span className="inline-flex items-center gap-2"><Receipt size={18} className="text-rose-500 dark:text-rose-400" />Expense</span>, group: 'Money & Sales' },
+                          { value: 'invoice', label: <span className="inline-flex items-center gap-2"><FileText size={18} className="text-blue-500 dark:text-blue-400" />Invoice</span>, group: 'Money & Sales' },
+                          { value: 'estimate', label: <span className="inline-flex items-center gap-2"><ClipboardList size={18} className="text-violet-500 dark:text-violet-400" />Estimate</span>, group: 'Money & Sales' },
+                          { value: 'mileage', label: <span className="inline-flex items-center gap-2"><Car size={18} className="text-cyan-500 dark:text-cyan-400" />Mileage</span>, group: 'Business' },
+                          { value: 'client', label: <span className="inline-flex items-center gap-2"><User size={18} className="text-amber-500 dark:text-amber-400" />Client</span>, group: 'Business' },
+                          { value: 'job', label: <span className="inline-flex items-center gap-2"><Briefcase size={18} className="text-teal-500 dark:text-teal-400" />Job / Project</span>, group: 'Business' },
                         ]}
                         className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3.5 text-sm font-bold text-slate-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
                       />
@@ -12590,13 +12592,7 @@ html, body, #root {
                         )}
                     </div>
               ) : undefined}
-              descriptionOverride={drawerMode === 'add' && !addFlowSelection ? 'Choose what you want to add.' : undefined}
-              formContent={drawerMode === 'add' && !addFlowSelection ? (
-                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/70 px-5 py-8 text-center dark:border-slate-700 dark:bg-slate-900/50">
-                  <div className="text-sm font-bold text-slate-800 dark:text-slate-100">Choose an item above to get started.</div>
-                  <div className="mt-1 text-xs font-medium leading-5 text-slate-500 dark:text-slate-400">Income, expenses, invoices, estimates, mileage, clients, and jobs are all available here.</div>
-                </div>
-              ) : activeTab === 'billing' ? (
+              formContent={drawerMode === 'add' && !addFlowSelection ? null : activeTab === 'billing' ? (
                    <div className="space-y-4">
                       <div className="bg-slate-100 dark:bg-slate-900/70 p-5 rounded-xl border border-slate-300 dark:border-slate-700 shadow-sm">
                           <div className="mb-4 border-b border-slate-300 dark:border-slate-700 pb-3">
