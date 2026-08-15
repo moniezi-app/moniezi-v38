@@ -7,7 +7,7 @@
 // v15.1.4: restore safe precache so iOS A2HS can launch offline on FIRST open.
 // The previous "no precache" change prevented the app shell from being available
 // when offline at cold start.
-const CACHE_VERSION = "moniezi-v38-0-34-2026-08-15-picker-category-chips-1";
+const CACHE_VERSION = "moniezi-v38-0-35-2026-08-15-complete-menu-directory-1";
 const CACHE_NAME = `moniezi-cache-${CACHE_VERSION}`;
 
 // Resolve an asset relative to the service worker scope

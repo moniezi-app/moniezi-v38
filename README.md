@@ -1,12 +1,15 @@
-# MONIEZI v38.0.34
+# MONIEZI v38.0.35
 
-Source package for the v38.0.34 Add Picker Category Chips refinement.
+Source package for the v38.0.35 Complete Hamburger Menu Directory refinement.
 
-## New in v38.0.34
+## New in v38.0.35
 
-- The shared Add picker keeps the existing two-section layout: Money & Sales and Business.
-- Both category titles now use compact tab/badge-style chips with a subtle tinted background, border, padding, and small radius.
-- Category labels remain slightly stronger than the selectable items while still using the MONIEZI Plus Jakarta Sans typography.
-- The seven Add choices, shared picker behavior, specialized forms, and v38.0.33 functionality are otherwise unchanged.
+- Moves Settings to the top of the hamburger menu.
+- Makes the hamburger menu the complete app directory while preserving the six-item bottom navigation for fast access.
+- Adds Main destinations: Home, Activity, and Reports.
+- Completes Your Business with Clients, Jobs / Projects, Invoices, Estimates, and Mileage.
+- Adds Records & Tax shortcuts for Receipts and Tax Prep / Readiness.
+- Preserves Demo, Company Equity, Support, and the version/privacy footer.
+- Receipts opens directly to the Home receipts section; Tax Prep / Readiness opens its report directly.
 
-MONIEZI v38.0.34 preserves the v38 data model and remains compatible with existing v38 backups and installed PWAs.
+MONIEZI v38.0.35 preserves the v38 data model and remains compatible with existing v38 backups and installed PWAs.

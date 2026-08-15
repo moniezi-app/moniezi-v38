@@ -8535,7 +8535,7 @@ html, body, #root {
             </div>
 
             {/* Home Receipts: actions + real linked receipt images + missing-documentation workflow */}
-            <div>
+            <div id="home-receipts" className="scroll-mt-6">
               <div className="flex items-center justify-between mb-4 pl-2">
                 <div>
                   <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white font-brand">Receipts</h3>
@@ -12318,18 +12318,80 @@ html, body, #root {
       </div>
       
 
-      {/* Main menu — occasional destinations. The bottom bar keeps the six
-          screens used daily; everything else lives here. */}
+      {/* Main menu — complete directory of MONIEZI destinations. The bottom
+          navigation remains the fast-access layer; this drawer is the full app map. */}
       <AppDrawer isOpen={showMainMenu} onClose={() => setShowMainMenu(false)} title="Menu">
         <div className="pt-5 pb-4">
 
+          {/* Settings is intentionally first: it is a universal app destination. */}
           <section className="pb-6">
+            <button
+              onClick={() => { setCurrentPage(Page.Settings); setShowMainMenu(false); mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                <Settings size={18} />
+              </span>
+              <span className="min-w-0">
+                Settings
+                <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Business details, backup, preferences and features</span>
+              </span>
+            </button>
+          </section>
+
+          <section className="border-t border-slate-300 dark:border-slate-700 py-6">
+            <div className="px-1 pb-3 text-xs font-extrabold uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">
+              Main
+            </div>
+            <div className="space-y-1">
+              <button
+                onClick={() => { setCurrentPage(Page.Dashboard); setShowMainMenu(false); mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-700/40 dark:bg-blue-500/10 dark:text-blue-300">
+                  <LayoutGrid size={18} />
+                </span>
+                <span className="min-w-0">
+                  Home
+                  <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Overview and business snapshot</span>
+                </span>
+              </button>
+
+              <button
+                onClick={() => { setLedgerFilter('all'); setCurrentPage(Page.AllTransactions); setShowMainMenu(false); mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-700/40 dark:bg-blue-500/10 dark:text-blue-300">
+                  <History size={18} />
+                </span>
+                <span className="min-w-0">
+                  Activity
+                  <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Income, expenses and invoice activity</span>
+                </span>
+              </button>
+
+              <button
+                onClick={() => { setReportsMenuSection('menu'); setCurrentPage(Page.Reports); setShowMainMenu(false); mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-700/40 dark:bg-violet-500/10 dark:text-violet-300">
+                  <BarChart3 size={18} />
+                </span>
+                <span className="min-w-0">
+                  Reports
+                  <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Profit, tax, receivables and business reports</span>
+                </span>
+              </button>
+            </div>
+          </section>
+
+          <section className="border-t border-slate-300 dark:border-slate-700 py-6">
             <div className="px-1 pb-3 text-xs font-extrabold uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">
               Your business
             </div>
             <div className="space-y-1">
               <button
-                onClick={() => { setCurrentPage(Page.Clients); setShowMainMenu(false); }}
+                onClick={() => { setCurrentPage(Page.Clients); setShowMainMenu(false); mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
                 className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-700/40 dark:bg-purple-500/10 dark:text-purple-300">
@@ -12342,7 +12404,7 @@ html, body, #root {
               </button>
 
               <button
-                onClick={() => { setCurrentPage(Page.Jobs); setShowMainMenu(false); }}
+                onClick={() => { setCurrentPage(Page.Jobs); setShowMainMenu(false); mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
                 className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-700/40 dark:bg-cyan-500/10 dark:text-cyan-300">
@@ -12350,12 +12412,25 @@ html, body, #root {
                 </span>
                 <span className="min-w-0">
                   Jobs / Projects
-                  <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Job profitability and linked work</span>
+                  <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Profitability, costing and linked work</span>
                 </span>
               </button>
 
               <button
-                onClick={() => { setBillingDocType('estimate'); setCurrentPage(Page.Invoices); setShowMainMenu(false); }}
+                onClick={() => { setBillingDocType('invoice'); setCurrentPage(Page.Invoices); setShowMainMenu(false); mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-700/40 dark:bg-blue-500/10 dark:text-blue-300">
+                  <FileText size={18} />
+                </span>
+                <span className="min-w-0">
+                  Invoices
+                  <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Billing and collections</span>
+                </span>
+              </button>
+
+              <button
+                onClick={() => { setBillingDocType('estimate'); setCurrentPage(Page.Invoices); setShowMainMenu(false); mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
                 className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-700/40 dark:bg-indigo-500/10 dark:text-indigo-300">
@@ -12363,46 +12438,96 @@ html, body, #root {
                 </span>
                 <span className="min-w-0">
                   Estimates
-                  <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Quotes you haven&apos;t billed yet</span>
+                  <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Quotes and proposals</span>
+                </span>
+              </button>
+
+              <button
+                onClick={() => { setCurrentPage(Page.Mileage); setShowMainMenu(false); mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-700/40 dark:bg-teal-500/10 dark:text-teal-300">
+                  <Car size={18} />
+                </span>
+                <span className="min-w-0">
+                  Mileage
+                  <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Business trips and mileage records</span>
                 </span>
               </button>
             </div>
           </section>
 
           <section className="border-t border-slate-300 dark:border-slate-700 py-6">
-              <div className="px-1 pb-3 text-xs font-extrabold uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">
-                Trying MONIEZI
-              </div>
-              <div className="space-y-1">
-                {isDemoData ? (
-                  <button
-                    onClick={() => { handleRemoveSampleData(); setShowMainMenu(false); }}
-                    className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-red-200 bg-red-50 text-red-700 dark:border-red-700/40 dark:bg-red-500/10 dark:text-red-300">
-                      <Trash2 size={18} />
-                    </span>
-                    <span className="min-w-0">
-                      Remove the demo
-                      <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Exit Demo Mode and return to your business</span>
-                    </span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleLoadSampleData}
-                    className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-700/40 dark:bg-amber-500/10 dark:text-amber-300">
-                      <PlayCircle size={18} />
-                    </span>
-                    <span className="min-w-0">
-                      Try the demo
-                      <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Explore it any time. Your own records are preserved.</span>
-                    </span>
-                  </button>
-                )}
-              </div>
-            </section>
+            <div className="px-1 pb-3 text-xs font-extrabold uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">
+              Records &amp; tax
+            </div>
+            <div className="space-y-1">
+              <button
+                onClick={() => {
+                  setCurrentPage(Page.Dashboard);
+                  setShowMainMenu(false);
+                  window.setTimeout(() => document.getElementById('home-receipts')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+                }}
+                className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-700/40 dark:bg-rose-500/10 dark:text-rose-300">
+                  <Receipt size={18} />
+                </span>
+                <span className="min-w-0">
+                  Receipts
+                  <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Receipt images and missing documentation</span>
+                </span>
+              </button>
+
+              <button
+                onClick={() => { setTaxPrepYear(new Date().getFullYear()); setReportsMenuSection('taxprep'); setCurrentPage(Page.Reports); setShowMainMenu(false); mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-500/10 dark:text-emerald-300">
+                  <Calculator size={18} />
+                </span>
+                <span className="min-w-0">
+                  Tax Prep / Readiness
+                  <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Readiness, missing records and tax package</span>
+                </span>
+              </button>
+            </div>
+          </section>
+
+          <section className="border-t border-slate-300 dark:border-slate-700 py-6">
+            <div className="px-1 pb-3 text-xs font-extrabold uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">
+              Trying MONIEZI
+            </div>
+            <div className="space-y-1">
+              {isDemoData ? (
+                <button
+                  onClick={() => { handleRemoveSampleData(); setShowMainMenu(false); }}
+                  className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-red-200 bg-red-50 text-red-700 dark:border-red-700/40 dark:bg-red-500/10 dark:text-red-300">
+                    <Trash2 size={18} />
+                  </span>
+                  <span className="min-w-0">
+                    Remove the demo
+                    <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Exit Demo Mode and return to your business</span>
+                  </span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => { handleLoadSampleData(); setShowMainMenu(false); }}
+                  className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-700/40 dark:bg-amber-500/10 dark:text-amber-300">
+                    <PlayCircle size={18} />
+                  </span>
+                  <span className="min-w-0">
+                    Try the demo
+                    <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Explore it any time. Your own records are preserved.</span>
+                  </span>
+                </button>
+              )}
+            </div>
+          </section>
 
           {settings.companyEquityEnabled && (
             <section className="border-t border-slate-300 dark:border-slate-700 py-6">
@@ -12411,7 +12536,7 @@ html, body, #root {
               </div>
               <div className="space-y-1">
                 <button
-                  onClick={() => { setCurrentPage(Page.CompanyEquity); setShowMainMenu(false); }}
+                  onClick={() => { setCurrentPage(Page.CompanyEquity); setShowMainMenu(false); mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); }}
                   className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-700/40 dark:bg-cyan-500/10 dark:text-cyan-300">
@@ -12426,41 +12551,26 @@ html, body, #root {
             </section>
           )}
 
-          <section className="border-t border-slate-300 dark:border-slate-700 py-6">
-            <div className="px-1 pb-3 text-xs font-extrabold uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">
-              App
-            </div>
-            <div className="space-y-1">
-              <button
-                onClick={() => { setCurrentPage(Page.Settings); setShowMainMenu(false); }}
+          {SUPPORT_EMAIL && (
+            <section className="border-t border-slate-300 dark:border-slate-700 py-6">
+              <div className="px-1 pb-3 text-xs font-extrabold uppercase tracking-[0.14em] text-slate-600 dark:text-slate-300">
+                Support
+              </div>
+              <a
+                href={`mailto:${SUPPORT_EMAIL}`}
+                onClick={() => setShowMainMenu(false)}
                 className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                  <Settings size={18} />
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-700/40 dark:bg-blue-500/10 dark:text-blue-300">
+                  <HelpCircle size={18} />
                 </span>
                 <span className="min-w-0">
-                  Settings
-                  <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">Business details, backup, features</span>
+                  Get help
+                  <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">{SUPPORT_EMAIL}</span>
                 </span>
-              </button>
-
-              {SUPPORT_EMAIL && (
-                <a
-                  href={`mailto:${SUPPORT_EMAIL}`}
-                  onClick={() => setShowMainMenu(false)}
-                  className="w-full flex items-center gap-3.5 p-3 rounded-xl text-left text-[17px] font-bold text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                >
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-700/40 dark:bg-blue-500/10 dark:text-blue-300">
-                    <HelpCircle size={18} />
-                  </span>
-                  <span className="min-w-0">
-                    Get help
-                    <span className="mt-0.5 block text-[12.5px] font-medium text-slate-500 dark:text-slate-400">{SUPPORT_EMAIL}</span>
-                  </span>
-                </a>
-              )}
-            </div>
-          </section>
+              </a>
+            </section>
+          )}
 
           <div className="px-1 pt-6 border-t border-slate-300 dark:border-slate-700">
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
